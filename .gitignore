@@ -1,0 +1,300 @@
+# ============================================================================
+# GITIGNORE - FINANZAS EMAIL TRACKER
+# ============================================================================
+
+# === VARIABLES DE ENTORNO Y SECRETOS ===
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+credentials.json
+
+# === BASE DE DATOS ===
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+data/*.sqlite
+
+# === CACHE DE AUTENTICACIÓN ===
+data/.token_cache.bin
+.token_cache.bin
+
+# === PYTHON ===
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# Poetry
+# Nota: poetry.lock se DEBE commitear para producción
+# Descomenta la siguiente línea si solo desarrollas localmente
+# poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# === IDEs Y EDITORES ===
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# === SISTEMA OPERATIVO ===
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# === LOGS ===
+logs/
+*.log
+*.log.*
+log_*.txt
+
+# === STREAMLIT ===
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# === ALEMBIC ===
+# No ignorar las migraciones, solo los archivos temporales
+alembic.ini.bak
+*.pyc
+
+# === DATOS TEMPORALES ===
+tmp/
+temp/
+cache/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# === ARCHIVOS DE RESPALDO ===
+*.orig
+*.backup
+*~
+
+# === NODE (si usas herramientas JS) ===
+node_modules/
+package-lock.json
+yarn.lock
+
+# === ESPECÍFICO DEL PROYECTO ===
+# Archivos de datos temporales
+data/temp/
+data/cache/
+downloads/
+
+# Exports y reportes generados
+exports/
+reports/*.xlsx
+reports/*.csv
+reports/*.pdf
+
+# Cache de Microsoft Graph
+.msgraph_cache/
+
+# === DATOS SENSIBLES ===
+# Estados de cuenta y PDFs con información bancaria personal
+EjemplosDeEstadosDeCuenta/
+*.pdf
+
+# === ARCHIVOS DE DESARROLLO TEMPORAL ===
+# Documentación temporal que no debe estar en repo
+FASE_*.md
+TREE.txt
+CONFIGURACION_COMPLETADA.md
+RESUMEN_SETUP.md
+PROJECT_STATUS.md
+
+# Coverage reports (generados localmente)
+htmlcov/
+.coverage
+
+

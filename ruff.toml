@@ -1,0 +1,119 @@
+# ============================================================================
+# RUFF CONFIGURATION
+# ============================================================================
+# Ruff es un linter y formatter extremadamente rápido para Python
+# Reemplaza a: flake8, isort, black, pylint, y más
+# Documentación: https://docs.astral.sh/ruff/
+
+# === CONFIGURACIÓN GENERAL ===
+target-version = "py311"
+line-length = 100
+indent-width = 4
+
+# === ARCHIVOS A EXCLUIR ===
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+    "*.egg-info",
+    "alembic/versions",  # Migraciones de base de datos
+    ".eggs",
+    "node_modules",
+]
+
+# === LINTING ===
+[lint]
+# Seleccionar reglas a aplicar
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (Python version upgrades)
+    "ANN",    # flake8-annotations (type hints)
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit (security)
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T20",    # flake8-print
+    "RET",    # flake8-return
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "PL",     # pylint
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignorar reglas específicas
+ignore = [
+    "ANN101",  # Missing type annotation for self
+    "ANN102",  # Missing type annotation for cls
+    "S101",    # Use of assert (OK en tests)
+    "PLR0913", # Too many arguments
+    "ANN401",  # Dynamically typed expressions (Any)
+    "S104",    # Possible binding to all interfaces
+]
+
+# Permitir imports no utilizados en __init__.py
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/*" = ["S101", "PLR2004", "ANN201", "ANN001"]  # Permitir asserts y magic numbers en tests
+
+# === CONFIGURACIÓN DE ISORT (import sorting) ===
+[lint.isort]
+known-first-party = ["finanzas_tracker"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+lines-after-imports = 2
+force-sort-within-sections = true
+
+# === CONFIGURACIÓN DE MCCABE (complejidad ciclomática) ===
+[lint.mccabe]
+max-complexity = 10
+
+# === CONFIGURACIÓN DE FLAKE8-QUOTES ===
+[lint.flake8-quotes]
+inline-quotes = "double"
+docstring-quotes = "double"
+
+# === CONFIGURACIÓN DE PYLINT ===
+[lint.pylint]
+max-args = 7
+max-branches = 12
+max-returns = 6
+max-statements = 50
+
+# === FORMATTING ===
+[format]
+# Usar comillas dobles para strings
+quote-style = "double"
+
+# Usar comillas dobles para docstrings
+docstring-code-format = true
+docstring-code-line-length = 80
+
+# Indentación de 4 espacios
+indent-style = "space"
+
+# Preservar magic trailing commas
+skip-magic-trailing-comma = false
+
+# Estilo de fin de línea
+line-ending = "auto"
+
+
