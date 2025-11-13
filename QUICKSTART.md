@@ -6,9 +6,12 @@ Esta guía te ayudará a poner en marcha el proyecto en **menos de 10 minutos**.
 
 - ✅ Python 3.11+ instalado
 - ✅ Poetry instalado ([instalación](https://python-poetry.org/docs/#installation))
-- ✅ Una cuenta de Outlook/Microsoft 365
+- ✅ Cuenta de **Outlook/Microsoft 365** (único proveedor soportado actualmente)
+- ✅ Cuenta en **BAC Credomatic** o **Banco Popular** de Costa Rica
 - ✅ Credenciales de Azure AD (instrucciones abajo)
 - ✅ API Key de Anthropic Claude (instrucciones abajo)
+
+> **📌 Nota:** Actualmente solo se soportan Outlook y los bancos mencionados. Se planea agregar más en el futuro.
 
 ## 📦 Paso 1: Instalar Poetry (si no lo tienes)
 
@@ -45,7 +48,7 @@ code .env
 
 Necesitas configurar:
 - Azure AD credentials (Client ID, Tenant ID, Secret)
-- Tus correos de Outlook
+- Tu correo de Outlook/Microsoft 365 (y opcionalmente más usuarios)
 - API Key de Anthropic Claude
 
 ### 🔵 Obtener Credenciales de Azure AD

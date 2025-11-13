@@ -9,19 +9,28 @@ Sistema automatizado para rastrear y categorizar transacciones bancarias desde c
 
 ## 📋 Descripción
 
-Esta aplicación permite monitorear automáticamente correos electrónicos de notificaciones bancarias (BAC Credomatic y Banco Popular de Costa Rica), extraer información de transacciones, categorizarlas inteligentemente usando Claude AI, y visualizarlas en un dashboard interactivo con Streamlit.
+Esta aplicación permite monitorear automáticamente correos electrónicos de notificaciones bancarias, extraer información de transacciones, categorizarlas inteligentemente usando Claude AI, y visualizarlas en un dashboard interactivo con Streamlit.
+
+**🏦 Bancos Soportados Actualmente:**
+- ✅ BAC Credomatic (Costa Rica)
+- ✅ Banco Popular de Costa Rica
+- 📧 Solo Outlook/Microsoft 365
+
+**🔜 Próximamente:** Se planea agregar soporte para más bancos y proveedores de correo.
 
 > **🚀 Quick Start**: Si ya sabes lo que haces, ve directo a [QUICKSTART.md](QUICKSTART.md)
 
 ### ✨ Características Principales
 
-- 📧 **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook
-- 🏦 **Soporte Multi-Banco**: Compatible con BAC Credomatic y Banco Popular (Costa Rica)
+- 📧 **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook/Microsoft 365
+- 🏦 **Multi-Banco**: BAC Credomatic y Banco Popular (Costa Rica) — más bancos próximamente
 - 🤖 **Categorización Inteligente con IA**: Usa Claude 3.5 Sonnet para clasificar gastos automáticamente
+- 🧠 **Sistema de Aprendizaje**: Aprende de tus decisiones para mejorar la categorización
+- 💱 **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales
 - 📊 **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
 - 🔒 **Seguridad**: Manejo seguro de credenciales con variables de entorno
 - 💾 **Base de Datos Local**: SQLite para almacenamiento sin necesidad de servidor
-- 👥 **Multi-Usuario**: Soporte para múltiples cuentas de correo (usuario y familiares)
+- 👥 **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos
 
 ## 🛠️ Stack Tecnológico
 
@@ -40,7 +49,8 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 
 - Python 3.11 o superior
 - Poetry instalado ([Instrucciones de instalación](https://python-poetry.org/docs/#installation))
-- Cuenta de Outlook/Microsoft 365
+- Cuenta de **Outlook/Microsoft 365** (actualmente el único proveedor de correo soportado)
+- Cuenta bancaria en **BAC Credomatic** o **Banco Popular** de Costa Rica
 - API Key de Anthropic Claude
 - Credenciales de Azure AD (para Microsoft Graph API)
 
@@ -204,22 +214,39 @@ finanzas-email-tracker/
 
 ## 🔐 Seguridad
 
-- **NUNCA** compartas tu archivo `.env`
+- **NUNCA** compartas tu archivo `.env` — contiene credenciales sensibles
 - **NUNCA** subas credenciales a Git
 - Las API Keys están protegidas con variables de entorno
 - La base de datos SQLite es local y no se sincroniza
+- Solo tú tienes acceso a tus datos bancarios
+- La aplicación funciona 100% en tu computadora local
 
-## 🏦 Bancos Soportados
+## 🏦 Bancos y Proveedores Soportados
 
-### BAC Credomatic (Costa Rica)
+### 📧 Proveedores de Correo
+- ✅ **Outlook/Microsoft 365** (mediante Microsoft Graph API)
+- 🔜 Gmail (planificado)
+- 🔜 Otros proveedores (a petición)
+
+### 🏦 Bancos (Costa Rica)
+
+**BAC Credomatic**
+- ✅ Notificaciones de transacciones
+- ✅ Tarjetas de crédito y débito
+- ✅ Transferencias y SINPE
+- ✅ Retiros sin tarjeta
+- ✅ Extracción de: monto, fecha, comercio, número de tarjeta
+
+**Banco Popular**
 - ✅ Notificaciones de transacciones
 - ✅ Tarjetas de crédito y débito
 - ✅ Extracción de: monto, fecha, comercio, número de tarjeta
 
-### Banco Popular (Costa Rica)
-- ✅ Notificaciones de transacciones
-- ✅ Tarjetas de crédito y débito
-- ✅ Extracción de: monto, fecha, comercio, número de tarjeta
+### 🔜 Próximamente
+- Más bancos de Costa Rica (Scotiabank, BCR, etc.)
+- Bancos de otros países latinoamericanos
+- Soporte para Gmail y otros proveedores de correo
+- Parsing de estados de cuenta PDF
 
 ## 🤝 Contribuciones
 
@@ -255,9 +282,18 @@ Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
 ## 👤 Autor
 
-**Sebastian Cruz**
-- Ingeniero en Computación
-- Costa Rica 🇨🇷
+**Sebastian Cruz**  
+Ingeniero en Computación | Costa Rica 🇨🇷
+
+## 💡 Motivación
+
+Este proyecto nace de la necesidad de tener un control real y automatizado de finanzas personales en Costa Rica, donde la mayoría de soluciones disponibles son:
+- 🚫 De otros países (no soportan bancos locales)
+- 🚫 Requieren acceso bancario directo (inseguro)
+- 🚫 Son de pago y costosas
+- 🚫 No usan IA para categorización inteligente
+
+**Finanzas Email Tracker** es 100% local, seguro, gratuito (excepto API de Claude) y diseñado específicamente para el contexto costarricense.
 
 ## 🙏 Agradecimientos
 

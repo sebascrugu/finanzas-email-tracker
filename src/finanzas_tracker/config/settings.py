@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     )
     mom_email: EmailStr = Field(
         ...,
-        description="Correo electrónico de mamá",
+        description="Correo electrónico de un segundo usuario (opcional para multi-usuario)",
     )
 
     # === Anthropic Claude API ===
