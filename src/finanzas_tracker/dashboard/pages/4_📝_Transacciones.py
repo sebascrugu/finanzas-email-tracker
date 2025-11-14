@@ -109,31 +109,40 @@ def main():
             if st.button("📧 Procesar Correos Bancarios", type="primary", use_container_width=True):
                 with st.spinner("🔍 Buscando correos bancarios..."):
                     try:
-                        # Importar y ejecutar el procesador
+                        # Importar servicios necesarios
+                        from finanzas_tracker.services.email_fetcher import EmailFetcher
                         from finanzas_tracker.services.transaction_processor import (
                             TransactionProcessor,
                         )
 
-                        processor = TransactionProcessor()
+                        # 1. Obtener correos
+                        st.info("📧 Conectando con Outlook...")
+                        fetcher = EmailFetcher()
+                        emails = fetcher.fetch_all_emails(days_back=30)  # Últimos 30 días
 
-                        # Procesar transacciones
-                        stats = processor.process_transactions(
-                            user_email=user.email,
-                            days_back=30,  # Últimos 30 días
-                        )
+                        if not emails:
+                            st.warning("⚠️ No se encontraron correos bancarios nuevos")
+                            st.info(
+                                "💡 Verifica que tengas correos de transacciones en tu bandeja de entrada"
+                            )
+                            return
+
+                        st.info(f"📬 {len(emails)} correo(s) encontrado(s). Procesando...")
+
+                        # 2. Procesar transacciones
+                        processor = TransactionProcessor()
+                        stats = processor.process_emails(emails, user.email)
 
                         # Mostrar resultados
                         st.success(f"✅ ¡Proceso completado!")
 
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2, col3, col4 = st.columns(4)
 
                         with col1:
-                            st.metric("📧 Correos procesados", stats.get("correos_procesados", 0))
+                            st.metric("📧 Correos procesados", stats.get("total", 0))
 
                         with col2:
-                            st.metric(
-                                "✅ Transacciones nuevas", stats.get("transacciones_guardadas", 0)
-                            )
+                            st.metric("✅ Nuevas", stats.get("procesados", 0))
 
                         with col3:
                             st.metric(
@@ -141,14 +150,39 @@ def main():
                                 stats.get("categorizadas_automaticamente", 0),
                             )
 
+                        with col4:
+                            st.metric("🔄 Duplicadas", stats.get("duplicados", 0))
+
+                        # Detalles adicionales
+                        st.markdown("---")
+                        st.markdown("### 📊 Detalles")
+
+                        col1, col2 = st.columns(2)
+
+                        with col1:
+                            st.markdown(f"**🏦 BAC Credomatic:** {stats.get('bac', 0)}")
+                            st.markdown(f"**🏦 Banco Popular:** {stats.get('popular', 0)}")
+
+                        with col2:
+                            st.markdown(
+                                f"**💱 USD convertidas:** {stats.get('usd_convertidos', 0)}"
+                            )
+                            st.markdown(f"**❌ Errores:** {stats.get('errores', 0)}")
+
+                        st.markdown("---")
+
                         if stats.get("necesitan_revision", 0) > 0:
-                            st.info(
+                            st.warning(
                                 f"📝 {stats['necesitan_revision']} transacción(es) necesitan tu revisión"
                             )
-                            st.info("💡 Recarga la página para verlas")
-                        else:
+                            st.info("💡 Recarga la página para verlas y categorizarlas")
+                        elif stats.get("procesados", 0) > 0:
                             st.success(
                                 "🎉 Todas las transacciones fueron categorizadas automáticamente"
+                            )
+                        else:
+                            st.info(
+                                "ℹ️ No se guardaron nuevas transacciones (posiblemente todas son duplicadas)"
                             )
 
                         # Botón para recargar
