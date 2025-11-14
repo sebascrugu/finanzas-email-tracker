@@ -1,4 +1,4 @@
-"""Página de Setup y Gestión de Perfiles."""
+"""Página de Setup y Gestión de Perfiles SIMPLIFICADA."""
 
 import streamlit as st
 from datetime import date
@@ -18,7 +18,6 @@ sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.user import User
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
@@ -32,89 +31,29 @@ def setup_page():
     st.title("⚙️ Setup y Gestión de Perfiles")
 
     with get_session() as session:
-        # Verificar si existe usuario
-        user = session.query(User).filter(User.activo == True).first()  # noqa: E712
+        # Verificar si existen perfiles
+        perfiles = session.query(Profile).filter(Profile.activo == True).all()  # noqa: E712
 
-        if not user:
-            # Primera vez: crear usuario
-            st.info("👋 ¡Bienvenido! Vamos a configurar tu cuenta.")
-            crear_usuario_inicial(session)
+        if not perfiles:
+            # Primera vez: crear primer perfil
+            st.info("👋 ¡Bienvenido! Vamos a crear tu primer perfil.")
+            crear_perfil_nuevo(session, es_primero=True)
         else:
-            # Usuario existe: gestionar perfiles
-            gestionar_perfiles(session, user)
+            # Ya hay perfiles: gestionar
+            gestionar_perfiles(session, perfiles)
 
 
-def crear_usuario_inicial(session):
-    """Formulario para crear el usuario inicial."""
-    st.subheader("📋 Información de Usuario")
-    st.markdown("""
-    Ingresa tu email de Outlook. Este será tu usuario principal.
-    Luego podrás crear múltiples perfiles (Personal, Negocio, Familia, etc.)
-    """)
+def gestionar_perfiles(session, perfiles: list[Profile]):
+    """Gestión de perfiles existentes."""
+    st.success(f"📊 Tienes **{len(perfiles)}** perfil(es) configurado(s)")
 
-    with st.form("crear_usuario_form"):
-        email = st.text_input(
-            "📧 Email de Outlook/Hotmail:",
-            placeholder="tu.email@outlook.com",
-            help="Este es tu email de Outlook donde recibes los correos bancarios",
-        )
-        nombre = st.text_input(
-            "👤 Nombre completo:",
-            placeholder="Tu Nombre",
-        )
+    tab1, tab2 = st.tabs(["📋 Mis Perfiles", "➕ Crear Perfil"])
 
-        submitted = st.form_submit_button("➡️ Continuar", type="primary", use_container_width=True)
+    with tab1:
+        mostrar_perfiles(session, perfiles)
 
-        if submitted:
-            if not email or not nombre:
-                st.error("❌ Por favor completa todos los campos")
-                return
-
-            if "@" not in email:
-                st.error("❌ Email inválido")
-                return
-
-            try:
-                # Crear usuario
-                new_user = User(email=email, nombre=nombre, activo=True)
-                session.add(new_user)
-                session.flush()
-
-                st.success(f"✅ Usuario {nombre} creado!")
-                st.info("🔄 Recargando para crear tu primer perfil...")
-                session.commit()
-                st.rerun()
-
-            except Exception as e:
-                session.rollback()
-                st.error(f"❌ Error: {e}")
-                logger.error(f"Error creando usuario: {e}")
-
-
-def gestionar_perfiles(session, user: User):
-    """Gestión de perfiles del usuario."""
-    st.info(f"👤 Usuario: **{user.nombre}** ({user.email})")
-
-    # Obtener perfiles del usuario
-    perfiles = (
-        session.query(Profile)
-        .filter(Profile.owner_email == user.email, Profile.activo == True)  # noqa: E712
-        .all()
-    )
-
-    # Tabs para gestionar perfiles
-    if not perfiles:
-        # No hay perfiles: forzar crear el primero
-        st.warning("📝 No tienes perfiles configurados. Vamos a crear tu primer perfil.")
-        crear_perfil_nuevo(session, user)
-    else:
-        tab1, tab2 = st.tabs(["📋 Mis Perfiles", "➕ Crear Perfil"])
-
-        with tab1:
-            mostrar_perfiles(session, perfiles)
-
-        with tab2:
-            crear_perfil_nuevo(session, user)
+    with tab2:
+        crear_perfil_nuevo(session, es_primero=False)
 
 
 def mostrar_perfiles(session, perfiles: list[Profile]):
@@ -129,6 +68,7 @@ def mostrar_perfiles(session, perfiles: list[Profile]):
             col1, col2 = st.columns([3, 1])
 
             with col1:
+                st.markdown(f"**Email Outlook:** {perfil.email_outlook}")
                 st.markdown(f"**Nombre:** {perfil.nombre}")
                 if perfil.descripcion:
                     st.markdown(f"**Descripción:** {perfil.descripcion}")
@@ -183,11 +123,9 @@ def mostrar_perfiles(session, perfiles: list[Profile]):
 
 def activar_perfil(session, perfil: Profile):
     """Activa un perfil (desactiva los demás)."""
-    # Desactivar todos los perfiles del usuario
-    perfiles_usuario = (
-        session.query(Profile).filter(Profile.owner_email == perfil.owner_email).all()
-    )
-    for p in perfiles_usuario:
+    # Desactivar todos los perfiles
+    perfiles_todos = session.query(Profile).all()
+    for p in perfiles_todos:
         p.es_activo = False
 
     # Activar el seleccionado
@@ -225,33 +163,44 @@ def editar_perfil(session, perfil: Profile):
             st.rerun()
 
 
-def crear_perfil_nuevo(session, user: User):
+def crear_perfil_nuevo(session, es_primero: bool = False):
     """Formulario para crear un nuevo perfil."""
-    st.subheader("➕ Crear Nuevo Perfil")
-
-    st.markdown("""
-    Un perfil agrupa:
-    - Tarjetas específicas
-    - Su propio presupuesto
-    - Sus transacciones e ingresos
-
-    **Ejemplos:**
-    - 👤 Personal (tus finanzas personales)
-    - 💼 Negocio (finanzas de tu empresa)
-    - 👪 Mamá (finanzas de tu mamá)
-    """)
+    if es_primero:
+        st.subheader("🎉 Crea Tu Primer Perfil")
+        st.markdown("""
+        Un perfil agrupa:
+        - Tu email de Outlook (donde recibes correos bancarios)
+        - Tus tarjetas bancarias
+        - Tu presupuesto mensual
+        - Tus transacciones e ingresos
+        
+        **Ejemplo:** Si tienes finanzas personales y de negocio, puedes crear dos perfiles separados.
+        """)
+    else:
+        st.subheader("➕ Crear Nuevo Perfil")
+        st.markdown("""
+        Crea un nuevo perfil para separar diferentes contextos financieros:
+        - 👤 Personal
+        - 💼 Negocio
+        - 👵 Familia (ej: finanzas de tu mamá en su email)
+        """)
 
     with st.form("crear_perfil_form"):
         st.markdown("#### 1️⃣ Información del Perfil")
         col1, col2 = st.columns(2)
         with col1:
+            email_outlook = st.text_input(
+                "📧 Email de Outlook:",
+                placeholder="tu.email@outlook.com",
+                help="Email donde recibes los correos bancarios",
+            )
             nombre = st.text_input(
                 "📝 Nombre del perfil:", placeholder="Personal", help="Ej: Personal, Negocio, Mamá"
             )
+        with col2:
             icono = st.text_input(
                 "😀 Icono (emoji):", value="👤", help="Un emoji que represente este perfil"
             )
-        with col2:
             descripcion = st.text_area(
                 "📄 Descripción (opcional):", placeholder="Mis finanzas personales"
             )
@@ -268,12 +217,14 @@ def crear_perfil_nuevo(session, user: User):
             try:
                 salario = Decimal(salario_str.replace(",", ""))
                 if salario > 0:
-                    st.info(f"""
+                    st.info(
+                        f"""
                     **Distribución 50/30/20 (automática):**
                     - 50% Necesidades: ₡{(salario * Decimal('0.50')):,.0f}
                     - 30% Gustos: ₡{(salario * Decimal('0.30')):,.0f}
                     - 20% Ahorros: ₡{(salario * Decimal('0.20')):,.0f}
-                    """)
+                    """
+                    )
             except:
                 st.error("❌ Formato inválido. Usa solo números (ej: 280000)")
 
@@ -327,6 +278,9 @@ def crear_perfil_nuevo(session, user: User):
 
         if crear:
             # Validaciones
+            if not email_outlook or "@" not in email_outlook:
+                st.error("❌ Debes ingresar un email válido")
+                return
             if not nombre:
                 st.error("❌ Debes poner un nombre al perfil")
                 return
@@ -339,26 +293,28 @@ def crear_perfil_nuevo(session, user: User):
 
             try:
                 # 1. Crear perfil
-                # Verificar si es el primer perfil (será el activo)
-                perfiles_existentes = (
-                    session.query(Profile).filter(Profile.owner_email == user.email).count()
-                )
-
                 nuevo_perfil = Profile(
-                    owner_email=user.email,
+                    email_outlook=email_outlook,
                     nombre=nombre,
                     descripcion=descripcion if descripcion else None,
                     icono=icono,
-                    es_activo=(perfiles_existentes == 0),  # Primer perfil = activo
+                    es_activo=True,  # Siempre activo al crear
                     activo=True,
                 )
                 session.add(nuevo_perfil)
                 session.flush()
 
+                # Desactivar otros perfiles si no es el primero
+                if not es_primero:
+                    otros_perfiles = (
+                        session.query(Profile).filter(Profile.id != nuevo_perfil.id).all()
+                    )
+                    for p in otros_perfiles:
+                        p.es_activo = False
+
                 # 2. Crear presupuesto
                 nuevo_presupuesto = Budget(
                     profile_id=nuevo_perfil.id,
-                    user_email=user.email,  # Por compatibilidad
                     salario_mensual=salario,
                     fecha_inicio=date.today(),
                     porcentaje_necesidades=Decimal("50.00"),
@@ -371,7 +327,6 @@ def crear_perfil_nuevo(session, user: User):
                 for card_data in st.session_state["new_profile_cards"]:
                     nueva_tarjeta = Card(
                         profile_id=nuevo_perfil.id,
-                        user_email=user.email,  # Por compatibilidad
                         ultimos_4_digitos=card_data[0],
                         tipo=CardType(card_data[1]),
                         banco=BankName(card_data[2]),
@@ -387,6 +342,12 @@ def crear_perfil_nuevo(session, user: User):
 
                 st.success(f"✅ Perfil '{nombre}' creado exitosamente!")
                 st.balloons()
+
+                if es_primero:
+                    st.info(
+                        "🎉 ¡Perfecto! Ahora ve a **📝 Transacciones** para procesar tus correos"
+                    )
+
                 st.rerun()
 
             except Exception as e:

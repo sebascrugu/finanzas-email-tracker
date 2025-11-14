@@ -62,7 +62,7 @@ def calcular_proximo_ingreso(fecha_actual: date, frecuencia: RecurrenceFrequency
 def main():
     st.title("💰 Gestión de Ingresos")
 
-    user, perfil_activo = require_profile()
+    perfil_activo = require_profile()
     st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
 
     # Tabs
@@ -158,7 +158,6 @@ def main():
                         with get_session() as session:
                             nuevo_ingreso = Income(
                                 profile_id=perfil_activo.id,
-                                user_email=user.email,
                                 tipo=IncomeType(tipo[0]),
                                 descripcion=descripcion,
                                 monto_original=Decimal(str(monto)),

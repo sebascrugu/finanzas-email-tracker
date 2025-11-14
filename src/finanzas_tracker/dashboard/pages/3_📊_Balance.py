@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 def main():
     st.title("📊 Balance Mensual")
 
-    user, perfil_activo = require_profile()
+    perfil_activo = require_profile()
     st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
 
     # Selector de mes

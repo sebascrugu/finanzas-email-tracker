@@ -1,5 +1,5 @@
 """
-App principal de Streamlit - Dashboard de Finanzas con Sistema de Perfiles.
+App principal de Streamlit - Dashboard de Finanzas Simplificado.
 
 Esta es la página principal que se muestra al usuario.
 """
@@ -25,7 +25,6 @@ sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.user import User
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.models.income import Income
@@ -40,42 +39,32 @@ init_db()
 seed_categories()
 
 
-def check_user_and_profile() -> tuple[User | None, Profile | None]:
-    """Verifica si existe usuario y perfil activo."""
+def get_active_profile() -> Profile | None:
+    """Obtiene el perfil activo."""
     with get_session() as session:
-        user = session.query(User).filter(User.activo == True).first()  # noqa: E712
-        if not user:
-            return None, None
-
-        # Obtener perfil activo
-        perfil_activo = (
+        return (
             session.query(Profile)
             .filter(
-                Profile.owner_email == user.email,
                 Profile.es_activo == True,  # noqa: E712
                 Profile.activo == True,  # noqa: E712
             )
             .first()
         )
 
-        return user, perfil_activo
 
-
-def mostrar_selector_perfiles(user: User, perfil_actual: Profile | None):
+def mostrar_selector_perfiles(perfil_actual: Profile):
     """Muestra selector de perfiles en el sidebar."""
     with get_session() as session:
         perfiles = (
             session.query(Profile)
             .filter(
-                Profile.owner_email == user.email,
                 Profile.activo == True,  # noqa: E712
             )
             .all()
         )
 
-        if not perfiles:
-            st.sidebar.warning("⚠️ Sin perfiles")
-            st.sidebar.info("Crea un perfil en Setup")
+        if len(perfiles) <= 1:
+            # Si solo hay un perfil, no mostrar selector
             return
 
         st.sidebar.markdown("---")
@@ -101,10 +90,10 @@ def mostrar_selector_perfiles(user: User, perfil_actual: Profile | None):
         )
 
         # Si cambió el perfil, actualizar
-        if perfil_ids[seleccion] != (perfil_actual.id if perfil_actual else None):
+        if perfil_ids[seleccion] != perfil_actual.id:
             nuevo_perfil = session.query(Profile).get(perfil_ids[seleccion])
             if nuevo_perfil:
-                # Desactivar todos los perfiles del usuario
+                # Desactivar todos los perfiles
                 for p in perfiles:
                     p.es_activo = False
                 # Activar el nuevo
@@ -112,66 +101,61 @@ def mostrar_selector_perfiles(user: User, perfil_actual: Profile | None):
                 session.commit()
                 st.rerun()
 
-        # Mostrar info del perfil activo
-        if perfil_actual:
-            st.sidebar.markdown(f"**📊 Presupuesto:**")
-            presupuesto = next((b for b in perfil_actual.budgets if b.fecha_fin is None), None)
-            if presupuesto:
-                st.sidebar.markdown(f"₡{presupuesto.salario_mensual:,.0f}/mes")
-
-            st.sidebar.markdown(
-                f"**💳 Tarjetas:** {len([c for c in perfil_actual.cards if c.activa])}"
-            )
-            st.sidebar.markdown(
-                f"**🏦 Bancos:** {', '.join([b.upper() for b in perfil_actual.bancos_asociados])}"
-            )
-
 
 def main():
     """Función principal del dashboard."""
 
-    # Verificar usuario y perfil
-    user, perfil_activo = check_user_and_profile()
+    # Verificar perfil activo
+    perfil_activo = get_active_profile()
 
     # Sidebar
     st.sidebar.title("💰 Finanzas Tracker")
 
-    if not user:
-        st.sidebar.warning("⚠️ Sin usuario")
-        st.sidebar.info("Ve a Setup →")
+    if not perfil_activo:
+        st.sidebar.info("👉 Crea tu primer perfil en Setup")
 
-        # Página principal sin usuario
-        st.warning("⚠️ **No hay usuario configurado**")
-        st.info("👉 Ve a la página **Setup** en el menú lateral para configurar tu cuenta.")
+        # Página principal sin perfil
+        st.title("👋 ¡Bienvenido a Finanzas Tracker!")
+
+        st.markdown(
+            """
+        ### 🎯 ¿Qué es esto?
+        
+        Una aplicación para **rastrear automáticamente** tus finanzas personales 
+        desde tus correos bancarios.
+        
+        ### ✨ Características
+        
+        - 📧 **Lectura automática de correos** (Outlook)
+        - 🤖 **Categorización inteligente con IA** (Claude Haiku 4.5)
+        - 💰 **Múltiples perfiles** (Personal, Negocio, Familia)
+        - 📊 **Presupuesto 50/30/20** automático
+        - 💱 **Conversión USD→CRC** con tipos históricos
+        - 📈 **Dashboard interactivo** en tiempo real
+        
+        ### 🚀 ¡Empecemos!
+        
+        **Paso 1:** Ve a **⚙️ Setup** en el menú lateral →
+        
+        **Paso 2:** Crea tu primer perfil (ej: "Personal")
+        
+        **Paso 3:** Agrega tus tarjetas bancarias
+        
+        **Paso 4:** ¡Listo! Empieza a procesar correos
+        """
+        )
 
         st.markdown("---")
-        st.markdown("### 🚀 Bienvenido a Finanzas Email Tracker")
-        st.markdown("""
-        Esta aplicación te ayuda a:
-        - 📧 Procesar correos bancarios automáticamente
-        - 💰 Gestionar múltiples perfiles (Personal, Negocio, Familia)
-        - 🤖 Categorizar transacciones con IA
-        - 📊 Visualizar tu presupuesto (regla 50/30/20)
-        - 📈 Analizar tus finanzas mensuales
 
-        **Pasos para empezar:**
-        1. Ve a **Setup** y configura tu usuario
-        2. Crea tu primer perfil (ej: "Personal")
-        3. Agrega tus tarjetas bancarias
-        4. ¡Listo! Empieza a procesar correos
-        """)
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("🎉 Crear Mi Primer Perfil", type="primary", use_container_width=True):
+                st.switch_page("pages/1_⚙️_Setup.py")
+
         return
 
-    if not perfil_activo:
-        st.sidebar.warning("⚠️ Sin perfil activo")
-        st.sidebar.info("Ve a Setup →")
-
-        st.warning("⚠️ **No tienes perfiles configurados**")
-        st.info("👉 Ve a **Setup** para crear tu primer perfil (Personal, Negocio, etc.)")
-        return
-
-    # Usuario y perfil OK: mostrar selector y dashboard
-    mostrar_selector_perfiles(user, perfil_activo)
+    # Perfil activo: mostrar selector si hay múltiples
+    mostrar_selector_perfiles(perfil_activo)
 
     # Dashboard principal
     st.title(f"🏠 Dashboard - {perfil_activo.nombre_completo}")

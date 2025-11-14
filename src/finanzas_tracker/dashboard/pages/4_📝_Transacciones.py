@@ -67,7 +67,7 @@ def buscar_patron_historico(comercio: str, profile_id: int) -> dict | None:
 def main():
     st.title("📝 Revisión de Transacciones")
 
-    user, perfil_activo = require_profile()
+    perfil_activo = require_profile()
     st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
 
     # Obtener transacciones pendientes
@@ -156,7 +156,7 @@ def main():
                         )
 
                         # 2. Procesar transacciones
-                        stats = processor.process_emails(emails, user.email, perfil_activo.id)
+                        stats = processor.process_emails(emails, perfil_activo.id)
 
                         # Mostrar resultados
                         st.success(f"✅ ¡Proceso completado!")
