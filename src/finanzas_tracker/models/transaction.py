@@ -48,14 +48,6 @@ class Transaction(Base):
         comment="ID del perfil al que pertenece esta transacción",
     )
 
-    # DEPRECATED: Se mantiene por compatibilidad
-    user_email: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("users.email", ondelete="CASCADE"),
-        index=True,
-        comment="[DEPRECATED] Email del usuario - usar profile.owner_email",
-    )
-
     # Información del banco
     banco: Mapped[BankName] = mapped_column(
         String(50),
@@ -235,9 +227,9 @@ class Transaction(Base):
             "confianza_categoria >= 0 AND confianza_categoria <= 100",
             name="check_transaction_confianza_valid",
         ),
-        Index("ix_transactions_user_fecha", "user_email", "fecha_transaccion"),
-        Index("ix_transactions_user_tipo", "user_email", "tipo_transaccion"),
-        Index("ix_transactions_user_categoria", "user_email", "subcategory_id"),
+        Index("ix_transactions_profile_fecha", "profile_id", "fecha_transaccion"),
+        Index("ix_transactions_profile_tipo", "profile_id", "tipo_transaccion"),
+        Index("ix_transactions_profile_categoria", "profile_id", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
         Index("ix_transactions_desconocidas", "es_desconocida"),
     )

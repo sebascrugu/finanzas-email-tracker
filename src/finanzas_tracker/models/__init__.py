@@ -16,7 +16,6 @@ from finanzas_tracker.models.enums import (
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.models.user import User
 
 __all__ = [
     # Models
@@ -27,7 +26,6 @@ __all__ = [
     "Profile",
     "Subcategory",
     "Transaction",
-    "User",
     # Enums
     "BankName",
     "CardType",

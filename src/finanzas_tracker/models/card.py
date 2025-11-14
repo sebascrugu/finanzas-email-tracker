@@ -37,14 +37,6 @@ class Card(Base):
         comment="ID del perfil al que pertenece esta tarjeta",
     )
 
-    # DEPRECATED: Se mantiene por compatibilidad
-    user_email: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("users.email", ondelete="CASCADE"),
-        index=True,
-        comment="[DEPRECATED] Email del usuario - usar profile.owner_email",
-    )
-
     # Información de la tarjeta
     ultimos_4_digitos: Mapped[str] = mapped_column(
         String(4),
@@ -138,13 +130,13 @@ class Card(Base):
             "fecha_vencimiento IS NULL OR (fecha_vencimiento >= 1 AND fecha_vencimiento <= 31)",
             name="check_card_fecha_venc_valid",
         ),
-        Index("ix_cards_user_tipo", "user_email", "tipo"),
+        Index("ix_cards_profile_tipo", "profile_id", "tipo"),
     )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return (
-            f"<Card(user={self.user_email}, "
+            f"<Card(profile_id={self.profile_id[:8]}..., "
             f"****{self.ultimos_4_digitos}, "
             f"tipo={self.tipo})>"
         )

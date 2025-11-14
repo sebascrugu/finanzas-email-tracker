@@ -47,14 +47,6 @@ class Income(Base):
         comment="ID del perfil al que pertenece este ingreso",
     )
 
-    # DEPRECATED: Se mantiene por compatibilidad
-    user_email: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("users.email", ondelete="CASCADE"),
-        index=True,
-        comment="[DEPRECATED] Email del usuario - usar profile.owner_email",
-    )
-
     # Información del ingreso
     tipo: Mapped[IncomeType] = mapped_column(
         String(20),
@@ -163,8 +155,8 @@ class Income(Base):
     __table_args__ = (
         CheckConstraint("monto_crc > 0", name="check_income_monto_positive"),
         CheckConstraint("monto_original > 0", name="check_income_original_positive"),
-        Index("ix_incomes_user_fecha", "user_email", "fecha"),
-        Index("ix_incomes_user_tipo", "user_email", "tipo"),
+        Index("ix_incomes_profile_fecha", "profile_id", "fecha"),
+        Index("ix_incomes_profile_tipo", "profile_id", "tipo"),
     )
 
     def __repr__(self) -> str:

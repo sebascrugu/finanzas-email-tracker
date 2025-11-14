@@ -1,9 +1,9 @@
-"""Modelo de Perfil para sistema multi-perfil."""
+"""Modelo de Perfil para sistema multi-perfil simplificado."""
 
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
@@ -11,16 +11,17 @@ from finanzas_tracker.core.database import Base
 
 class Profile(Base):
     """
-    Modelo de Perfil.
+    Modelo de Perfil - MODELO PRINCIPAL.
 
-    Un usuario (email de Outlook) puede tener múltiples perfiles:
-    - Personal
-    - Negocio
-    - Familia (ej: mamá, papá)
+    Cada perfil representa un contexto financiero separado:
+    - 👤 Personal: Tus finanzas personales
+    - 💼 Negocio: Finanzas de tu empresa
+    - 👵 Mamá: Finanzas de tu mamá (en su email)
 
     Cada perfil tiene:
-    - Sus propias tarjetas
-    - Su propio presupuesto
+    - Su propio email de Outlook (para buscar correos)
+    - Sus propias tarjetas bancarias
+    - Su propio presupuesto 50/30/20
     - Sus propias transacciones
     - Sus propios ingresos
 
@@ -34,11 +35,10 @@ class Profile(Base):
 
     # Identificadores
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    owner_email: Mapped[str] = mapped_column(
+    email_outlook: Mapped[str] = mapped_column(
         String(255),
-        ForeignKey("users.email", ondelete="CASCADE"),
         index=True,
-        comment="Email del propietario (usuario de Outlook)",
+        comment="Email de Outlook donde se reciben los correos bancarios",
     )
 
     # Información del perfil
@@ -74,7 +74,6 @@ class Profile(Base):
     )
 
     # Relaciones
-    owner: Mapped["User"] = relationship("User", back_populates="profiles")
     cards: Mapped[list["Card"]] = relationship(
         "Card", back_populates="profile", cascade="all, delete-orphan"
     )
@@ -90,7 +89,7 @@ class Profile(Base):
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""
-        return f"<Profile(id={self.id[:8]}..., nombre={self.nombre}, owner={self.owner_email})>"
+        return f"<Profile(id={self.id[:8]}..., nombre={self.nombre}, email={self.email_outlook})>"
 
     @property
     def nombre_completo(self) -> str:
@@ -111,7 +110,12 @@ class Profile(Base):
         )
 
     def activar(self) -> None:
-        """Marca este perfil como activo (desactiva los demás del mismo usuario)."""
+        """
+        Marca este perfil como activo.
+
+        NOTA: Debes desactivar manualmente los demás perfiles del mismo email
+        si quieres que solo uno esté activo a la vez.
+        """
         self.es_activo = True
 
     def desactivar(self) -> None:

@@ -92,9 +92,10 @@ def init_db() -> None:
         Budget,
         Card,
         Category,
+        Income,
+        Profile,
         Subcategory,
         Transaction,
-        User,
     )
 
     Base.metadata.create_all(bind=engine)

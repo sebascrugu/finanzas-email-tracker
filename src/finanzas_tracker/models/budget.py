@@ -36,14 +36,6 @@ class Budget(Base):
         comment="ID del perfil al que pertenece este presupuesto",
     )
 
-    # DEPRECATED: Se mantiene por compatibilidad
-    user_email: Mapped[str] = mapped_column(
-        String(255),
-        ForeignKey("users.email", ondelete="CASCADE"),
-        index=True,
-        comment="[DEPRECATED] Email del usuario propietario - usar profile.owner_email",
-    )
-
     # Información del presupuesto
     salario_mensual: Mapped[Decimal] = mapped_column(
         Numeric(precision=15, scale=2),
@@ -107,13 +99,13 @@ class Budget(Base):
             "fecha_fin IS NULL OR fecha_fin > fecha_inicio",
             name="check_budget_fechas_validas",
         ),
-        Index("ix_budgets_user_fechas", "user_email", "fecha_inicio", "fecha_fin"),
+        Index("ix_budgets_profile_fechas", "profile_id", "fecha_inicio", "fecha_fin"),
     )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return (
-            f"<Budget(user={self.user_email}, "
+            f"<Budget(profile_id={self.profile_id[:8]}..., "
             f"salario=₡{self.salario_mensual:,.0f}, "
             f"desde={self.fecha_inicio})>"
         )
