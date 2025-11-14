@@ -1,6 +1,6 @@
 # Makefile para facilitar comandos comunes del proyecto
 
-.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db migrate seed
+.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db migrate seed income balance
 
 # Colores para output
 BLUE := \033[0;34m
@@ -71,6 +71,12 @@ seed: ## Pobla la base de datos con categorías iniciales
 
 logout: ## Cierra sesión y limpia el cache de tokens
 	poetry run python scripts/logout.py
+
+income: ## Gestiona tus ingresos (agregar, listar, balance)
+	poetry run python scripts/manage_income.py
+
+balance: ## Muestra el balance rápido del mes actual
+	poetry run python scripts/quick_balance.py
 
 init-db: ## Inicializa la base de datos
 	@echo "$(BLUE)Inicializando base de datos...$(NC)"
