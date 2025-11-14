@@ -24,12 +24,16 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 
 - 📧 **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook/Microsoft 365
 - 🏦 **Multi-Banco**: BAC Credomatic y Banco Popular (Costa Rica) — más bancos próximamente
-- 🤖 **Categorización Inteligente con IA**: Usa Claude 3.5 Sonnet para clasificar gastos automáticamente
+- 🤖 **Categorización Inteligente con IA**: Usa Claude 3.5 Haiku para clasificar gastos automáticamente
 - 🧠 **Sistema de Aprendizaje**: Aprende de tus decisiones para mejorar la categorización
-- 💱 **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales
-- 📊 **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
+- 💰 **Gestión de Ingresos**: Trackea salarios, ventas, freelance y más (recurrentes o únicos)
+- 📊 **Balance Mensual**: Ve ingresos vs gastos y tu salud financiera en tiempo real
+- 💱 **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales (API Hacienda CR)
+- 🔍 **Detección de Patrones**: Identifica transacciones recurrentes y sugiere categorías automáticamente
+- 🎯 **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
+- 📈 **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
 - 🔒 **Seguridad**: Manejo seguro de credenciales con variables de entorno
-- 💾 **Base de Datos Local**: SQLite para almacenamiento sin necesidad de servidor
+- 💾 **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados
 - 👥 **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos
 
 ## 🛠️ Stack Tecnológico
@@ -132,6 +136,21 @@ make process
 make review
 ```
 
+### Gestión de Ingresos 💰
+
+```bash
+# Ver balance rápido del mes (ingresos vs gastos)
+make balance
+
+# Gestión completa de ingresos (menú interactivo)
+make income
+#   1. Ver balance mensual detallado
+#   2. Listar todos mis ingresos
+#   3. Agregar nuevo ingreso (salario, venta, freelance, etc.)
+```
+
+> 📚 **Guía completa**: Ver [GUIA_INGRESOS.md](GUIA_INGRESOS.md) para instrucciones detalladas
+
 ### Dashboard Interactivo (Próximamente)
 
 ```bash
@@ -182,7 +201,9 @@ finanzas-email-tracker/
 │       │   ├── budget.py             # Presupuestos con historial
 │       │   ├── category.py           # Categorías y subcategorías
 │       │   ├── card.py               # Tarjetas débito/crédito
-│       │   └── transaction.py        # Transacciones bancarias
+│       │   ├── income.py             # Ingresos (salarios, ventas, etc.)
+│       │   ├── transaction.py        # Transacciones bancarias
+│       │   └── enums.py              # Enumeraciones tipo-seguras
 │       ├── services/                  # Lógica de negocio
 │       │   ├── auth_manager.py       # Autenticación Microsoft Graph
 │       │   ├── email_fetcher.py      # Extracción de correos
@@ -198,7 +219,10 @@ finanzas-email-tracker/
 ├── scripts/                           # Scripts ejecutables
 │   ├── setup_user.py                 # Configuración inicial de usuario
 │   ├── process_transactions.py       # Procesamiento de correos
-│   └── review_transactions.py        # Revisión interactiva
+│   ├── review_transactions.py        # Revisión interactiva con detección de patrones
+│   ├── manage_income.py              # Gestión de ingresos (menú completo)
+│   ├── quick_balance.py              # Balance rápido del mes
+│   └── migrate_db.py                 # Migración de schema de BD
 ├── tests/                             # Tests unitarios e integración
 ├── data/                              # Base de datos SQLite (gitignored)
 ├── logs/                              # Archivos de log (gitignored)
@@ -209,6 +233,8 @@ finanzas-email-tracker/
 ├── ruff.toml                          # Configuración Ruff
 ├── LICENSE                            # Licencia MIT
 ├── QUICKSTART.md                      # Guía rápida de inicio
+├── GUIA_INGRESOS.md                   # Guía completa de gestión de ingresos
+├── CATEGORIAS_SUGERIDAS.md            # Documentación de categorías
 └── README.md                          # Este archivo
 ```
 
@@ -264,16 +290,23 @@ Este es un proyecto personal, pero las sugerencias y mejoras son bienvenidas. Si
 - [x] Sistema de confirmación de transacciones con IA
 - [x] Multi-usuario y multi-presupuestos
 - [x] Categorías y subcategorías granulares
-- [x] Conversión automática de USD a CRC con APIs externas
-- [x] Gestión de tarjetas (débito/crédito)
+- [x] Conversión automática de USD a CRC con tipos de cambio históricos (API Hacienda CR)
+- [x] Gestión de tarjetas (débito/crédito) con límites y fechas de corte
 - [x] Sistema de aprendizaje de categorización
+- [x] Gestión completa de ingresos (salarios, ventas, freelance)
+- [x] Ingresos recurrentes (quincenales, mensuales)
+- [x] Balance mensual (ingresos vs gastos)
+- [x] Detección de patrones en transacciones
+- [x] Manejo de transferencias intermediarias y gastos compartidos
+- [x] Soft deletes y constraints de BD robustos
 - [ ] Dashboard interactivo con Streamlit
 - [ ] Parsing de estados de cuenta (PDF)
 - [ ] Reconciliación de correos vs estados de cuenta
-- [ ] Gestión de ingresos y transferencias intermediarias
 - [ ] Reportes mensuales y comparativos
 - [ ] Exportación a Excel/PDF
-- [ ] Detección de anomalías y alertas predictivas
+- [ ] Detección de anomalías y alertas predictivas (ML)
+- [ ] Gestión de compras a cuotas (tasa cero)
+- [ ] Tracking de cashback y puntos
 - [ ] Soporte para más bancos (a petición)
 
 ## 📄 Licencia
