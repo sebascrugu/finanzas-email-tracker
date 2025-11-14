@@ -207,7 +207,6 @@ class Transaction(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="transactions")
-    user: Mapped["User"] = relationship("User", back_populates="transactions")  # DEPRECATED
     card: Mapped["Card | None"] = relationship("Card", back_populates="transactions")
     subcategory: Mapped["Subcategory | None"] = relationship(
         "Subcategory",

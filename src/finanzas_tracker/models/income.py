@@ -149,7 +149,6 @@ class Income(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="incomes")
-    user: Mapped["User"] = relationship("User", back_populates="incomes")  # DEPRECATED
 
     # Constraints
     __table_args__ = (

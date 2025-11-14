@@ -110,7 +110,6 @@ class Card(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="cards")
-    user: Mapped["User"] = relationship("User", back_populates="cards")  # DEPRECATED
     transactions: Mapped[list["Transaction"]] = relationship(
         "Transaction",
         back_populates="card",

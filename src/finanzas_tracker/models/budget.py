@@ -86,7 +86,6 @@ class Budget(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="budgets")
-    user: Mapped["User"] = relationship("User", back_populates="budgets")  # DEPRECATED
 
     # Constraints e índices
     __table_args__ = (
