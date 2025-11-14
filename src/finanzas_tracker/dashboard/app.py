@@ -63,43 +63,55 @@ def mostrar_selector_perfiles(perfil_actual: Profile):
             .all()
         )
 
-        if len(perfiles) <= 1:
-            # Si solo hay un perfil, no mostrar selector
-            return
-
         st.sidebar.markdown("---")
-        st.sidebar.markdown("### 👤 Perfil Activo")
+        st.sidebar.markdown(f"### {perfil_actual.nombre_completo}")
 
-        # Selector de perfil
-        perfil_nombres = [p.nombre_completo for p in perfiles]
-        perfil_ids = [p.id for p in perfiles]
+        # Mostrar info del perfil
+        presupuesto = next((b for b in perfil_actual.budgets if b.fecha_fin is None), None)
+        if presupuesto:
+            st.sidebar.metric("💰 Presupuesto", f"₡{presupuesto.salario_mensual:,.0f}/mes")
 
-        idx_actual = 0
-        if perfil_actual:
+        tarjetas_activas = [c for c in perfil_actual.cards if c.activa]
+        st.sidebar.metric("💳 Tarjetas", len(tarjetas_activas))
+
+        bancos = perfil_actual.bancos_asociados
+        if bancos:
+            st.sidebar.markdown(f"**🏦 Bancos:** {', '.join([b.upper() for b in bancos])}")
+
+        # Selector solo si hay múltiples perfiles
+        if len(perfiles) > 1:
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("### 🔄 Cambiar Perfil")
+
+            perfil_nombres = [p.nombre_completo for p in perfiles]
+            perfil_ids = [p.id for p in perfiles]
+
+            idx_actual = 0
             try:
                 idx_actual = perfil_ids.index(perfil_actual.id)
             except ValueError:
                 pass
 
-        seleccion = st.sidebar.selectbox(
-            "Cambiar perfil:",
-            options=range(len(perfiles)),
-            format_func=lambda i: perfil_nombres[i],
-            index=idx_actual,
-            key="selector_perfil",
-        )
+            seleccion = st.sidebar.selectbox(
+                "Seleccionar:",
+                options=range(len(perfiles)),
+                format_func=lambda i: perfil_nombres[i],
+                index=idx_actual,
+                key="selector_perfil",
+                label_visibility="collapsed",
+            )
 
-        # Si cambió el perfil, actualizar
-        if perfil_ids[seleccion] != perfil_actual.id:
-            nuevo_perfil = session.query(Profile).get(perfil_ids[seleccion])
-            if nuevo_perfil:
-                # Desactivar todos los perfiles
-                for p in perfiles:
-                    p.es_activo = False
-                # Activar el nuevo
-                nuevo_perfil.es_activo = True
-                session.commit()
-                st.rerun()
+            # Si cambió el perfil, actualizar
+            if perfil_ids[seleccion] != perfil_actual.id:
+                nuevo_perfil = session.query(Profile).get(perfil_ids[seleccion])
+                if nuevo_perfil:
+                    # Desactivar todos los perfiles
+                    for p in perfiles:
+                        p.es_activo = False
+                    # Activar el nuevo
+                    nuevo_perfil.es_activo = True
+                    session.commit()
+                    st.rerun()
 
 
 def main():
@@ -112,44 +124,61 @@ def main():
     st.sidebar.title("💰 Finanzas Tracker")
 
     if not perfil_activo:
-        st.sidebar.info("👉 Crea tu primer perfil en Setup")
-
-        # Página principal sin perfil
-        st.title("👋 ¡Bienvenido a Finanzas Tracker!")
-
+        # Página principal sin perfil - DISEÑO LIMPIO
         st.markdown(
             """
-        ### 🎯 ¿Qué es esto?
-        
-        Una aplicación para **rastrear automáticamente** tus finanzas personales 
-        desde tus correos bancarios.
-        
-        ### ✨ Características
-        
-        - 📧 **Lectura automática de correos** (Outlook)
-        - 🤖 **Categorización inteligente con IA** (Claude Haiku 4.5)
-        - 💰 **Múltiples perfiles** (Personal, Negocio, Familia)
-        - 📊 **Presupuesto 50/30/20** automático
-        - 💱 **Conversión USD→CRC** con tipos históricos
-        - 📈 **Dashboard interactivo** en tiempo real
-        
-        ### 🚀 ¡Empecemos!
-        
-        **Paso 1:** Ve a **⚙️ Setup** en el menú lateral →
-        
-        **Paso 2:** Crea tu primer perfil (ej: "Personal")
-        
-        **Paso 3:** Agrega tus tarjetas bancarias
-        
-        **Paso 4:** ¡Listo! Empieza a procesar correos
-        """
+            <div style='text-align: center; padding: 2rem 0;'>
+                <h1 style='font-size: 3rem; margin-bottom: 1rem;'>👋</h1>
+                <h1>¡Bienvenido a Finanzas Tracker!</h1>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
         st.markdown("---")
 
-        col1, col2, col3 = st.columns([1, 1, 1])
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            st.markdown(
+                """
+                ### 🎯 ¿Qué hace esto?
+                
+                Rastrea **automáticamente** tus finanzas desde tus correos bancarios:
+                
+                - 📧 Lee correos de Outlook
+                - 🤖 Categoriza con IA (Claude Haiku 4.5)
+                - 💰 Múltiples perfiles (Personal, Negocio, etc.)
+                - 📊 Presupuesto 50/30/20 automático
+                - 💱 Convierte USD→CRC con tipos históricos
+                """
+            )
+
         with col2:
-            if st.button("🎉 Crear Mi Primer Perfil", type="primary", use_container_width=True):
+            st.markdown(
+                """
+                ### 🚀 Empecemos en 3 pasos:
+                
+                1️⃣ **Crea tu perfil** (nombre, email, salario)
+                
+                2️⃣ **Agrega tus tarjetas** (BAC, Popular, etc.)
+                
+                3️⃣ **Procesa correos** y categoriza transacciones
+                
+                ⏱️ **Tiempo estimado:** 2 minutos
+                """
+            )
+
+        st.markdown("---")
+
+        # Botón grande y centrado
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button(
+                "🎉 Crear Mi Primer Perfil",
+                type="primary",
+                use_container_width=True,
+            ):
                 st.switch_page("pages/1_⚙️_Setup.py")
 
         return
