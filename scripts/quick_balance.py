@@ -42,8 +42,8 @@ def main() -> None:
                 session.query(Income)
                 .filter(
                     Income.user_email == user.email,
-                    Income.fecha_ingreso >= primer_dia,
-                    Income.fecha_ingreso < proximo_mes,
+                    Income.fecha >= primer_dia,
+                    Income.fecha < proximo_mes,
                     Income.deleted_at.is_(None),
                 )
                 .all()

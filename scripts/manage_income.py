@@ -44,23 +44,20 @@ def listar_ingresos(user_email: str) -> None:
             recurrente = "🔁" if ingreso.es_recurrente else "1️⃣"
             logger.info(f"{i}. {recurrente} {ingreso.tipo.value.upper()}")
             logger.info(f"   💰 {ingreso.monto_display}")
-            logger.info(f"   📅 {ingreso.fecha_ingreso.strftime('%d/%m/%Y')}")
+            logger.info(f"   📅 {ingreso.fecha.strftime('%d/%m/%Y')}")
+            logger.info(f"   📝 {ingreso.descripcion}")
 
-            if ingreso.fuente:
-                logger.info(f"   🏢 {ingreso.fuente}")
-
-            if ingreso.es_recurrente:
+            if ingreso.es_recurrente and ingreso.frecuencia:
                 logger.info(f"   🔄 {ingreso.frecuencia.value}")
-                if ingreso.proximo_ingreso:
-                    logger.info(f"   ⏭️  Próximo: {ingreso.proximo_ingreso.strftime('%d/%m/%Y')}")
-
-            if ingreso.descripcion:
-                logger.info(f"   📝 {ingreso.descripcion}")
+                if ingreso.proximo_ingreso_esperado:
+                    logger.info(
+                        f"   ⏭️  Próximo: {ingreso.proximo_ingreso_esperado.strftime('%d/%m/%Y')}"
+                    )
 
             logger.info("")
 
 
-def calcular_proximo_ingreso(fecha_actual: date, frecuencia: RecurrenceFrequency) -> date:
+def calcular_proximo_ingreso_esperado(fecha_actual: date, frecuencia: RecurrenceFrequency) -> date:
     """
     Calcula la fecha del próximo ingreso según la frecuencia.
 
@@ -93,8 +90,8 @@ def calcular_proximo_ingreso(fecha_actual: date, frecuencia: RecurrenceFrequency
                 return date(year, next_month, 28)
             return date(year, next_month, 30)
     elif frecuencia == RecurrenceFrequency.BIMONTHLY:
-        return calcular_proximo_ingreso(
-            calcular_proximo_ingreso(fecha_actual, RecurrenceFrequency.MONTHLY),
+        return calcular_proximo_ingreso_esperado(
+            calcular_proximo_ingreso_esperado(fecha_actual, RecurrenceFrequency.MONTHLY),
             RecurrenceFrequency.MONTHLY,
         )
     elif frecuencia == RecurrenceFrequency.QUARTERLY:
@@ -201,20 +198,21 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
         else:
             print("❌ Opción inválida. Usa 1 o 2.")
 
-    # Paso 4: Fuente (opcional)
-    fuente = input("\n🏢 Fuente/Empresa (Enter para omitir): ").strip() or None
+    # Paso 4: Descripción (requerida)
+    while True:
+        descripcion = input("\n📝 Descripción (ej: 'Salario Nov 2025', 'Venta PS5'): ").strip()
+        if descripcion:
+            break
+        print("❌ La descripción es requerida. Intenta de nuevo.")
 
-    # Paso 5: Descripción (opcional)
-    descripcion = input("📝 Descripción (Enter para omitir): ").strip() or None
-
-    # Paso 6: ¿Es recurrente?
+    # Paso 5: ¿Es recurrente?
     print("\n🔄 ¿Este ingreso es recurrente?")
     print("  1. Sí (se repite regularmente)")
     print("  2. No (solo una vez)")
 
     es_recurrente = False
     frecuencia = RecurrenceFrequency.ONE_TIME
-    proximo_ingreso = None
+    proximo_ingreso_esperado = None
 
     while True:
         rec_choice = input("Elige opción (1-2): ").strip()
@@ -239,7 +237,9 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
                 freq_map = {num: freq for num, freq, _ in frecuencias}
                 if freq_choice in freq_map:
                     frecuencia = freq_map[freq_choice]
-                    proximo_ingreso = calcular_proximo_ingreso(fecha_ingreso, frecuencia)
+                    proximo_ingreso_esperado = calcular_proximo_ingreso_esperado(
+                        fecha_ingreso, frecuencia
+                    )
                     break
                 print("❌ Opción inválida. Intenta de nuevo.")
 
@@ -261,7 +261,7 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
     else:
         monto_crc = monto
 
-    # Paso 8: Resumen y confirmación
+    # Paso 6: Resumen y confirmación
     print("\n" + "─" * 80)
     print("📋 RESUMEN:")
     print("─" * 80)
@@ -272,13 +272,10 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
     if moneda == Currency.USD:
         print(f"En CRC:      ₡{monto_crc:,.2f}")
     print(f"Fecha:       {fecha_ingreso.strftime('%d/%m/%Y')}")
-    if fuente:
-        print(f"Fuente:      {fuente}")
-    if descripcion:
-        print(f"Descripción: {descripcion}")
+    print(f"Descripción: {descripcion}")
     if es_recurrente:
         print(f"Recurrente:  Sí ({frecuencia.value})")
-        print(f"Próximo:     {proximo_ingreso.strftime('%d/%m/%Y')}")
+        print(f"Próximo:     {proximo_ingreso_esperado.strftime('%d/%m/%Y')}")
     else:
         print("Recurrente:  No")
     print("─" * 80)
@@ -288,22 +285,21 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
         logger.warning("❌ Ingreso cancelado")
         return
 
-    # Paso 9: Guardar en base de datos
+    # Paso 7: Guardar en base de datos
     try:
         with get_session() as session:
             nuevo_ingreso = Income(
                 user_email=user_email,
                 tipo=tipo,
+                descripcion=descripcion,
                 monto_original=monto,
                 moneda_original=moneda,
                 monto_crc=monto_crc,
                 tipo_cambio_usado=Decimal(str(tipo_cambio)) if tipo_cambio else None,
-                fecha_ingreso=fecha_ingreso,
-                descripcion=descripcion,
-                fuente=fuente,
+                fecha=fecha_ingreso,
                 es_recurrente=es_recurrente,
-                frecuencia=frecuencia,
-                proximo_ingreso=proximo_ingreso,
+                frecuencia=frecuencia if es_recurrente else None,
+                proximo_ingreso_esperado=proximo_ingreso_esperado if es_recurrente else None,
             )
 
             session.add(nuevo_ingreso)
@@ -342,8 +338,8 @@ def mostrar_balance_mensual(user_email: str) -> None:
             session.query(Income)
             .filter(
                 Income.user_email == user_email,
-                Income.fecha_ingreso >= primer_dia,
-                Income.fecha_ingreso < proximo_mes,
+                Income.fecha >= primer_dia,
+                Income.fecha < proximo_mes,
                 Income.deleted_at.is_(None),
             )
             .all()
