@@ -156,7 +156,7 @@ def main():
                         )
 
                         # 2. Procesar transacciones
-                        stats = processor.process_emails(emails, user.email)
+                        stats = processor.process_emails(emails, user.email, perfil_activo.id)
 
                         # Mostrar resultados
                         st.success(f"✅ ¡Proceso completado!")

@@ -57,6 +57,7 @@ class TransactionProcessor:
         self,
         emails: list[dict[str, Any]],
         user_email: str,
+        profile_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Procesa una lista de correos y los convierte en transacciones.
@@ -64,6 +65,7 @@ class TransactionProcessor:
         Args:
             emails: Lista de correos de Microsoft Graph
             user_email: Email del usuario propietario
+            profile_id: ID del perfil al que pertenecen las transacciones (opcional para compatibilidad)
 
         Returns:
             dict: Estadísticas del procesamiento
@@ -104,8 +106,10 @@ class TransactionProcessor:
                     stats["errores"] += 1
                     continue
 
-                # Agregar email del usuario
+                # Agregar email del usuario y perfil
                 parsed_data["user_email"] = user_email
+                if profile_id:
+                    parsed_data["profile_id"] = profile_id
 
                 # Aplicar conversión de moneda
                 if parsed_data["moneda_original"] == "USD":
