@@ -27,11 +27,21 @@ class Budget(Base):
         default=lambda: str(uuid4()),
         comment="UUID único del presupuesto",
     )
+
+    # Relación con perfil
+    profile_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("profiles.id", ondelete="CASCADE"),
+        index=True,
+        comment="ID del perfil al que pertenece este presupuesto",
+    )
+
+    # DEPRECATED: Se mantiene por compatibilidad
     user_email: Mapped[str] = mapped_column(
         String(255),
         ForeignKey("users.email", ondelete="CASCADE"),
         index=True,
-        comment="Email del usuario propietario",
+        comment="[DEPRECATED] Email del usuario propietario - usar profile.owner_email",
     )
 
     # Información del presupuesto
@@ -83,7 +93,8 @@ class Budget(Base):
     )
 
     # Relaciones
-    user: Mapped["User"] = relationship("User", back_populates="budgets")
+    profile: Mapped["Profile"] = relationship("Profile", back_populates="budgets")
+    user: Mapped["User"] = relationship("User", back_populates="budgets")  # DEPRECATED
 
     # Constraints e índices
     __table_args__ = (

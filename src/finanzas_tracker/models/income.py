@@ -38,11 +38,21 @@ class Income(Base):
         default=lambda: str(uuid4()),
         comment="UUID único del ingreso",
     )
+
+    # Relación con perfil
+    profile_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("profiles.id", ondelete="CASCADE"),
+        index=True,
+        comment="ID del perfil al que pertenece este ingreso",
+    )
+
+    # DEPRECATED: Se mantiene por compatibilidad
     user_email: Mapped[str] = mapped_column(
         String(255),
         ForeignKey("users.email", ondelete="CASCADE"),
         index=True,
-        comment="Email del usuario propietario",
+        comment="[DEPRECATED] Email del usuario - usar profile.owner_email",
     )
 
     # Información del ingreso
@@ -146,7 +156,8 @@ class Income(Base):
     )
 
     # Relaciones
-    user: Mapped["User"] = relationship("User", back_populates="incomes")
+    profile: Mapped["Profile"] = relationship("Profile", back_populates="incomes")
+    user: Mapped["User"] = relationship("User", back_populates="incomes")  # DEPRECATED
 
     # Constraints
     __table_args__ = (

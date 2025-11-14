@@ -39,11 +39,21 @@ class Transaction(Base):
         index=True,
         comment="ID del correo de origen (para evitar duplicados)",
     )
+
+    # Relación con perfil
+    profile_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("profiles.id", ondelete="CASCADE"),
+        index=True,
+        comment="ID del perfil al que pertenece esta transacción",
+    )
+
+    # DEPRECATED: Se mantiene por compatibilidad
     user_email: Mapped[str] = mapped_column(
         String(255),
         ForeignKey("users.email", ondelete="CASCADE"),
         index=True,
-        comment="Email del usuario propietario de la transacción",
+        comment="[DEPRECATED] Email del usuario - usar profile.owner_email",
     )
 
     # Información del banco
@@ -204,7 +214,8 @@ class Transaction(Base):
     )
 
     # Relaciones
-    user: Mapped["User"] = relationship("User", back_populates="transactions")
+    profile: Mapped["Profile"] = relationship("Profile", back_populates="transactions")
+    user: Mapped["User"] = relationship("User", back_populates="transactions")  # DEPRECATED
     card: Mapped["Card | None"] = relationship("Card", back_populates="transactions")
     subcategory: Mapped["Subcategory | None"] = relationship(
         "Subcategory",

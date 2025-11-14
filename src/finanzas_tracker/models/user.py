@@ -52,6 +52,14 @@ class User(Base):
     )
 
     # Relaciones
+    profiles: Mapped[list["Profile"]] = relationship(
+        "Profile",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )
+
+    # DEPRECATED: Estas relaciones se mantienen por compatibilidad
+    # pero deberían accederse a través de profiles
     budgets: Mapped[list["Budget"]] = relationship(
         "Budget",
         back_populates="user",
@@ -78,8 +86,29 @@ class User(Base):
         return f"<User(email={self.email}, nombre={self.nombre})>"
 
     @property
+    def perfil_activo(self) -> "Profile | None":
+        """
+        Retorna el perfil actualmente activo.
+
+        Returns:
+            Profile | None: El perfil activo o None si no hay
+        """
+        if not self.profiles:
+            return None
+
+        # Buscar el perfil activo
+        for profile in self.profiles:
+            if profile.es_activo and profile.activo:
+                return profile
+
+        # Si ninguno está marcado como activo, retornar el primero
+        return self.profiles[0] if self.profiles else None
+
+    @property
     def presupuesto_actual(self) -> "Budget | None":
         """
+        DEPRECATED: Usar perfil_activo.budgets en su lugar.
+
         Retorna el presupuesto actualmente vigente.
 
         Returns:
