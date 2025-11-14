@@ -254,10 +254,8 @@ def main():
                     st.success("🎉 ¡Configuración guardada exitosamente!")
                     st.balloons()
 
-                    st.info("✅ **¡Todo listo!** Ahora puedes empezar a usar la aplicación.")
-
-                    if st.button("🏠 Ir al Dashboard"):
-                        st.switch_page("app.py")
+                    st.info("✅ **¡Todo listo!** Recarga la página para ver el dashboard.")
+                    st.info("💡 Usa el menú lateral para navegar.")
 
             except Exception as e:
                 st.error(f"❌ Error al guardar: {e}")

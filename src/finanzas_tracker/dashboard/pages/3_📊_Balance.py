@@ -45,7 +45,7 @@ def main():
 
     with col1:
         mes_actual = date.today()
-        mes_seleccionado = st.date_input("📅 Mes", value=mes_actual, format="MM/YYYY")
+        mes_seleccionado = st.date_input("📅 Seleccionar Fecha", value=mes_actual)
 
     # Calcular rango del mes
     primer_dia = date(mes_seleccionado.year, mes_seleccionado.month, 1)
