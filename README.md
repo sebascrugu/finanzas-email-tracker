@@ -22,9 +22,10 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 
 ### ✨ Características Principales
 
+- 🎭 **Sistema de Perfiles Multi-Contexto**: Separa finanzas personales, negocio, familia (cada uno con sus tarjetas y presupuesto)
 - 📧 **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook/Microsoft 365
 - 🏦 **Multi-Banco**: BAC Credomatic y Banco Popular (Costa Rica) — más bancos próximamente
-- 🤖 **Categorización Inteligente con IA**: Usa Claude 3.5 Haiku para clasificar gastos automáticamente
+- 🤖 **Categorización Inteligente con IA**: Usa Claude Haiku 4.5 para clasificar gastos automáticamente
 - 🧠 **Sistema de Aprendizaje**: Aprende de tus decisiones para mejorar la categorización
 - 💰 **Gestión de Ingresos**: Trackea salarios, ventas, freelance y más (recurrentes o únicos)
 - 📊 **Balance Mensual**: Ve ingresos vs gastos y tu salud financiera en tiempo real
@@ -33,8 +34,8 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - 🎯 **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
 - 📈 **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
 - 🔒 **Seguridad**: Manejo seguro de credenciales con variables de entorno
-- 💾 **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados
-- 👥 **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos
+- 💾 **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
+- 👥 **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos separados
 
 ## 🛠️ Stack Tecnológico
 
