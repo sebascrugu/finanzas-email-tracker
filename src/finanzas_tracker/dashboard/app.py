@@ -9,10 +9,15 @@ from datetime import date
 
 # Configurar página
 st.set_page_config(
-    page_title="Finanzas Email Tracker",
+    page_title="Dashboard - Finanzas Tracker",
     page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded",
+    menu_items={
+        "Get Help": None,
+        "Report a bug": None,
+        "About": "Finanzas Email Tracker - Sistema automatizado de rastreo financiero",
+    },
 )
 
 # Importar después de set_page_config
@@ -63,8 +68,7 @@ def mostrar_selector_perfiles(perfil_actual: Profile):
             .all()
         )
 
-        st.sidebar.markdown("---")
-        st.sidebar.markdown(f"### {perfil_actual.nombre_completo}")
+        st.sidebar.markdown(f"## {perfil_actual.nombre_completo}")
 
         # Mostrar info del perfil
         presupuesto = next((b for b in perfil_actual.budgets if b.fecha_fin is None), None)
@@ -119,9 +123,6 @@ def main():
 
     # Verificar perfil activo
     perfil_activo = get_active_profile()
-
-    # Sidebar
-    st.sidebar.title("💰 Finanzas Tracker")
 
     if not perfil_activo:
         # Página principal sin perfil - DISEÑO LIMPIO
