@@ -92,6 +92,27 @@ class Transaction(Base):
         comment="Descripción de la relación (ej: 'Alquiler Nov-2025', 'Compra compartida con Juan')",
     )
 
+    # Refunds y transacciones relacionadas
+    refund_transaction_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("transactions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID de la transacción original si esto es un refund",
+    )
+
+    # Flags para casos edge
+    es_desconocida: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="Si la transacción no se reconoce o no se documentó bien",
+    )
+    confianza_categoria: Mapped[int] = mapped_column(
+        default=100,
+        comment="Nivel de confianza en la categorización (0-100)",
+    )
+
     # Montos
     monto_original: Mapped[Decimal] = mapped_column(
         Numeric(precision=15, scale=2),
@@ -189,15 +210,25 @@ class Transaction(Base):
         "Subcategory",
         back_populates="transactions",
     )
+    refund_of: Mapped["Transaction | None"] = relationship(
+        "Transaction",
+        remote_side="Transaction.id",
+        foreign_keys=[refund_transaction_id],
+    )
 
     # Constraints e índices
     __table_args__ = (
         CheckConstraint("monto_crc > 0", name="check_transaction_monto_positive"),
         CheckConstraint("monto_original > 0", name="check_transaction_original_positive"),
+        CheckConstraint(
+            "confianza_categoria >= 0 AND confianza_categoria <= 100",
+            name="check_transaction_confianza_valid",
+        ),
         Index("ix_transactions_user_fecha", "user_email", "fecha_transaccion"),
         Index("ix_transactions_user_tipo", "user_email", "tipo_transaccion"),
         Index("ix_transactions_user_categoria", "user_email", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
+        Index("ix_transactions_desconocidas", "es_desconocida"),
     )
 
     def __repr__(self) -> str:
@@ -235,6 +266,16 @@ class Transaction(Base):
         return self.tipo_especial is not None
 
     @property
+    def es_refund(self) -> bool:
+        """Retorna True si es un refund de otra transacción."""
+        return self.refund_transaction_id is not None
+
+    @property
+    def necesita_atencion(self) -> bool:
+        """Retorna True si la transacción necesita atención (desconocida o baja confianza)."""
+        return self.es_desconocida or self.confianza_categoria < 70
+
+    @property
     def debe_contar_en_presupuesto(self) -> bool:
         """Retorna True si la transacción debe contar en el presupuesto."""
         return not self.excluir_de_presupuesto and self.deleted_at is None
@@ -251,3 +292,14 @@ class Transaction(Base):
     def restore(self) -> None:
         """Restaura una transacción eliminada."""
         self.deleted_at = None
+
+    def marcar_como_refund(self, transaction_id: str) -> None:
+        """
+        Marca esta transacción como refund de otra.
+
+        Args:
+            transaction_id: ID de la transacción original
+        """
+        self.refund_transaction_id = transaction_id
+        self.tipo_especial = SpecialTransactionType.REIMBURSEMENT
+        self.relacionada_con = f"Refund de transacción {transaction_id[:8]}"

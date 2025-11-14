@@ -50,6 +50,11 @@ class TransactionType(str, Enum):
     SERVICE_PAYMENT = "pago_servicio"
     SINPE = "sinpe"
     WITHDRAWAL_NO_CARD = "retiro_sin_tarjeta"
+    COMPASS = "compass"  # BAC Compass (peajes/parking)
+    INTEREST_CHARGE = "interes_cobrado"  # Intereses de tarjeta de crédito
+    ADJUSTMENT = "ajuste"  # Ajustes bancarios
+    INSURANCE = "seguro_tarjeta"  # Seguro de tarjeta
+    MAINTENANCE_FEE = "comision_mantenimiento"  # Comisiones bancarias
     OTHER = "otro"
 
     def __str__(self) -> str:
@@ -61,11 +66,12 @@ class SpecialTransactionType(str, Enum):
     """
     Tipos especiales de transacciones que requieren tratamiento diferente.
 
-    - INTERMEDIATE: Dinero que pasa por tu cuenta pero no es tuyo (ej: alquiler)
-    - REIMBURSEMENT: Reembolso de un gasto previo
-    - SHARED: Gasto compartido con otras personas
+    - INTERMEDIATE: Dinero que pasa por tu cuenta pero no es tuyo (ej: alquiler, compras para mamá)
+    - REIMBURSEMENT: Reembolso de un gasto previo o refund
+    - SHARED: Gasto compartido con otras personas (ej: fútbol semanal)
     - LOAN_GIVEN: Préstamo que diste a alguien
     - LOAN_RECEIVED: Préstamo que recibiste
+    - FAMILY_SUPPORT: Ayuda económica a familiares (ej: mamá→abuela)
     """
 
     INTERMEDIATE = "intermediaria"
@@ -73,6 +79,7 @@ class SpecialTransactionType(str, Enum):
     SHARED = "compartida"
     LOAN_GIVEN = "prestamo_dado"
     LOAN_RECEIVED = "prestamo_recibido"
+    FAMILY_SUPPORT = "ayuda_familiar"
 
     def __str__(self) -> str:
         """Retorna el valor del enum como string."""
