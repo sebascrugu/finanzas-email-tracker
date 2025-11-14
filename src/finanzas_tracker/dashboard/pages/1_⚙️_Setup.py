@@ -1,8 +1,8 @@
-"""Página de Setup/Onboarding para configurar el usuario."""
+"""Página de Setup y Gestión de Perfiles."""
 
 import streamlit as st
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
 
 st.set_page_config(
     page_title="Setup - Finanzas Tracker",
@@ -19,6 +19,7 @@ sys.path.insert(0, str(src_path))
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.user import User
+from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.enums import CardType, BankName
@@ -26,241 +27,373 @@ from finanzas_tracker.models.enums import CardType, BankName
 logger = get_logger(__name__)
 
 
-def check_user_exists() -> User | None:
-    """Verifica si existe un usuario activo."""
+def setup_page():
+    """Página principal de setup y gestión de perfiles."""
+    st.title("⚙️ Setup y Gestión de Perfiles")
+
     with get_session() as session:
-        return session.query(User).filter(User.activo == True).first()  # noqa: E712
+        # Verificar si existe usuario
+        user = session.query(User).filter(User.activo == True).first()  # noqa: E712
+
+        if not user:
+            # Primera vez: crear usuario
+            st.info("👋 ¡Bienvenido! Vamos a configurar tu cuenta.")
+            crear_usuario_inicial(session)
+        else:
+            # Usuario existe: gestionar perfiles
+            gestionar_perfiles(session, user)
 
 
-def main():
-    st.title("⚙️ Configuración de Usuario")
-
-    # Verificar si ya existe usuario
-    existing_user = check_user_exists()
-
-    if existing_user:
-        st.success(f"✅ Usuario configurado: **{existing_user.nombre}** ({existing_user.email})")
-
-        st.markdown("---")
-        st.info(
-            "💡 **Ya tienes un usuario configurado.** Para cambiar la configuración, puedes ir a **Configuración** en el menú."
-        )
-
-        if st.button("🏠 Ir al Dashboard"):
-            st.switch_page("app.py")
-
-        return
-
-    # Formulario de setup
+def crear_usuario_inicial(session):
+    """Formulario para crear el usuario inicial."""
+    st.subheader("📋 Información de Usuario")
     st.markdown("""
-    ### 👋 ¡Bienvenido!
-    
-    Vamos a configurar tu cuenta paso a paso. Solo tomará unos minutos.
+    Ingresa tu email de Outlook. Este será tu usuario principal.
+    Luego podrás crear múltiples perfiles (Personal, Negocio, Familia, etc.)
     """)
 
-    st.markdown("---")
-
-    with st.form("setup_form"):
-        st.subheader("📋 Información Personal")
-
+    with st.form("crear_usuario_form"):
         email = st.text_input(
-            "📧 Email (Outlook/Hotmail)",
+            "📧 Email de Outlook/Hotmail:",
             placeholder="tu.email@outlook.com",
-            help="El email de tu cuenta de Outlook que recibe las notificaciones bancarias",
+            help="Este es tu email de Outlook donde recibes los correos bancarios",
+        )
+        nombre = st.text_input(
+            "👤 Nombre completo:",
+            placeholder="Tu Nombre",
         )
 
-        nombre = st.text_input("👤 Nombre Completo", placeholder="Juan Pérez")
-
-        st.markdown("---")
-        st.subheader("💰 Presupuesto Mensual")
-
-        st.info("""
-        **Salario NETO:** Es tu salario después de deducciones (lo que realmente recibes).
-        
-        La regla 50/30/20 se calculará automáticamente:
-        - **50% Necesidades** (transporte, trabajo, servicios)
-        - **30% Gustos** (entretenimiento, comida, shopping)
-        - **20% Ahorros** (ahorro regular, metas)
-        """)
-
-        salario = st.number_input(
-            "💵 Salario Mensual NETO (en colones)",
-            min_value=0,
-            value=280000,
-            step=10000,
-            format="%d",
-            help="Tu ingreso mensual neto (después de deducciones)",
-        )
-
-        # Mostrar distribución
-        if salario > 0:
-            col1, col2, col3 = st.columns(3)
-
-            necesidades = salario * 0.50
-            gustos = salario * 0.30
-            ahorros = salario * 0.20
-
-            with col1:
-                st.metric("🏠 Necesidades (50%)", f"₡{necesidades:,.0f}")
-            with col2:
-                st.metric("🎉 Gustos (30%)", f"₡{gustos:,.0f}")
-            with col3:
-                st.metric("💎 Ahorros (20%)", f"₡{ahorros:,.0f}")
-
-        st.markdown("---")
-        st.subheader("💳 Tarjetas Bancarias")
-
-        st.info("""
-        Registra tus tarjetas para que el sistema pueda detectar automáticamente
-        si una transacción es de débito o crédito.
-        
-        **No te preocupes:** Solo guardamos los últimos 4 dígitos por seguridad.
-        """)
-
-        # Tarjeta 1
-        with st.expander("➕ Agregar Tarjeta 1", expanded=True):
-            card1_digits = st.text_input(
-                "Últimos 4 dígitos", key="card1_digits", max_chars=4, placeholder="6380"
-            )
-
-            card1_type = st.selectbox(
-                "Tipo de Tarjeta", options=["debito", "credito"], key="card1_type"
-            )
-
-            card1_bank = st.selectbox(
-                "Banco",
-                options=["bac", "popular"],
-                key="card1_bank",
-                format_func=lambda x: "BAC Credomatic" if x == "bac" else "Banco Popular",
-            )
-
-            card1_alias = st.text_input(
-                "Alias (opcional)", key="card1_alias", placeholder="ej: Tarjeta Principal"
-            )
-
-            if card1_type == "credito":
-                card1_limit = st.number_input(
-                    "Límite de Crédito (opcional)",
-                    min_value=0,
-                    value=0,
-                    step=50000,
-                    key="card1_limit",
-                    format="%d",
-                )
-            else:
-                card1_limit = None
-
-        # Tarjeta 2 (opcional)
-        with st.expander("➕ Agregar Tarjeta 2 (Opcional)"):
-            card2_digits = st.text_input(
-                "Últimos 4 dígitos", key="card2_digits", max_chars=4, placeholder="3640"
-            )
-
-            if card2_digits:
-                card2_type = st.selectbox(
-                    "Tipo de Tarjeta", options=["debito", "credito"], key="card2_type"
-                )
-
-                card2_bank = st.selectbox(
-                    "Banco",
-                    options=["bac", "popular"],
-                    key="card2_bank",
-                    format_func=lambda x: "BAC Credomatic" if x == "bac" else "Banco Popular",
-                )
-
-                card2_alias = st.text_input(
-                    "Alias (opcional)", key="card2_alias", placeholder="ej: Tarjeta Secundaria"
-                )
-
-                if card2_type == "credito":
-                    card2_limit = st.number_input(
-                        "Límite de Crédito (opcional)",
-                        min_value=0,
-                        value=0,
-                        step=50000,
-                        key="card2_limit",
-                        format="%d",
-                    )
-                else:
-                    card2_limit = None
-
-        st.markdown("---")
-
-        submitted = st.form_submit_button("✅ Guardar Configuración", use_container_width=True)
+        submitted = st.form_submit_button("➡️ Continuar", type="primary", use_container_width=True)
 
         if submitted:
-            # Validaciones
             if not email or not nombre:
-                st.error("❌ Por favor completa todos los campos requeridos")
+                st.error("❌ Por favor completa todos los campos")
                 return
 
-            if salario <= 0:
-                st.error("❌ El salario debe ser mayor a 0")
-                return
-
-            if not card1_digits or len(card1_digits) != 4:
-                st.error("❌ Debes registrar al menos una tarjeta con 4 dígitos")
+            if "@" not in email:
+                st.error("❌ Email inválido")
                 return
 
             try:
-                with get_session() as session:
-                    # Crear usuario
-                    nuevo_usuario = User(email=email, nombre=nombre, activo=True)
-                    session.add(nuevo_usuario)
-                    session.flush()
+                # Crear usuario
+                new_user = User(email=email, nombre=nombre, activo=True)
+                session.add(new_user)
+                session.flush()
 
-                    # Crear presupuesto (regla 50/30/20)
-                    presupuesto = Budget(
-                        user_email=email,
-                        salario_mensual=Decimal(str(salario)),
-                        fecha_inicio=date.today(),
-                        porcentaje_necesidades=Decimal("50.00"),
-                        porcentaje_gustos=Decimal("30.00"),
-                        porcentaje_ahorros=Decimal("20.00"),
-                    )
-                    session.add(presupuesto)
-
-                    # Crear tarjeta 1
-                    tarjeta1 = Card(
-                        user_email=email,
-                        ultimos_4_digitos=card1_digits,
-                        tipo=CardType.CREDIT if card1_type == "credito" else CardType.DEBIT,
-                        banco=BankName.BAC if card1_bank == "bac" else BankName.POPULAR,
-                        alias=card1_alias or None,
-                        limite_credito=Decimal(str(card1_limit))
-                        if card1_limit and card1_limit > 0
-                        else None,
-                        activa=True,
-                    )
-                    session.add(tarjeta1)
-
-                    # Crear tarjeta 2 si existe
-                    if card2_digits and len(card2_digits) == 4:
-                        tarjeta2 = Card(
-                            user_email=email,
-                            ultimos_4_digitos=card2_digits,
-                            tipo=CardType.CREDIT if card2_type == "credito" else CardType.DEBIT,
-                            banco=BankName.BAC if card2_bank == "bac" else BankName.POPULAR,
-                            alias=card2_alias or None,
-                            limite_credito=Decimal(str(card2_limit))
-                            if card2_limit and card2_limit > 0
-                            else None,
-                            activa=True,
-                        )
-                        session.add(tarjeta2)
-
-                    session.commit()
-
-                    st.success("🎉 ¡Configuración guardada exitosamente!")
-                    st.balloons()
-
-                    st.info("✅ **¡Todo listo!** Recarga la página para ver el dashboard.")
-                    st.info("💡 Usa el menú lateral para navegar.")
+                st.success(f"✅ Usuario {nombre} creado!")
+                st.info("🔄 Recargando para crear tu primer perfil...")
+                session.commit()
+                st.rerun()
 
             except Exception as e:
-                st.error(f"❌ Error al guardar: {e}")
-                logger.error(f"Error en setup: {e}")
+                session.rollback()
+                st.error(f"❌ Error: {e}")
+                logger.error(f"Error creando usuario: {e}")
+
+
+def gestionar_perfiles(session, user: User):
+    """Gestión de perfiles del usuario."""
+    st.info(f"👤 Usuario: **{user.nombre}** ({user.email})")
+
+    # Obtener perfiles del usuario
+    perfiles = (
+        session.query(Profile)
+        .filter(Profile.owner_email == user.email, Profile.activo == True)  # noqa: E712
+        .all()
+    )
+
+    # Tabs para gestionar perfiles
+    if not perfiles:
+        # No hay perfiles: forzar crear el primero
+        st.warning("📝 No tienes perfiles configurados. Vamos a crear tu primer perfil.")
+        crear_perfil_nuevo(session, user)
+    else:
+        tab1, tab2 = st.tabs(["📋 Mis Perfiles", "➕ Crear Perfil"])
+
+        with tab1:
+            mostrar_perfiles(session, perfiles)
+
+        with tab2:
+            crear_perfil_nuevo(session, user)
+
+
+def mostrar_perfiles(session, perfiles: list[Profile]):
+    """Muestra lista de perfiles con opciones de edición."""
+    st.subheader(f"📋 Tus Perfiles ({len(perfiles)})")
+
+    for perfil in perfiles:
+        with st.expander(
+            f"{perfil.nombre_completo} {'⭐ ACTIVO' if perfil.es_activo else ''}",
+            expanded=perfil.es_activo,
+        ):
+            col1, col2 = st.columns([3, 1])
+
+            with col1:
+                st.markdown(f"**Nombre:** {perfil.nombre}")
+                if perfil.descripcion:
+                    st.markdown(f"**Descripción:** {perfil.descripcion}")
+                st.markdown(f"**Icono:** {perfil.icono}")
+
+                # Mostrar tarjetas del perfil
+                tarjetas = [c for c in perfil.cards if c.activa]
+                if tarjetas:
+                    st.markdown(f"**💳 Tarjetas ({len(tarjetas)}):**")
+                    for card in tarjetas:
+                        banco = (
+                            card.banco.value.upper()
+                            if hasattr(card.banco, "value")
+                            else card.banco.upper()
+                        )
+                        tipo = (
+                            card.tipo.value.capitalize()
+                            if hasattr(card.tipo, "value")
+                            else card.tipo.capitalize()
+                        )
+                        st.markdown(f"  - {banco} ****{card.ultimos_4_digitos} ({tipo})")
+                else:
+                    st.warning("⚠️ Sin tarjetas configuradas")
+
+                # Mostrar presupuesto
+                presupuesto = next((b for b in perfil.budgets if b.fecha_fin is None), None)
+                if presupuesto:
+                    st.markdown(f"**💰 Presupuesto:** ₡{presupuesto.salario_mensual:,.0f}")
+                    st.markdown(f"  - 50% Necesidades: ₡{presupuesto.monto_necesidades:,.0f}")
+                    st.markdown(f"  - 30% Gustos: ₡{presupuesto.monto_gustos:,.0f}")
+                    st.markdown(f"  - 20% Ahorros: ₡{presupuesto.monto_ahorros:,.0f}")
+                else:
+                    st.warning("⚠️ Sin presupuesto configurado")
+
+            with col2:
+                if not perfil.es_activo:
+                    if st.button(
+                        "⭐ Activar", key=f"activar_{perfil.id}", use_container_width=True
+                    ):
+                        activar_perfil(session, perfil)
+                        st.rerun()
+
+                if st.button("✏️ Editar", key=f"editar_{perfil.id}", use_container_width=True):
+                    st.session_state[f"editing_{perfil.id}"] = True
+                    st.rerun()
+
+            # Modo edición
+            if st.session_state.get(f"editing_{perfil.id}", False):
+                st.markdown("---")
+                editar_perfil(session, perfil)
+
+
+def activar_perfil(session, perfil: Profile):
+    """Activa un perfil (desactiva los demás)."""
+    # Desactivar todos los perfiles del usuario
+    perfiles_usuario = (
+        session.query(Profile).filter(Profile.owner_email == perfil.owner_email).all()
+    )
+    for p in perfiles_usuario:
+        p.es_activo = False
+
+    # Activar el seleccionado
+    perfil.es_activo = True
+    session.commit()
+    st.success(f"✅ Perfil '{perfil.nombre}' activado")
+
+
+def editar_perfil(session, perfil: Profile):
+    """Formulario para editar un perfil."""
+    st.subheader(f"✏️ Editando: {perfil.nombre}")
+
+    with st.form(f"edit_perfil_{perfil.id}"):
+        nuevo_nombre = st.text_input("Nombre:", value=perfil.nombre)
+        nueva_desc = st.text_area("Descripción:", value=perfil.descripcion or "")
+        nuevo_icono = st.text_input("Icono (emoji):", value=perfil.icono or "👤")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            guardar = st.form_submit_button("💾 Guardar", type="primary", use_container_width=True)
+        with col2:
+            cancelar = st.form_submit_button("❌ Cancelar", use_container_width=True)
+
+        if guardar:
+            perfil.nombre = nuevo_nombre
+            perfil.descripcion = nueva_desc if nueva_desc else None
+            perfil.icono = nuevo_icono
+            session.commit()
+            st.session_state[f"editing_{perfil.id}"] = False
+            st.success("✅ Perfil actualizado")
+            st.rerun()
+
+        if cancelar:
+            st.session_state[f"editing_{perfil.id}"] = False
+            st.rerun()
+
+
+def crear_perfil_nuevo(session, user: User):
+    """Formulario para crear un nuevo perfil."""
+    st.subheader("➕ Crear Nuevo Perfil")
+
+    st.markdown("""
+    Un perfil agrupa:
+    - Tarjetas específicas
+    - Su propio presupuesto
+    - Sus transacciones e ingresos
+
+    **Ejemplos:**
+    - 👤 Personal (tus finanzas personales)
+    - 💼 Negocio (finanzas de tu empresa)
+    - 👪 Mamá (finanzas de tu mamá)
+    """)
+
+    with st.form("crear_perfil_form"):
+        st.markdown("#### 1️⃣ Información del Perfil")
+        col1, col2 = st.columns(2)
+        with col1:
+            nombre = st.text_input(
+                "📝 Nombre del perfil:", placeholder="Personal", help="Ej: Personal, Negocio, Mamá"
+            )
+            icono = st.text_input(
+                "😀 Icono (emoji):", value="👤", help="Un emoji que represente este perfil"
+            )
+        with col2:
+            descripcion = st.text_area(
+                "📄 Descripción (opcional):", placeholder="Mis finanzas personales"
+            )
+
+        st.markdown("#### 2️⃣ Presupuesto Mensual")
+        salario_str = st.text_input(
+            "💵 Salario/Ingreso NETO mensual (₡):",
+            placeholder="280000",
+            help="Tu salario mensual neto en colones (después de impuestos)",
+        )
+
+        salario = Decimal(0)
+        if salario_str:
+            try:
+                salario = Decimal(salario_str.replace(",", ""))
+                if salario > 0:
+                    st.info(f"""
+                    **Distribución 50/30/20 (automática):**
+                    - 50% Necesidades: ₡{(salario * Decimal('0.50')):,.0f}
+                    - 30% Gustos: ₡{(salario * Decimal('0.30')):,.0f}
+                    - 20% Ahorros: ₡{(salario * Decimal('0.20')):,.0f}
+                    """)
+            except:
+                st.error("❌ Formato inválido. Usa solo números (ej: 280000)")
+
+        st.markdown("#### 3️⃣ Tarjetas Bancarias")
+        st.info("Agrega al menos una tarjeta para este perfil")
+
+        # Lista de tarjetas a agregar
+        if "new_profile_cards" not in st.session_state:
+            st.session_state["new_profile_cards"] = []
+
+        # Mostrar tarjetas agregadas
+        if st.session_state["new_profile_cards"]:
+            st.markdown("**Tarjetas a agregar:**")
+            for i, card_data in enumerate(st.session_state["new_profile_cards"]):
+                col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 2, 0.5])
+                with col1:
+                    st.write(f"****{card_data[0]}")
+                with col2:
+                    st.write(card_data[1].capitalize())
+                with col3:
+                    st.write(card_data[2].upper())
+                with col4:
+                    st.write(card_data[3] if card_data[3] else "N/A")
+                with col5:
+                    if st.form_submit_button("🗑️", key=f"del_card_{i}"):
+                        st.session_state["new_profile_cards"].pop(i)
+                        st.rerun()
+
+        # Formulario para agregar tarjeta
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 2, 1])
+        with col1:
+            ultimos_4 = st.text_input("Últimos 4", max_chars=4, key="card_digits")
+        with col2:
+            tipo_card = st.selectbox("Tipo", options=[e.value for e in CardType], key="card_type")
+        with col3:
+            banco_card = st.selectbox("Banco", options=[e.value for e in BankName], key="card_bank")
+        with col4:
+            alias_card = st.text_input("Alias (opcional)", key="card_alias")
+        with col5:
+            st.write("")  # Spacing
+            add_card_btn = st.form_submit_button("➕", help="Agregar tarjeta")
+
+        if add_card_btn and ultimos_4:
+            st.session_state["new_profile_cards"].append(
+                (ultimos_4, tipo_card, banco_card, alias_card)
+            )
+            st.rerun()
+
+        st.markdown("---")
+        crear = st.form_submit_button("🎉 Crear Perfil", type="primary", use_container_width=True)
+
+        if crear:
+            # Validaciones
+            if not nombre:
+                st.error("❌ Debes poner un nombre al perfil")
+                return
+            if salario <= 0:
+                st.error("❌ Debes ingresar un salario válido")
+                return
+            if not st.session_state["new_profile_cards"]:
+                st.error("❌ Debes agregar al menos una tarjeta")
+                return
+
+            try:
+                # 1. Crear perfil
+                # Verificar si es el primer perfil (será el activo)
+                perfiles_existentes = (
+                    session.query(Profile).filter(Profile.owner_email == user.email).count()
+                )
+
+                nuevo_perfil = Profile(
+                    owner_email=user.email,
+                    nombre=nombre,
+                    descripcion=descripcion if descripcion else None,
+                    icono=icono,
+                    es_activo=(perfiles_existentes == 0),  # Primer perfil = activo
+                    activo=True,
+                )
+                session.add(nuevo_perfil)
+                session.flush()
+
+                # 2. Crear presupuesto
+                nuevo_presupuesto = Budget(
+                    profile_id=nuevo_perfil.id,
+                    user_email=user.email,  # Por compatibilidad
+                    salario_mensual=salario,
+                    fecha_inicio=date.today(),
+                    porcentaje_necesidades=Decimal("50.00"),
+                    porcentaje_gustos=Decimal("30.00"),
+                    porcentaje_ahorros=Decimal("20.00"),
+                )
+                session.add(nuevo_presupuesto)
+
+                # 3. Crear tarjetas
+                for card_data in st.session_state["new_profile_cards"]:
+                    nueva_tarjeta = Card(
+                        profile_id=nuevo_perfil.id,
+                        user_email=user.email,  # Por compatibilidad
+                        ultimos_4_digitos=card_data[0],
+                        tipo=CardType(card_data[1]),
+                        banco=BankName(card_data[2]),
+                        alias=card_data[3] if card_data[3] else None,
+                        activa=True,
+                    )
+                    session.add(nueva_tarjeta)
+
+                session.commit()
+
+                # Limpiar estado
+                st.session_state["new_profile_cards"] = []
+
+                st.success(f"✅ Perfil '{nombre}' creado exitosamente!")
+                st.balloons()
+                st.rerun()
+
+            except Exception as e:
+                session.rollback()
+                st.error(f"❌ Error: {e}")
+                logger.error(f"Error creando perfil: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    setup_page()
