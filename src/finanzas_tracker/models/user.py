@@ -67,6 +67,11 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    incomes: Mapped[list["Income"]] = relationship(
+        "Income",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""
@@ -90,4 +95,3 @@ class User(Base):
 
         # Si todos tienen fecha_fin, retornar el más reciente
         return max(self.budgets, key=lambda b: b.fecha_inicio)
-

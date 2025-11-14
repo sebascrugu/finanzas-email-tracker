@@ -1,6 +1,6 @@
 # Makefile para facilitar comandos comunes del proyecto
 
-.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db
+.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db migrate seed
 
 # Colores para output
 BLUE := \033[0;34m
@@ -60,6 +60,14 @@ review: ## Revisa y categoriza transacciones pendientes interactivamente
 
 setup-user: ## Configura un nuevo usuario (email, salario, tarjetas)
 	poetry run python scripts/setup_user.py
+
+migrate: ## Migra la base de datos al nuevo schema (⚠️  BORRA TODOS LOS DATOS)
+	poetry run python scripts/migrate_db.py
+
+seed: ## Pobla la base de datos con categorías iniciales
+	@echo "$(BLUE)Poblando categorías...$(NC)"
+	@poetry run python -c "from finanzas_tracker.utils.seed_categories import seed_categories; seed_categories()"
+	@echo "$(BLUE)¡Categorías pobladas exitosamente!$(NC)"
 
 logout: ## Cierra sesión y limpia el cache de tokens
 	poetry run python scripts/logout.py

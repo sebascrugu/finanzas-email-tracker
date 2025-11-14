@@ -3,10 +3,11 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+from finanzas_tracker.models.enums import CategoryType
 
 
 class Category(Base):
@@ -30,7 +31,7 @@ class Category(Base):
     )
 
     # Información
-    tipo: Mapped[str] = mapped_column(
+    tipo: Mapped[CategoryType] = mapped_column(
         String(20),
         unique=True,
         index=True,
@@ -137,6 +138,9 @@ class Subcategory(Base):
         back_populates="subcategory",
     )
 
+    # Índices
+    __table_args__ = (Index("ix_subcategories_category_nombre", "category_id", "nombre"),)
+
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return f"<Subcategory(nombre={self.nombre}, category={self.category_id})>"
@@ -147,4 +151,3 @@ class Subcategory(Base):
         if self.category:
             return f"{self.category.nombre}/{self.nombre}"
         return self.nombre
-

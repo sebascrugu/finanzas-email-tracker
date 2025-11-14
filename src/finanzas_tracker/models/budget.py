@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
@@ -85,6 +85,20 @@ class Budget(Base):
     # Relaciones
     user: Mapped["User"] = relationship("User", back_populates="budgets")
 
+    # Constraints e índices
+    __table_args__ = (
+        CheckConstraint("salario_mensual > 0", name="check_budget_salario_positive"),
+        CheckConstraint(
+            "porcentaje_necesidades + porcentaje_gustos + porcentaje_ahorros = 100",
+            name="check_budget_porcentajes_sum_100",
+        ),
+        CheckConstraint(
+            "fecha_fin IS NULL OR fecha_fin > fecha_inicio",
+            name="check_budget_fechas_validas",
+        ),
+        Index("ix_budgets_user_fechas", "user_email", "fecha_inicio", "fecha_fin"),
+    )
+
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return (
@@ -120,10 +134,5 @@ class Budget(Base):
         Returns:
             bool: True si suman 100%, False si no
         """
-        total = (
-            self.porcentaje_necesidades
-            + self.porcentaje_gustos
-            + self.porcentaje_ahorros
-        )
+        total = self.porcentaje_necesidades + self.porcentaje_gustos + self.porcentaje_ahorros
         return abs(total - Decimal("100.00")) < Decimal("0.01")
-

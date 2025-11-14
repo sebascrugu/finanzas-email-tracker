@@ -4,10 +4,16 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+from finanzas_tracker.models.enums import (
+    BankName,
+    Currency,
+    SpecialTransactionType,
+    TransactionType,
+)
 
 
 class Transaction(Base):
@@ -41,10 +47,10 @@ class Transaction(Base):
     )
 
     # Información del banco
-    banco: Mapped[str] = mapped_column(
+    banco: Mapped[BankName] = mapped_column(
         String(50),
         index=True,
-        comment="Banco origen: 'bac' o 'popular'",
+        comment="Banco origen: bac o popular",
     )
 
     # Tarjeta usada
@@ -57,14 +63,33 @@ class Transaction(Base):
     )
 
     # Información de la transacción
-    tipo_transaccion: Mapped[str] = mapped_column(
+    tipo_transaccion: Mapped[TransactionType] = mapped_column(
         String(50),
         index=True,
-        comment="Tipo: 'compra', 'transferencia', 'retiro', 'pago_servicio', etc.",
+        comment="Tipo: compra, transferencia, retiro, pago_servicio, etc.",
     )
     comercio: Mapped[str] = mapped_column(
         String(255),
         comment="Nombre del comercio o destino de la transacción",
+    )
+
+    # Tipo especial (para casos como alquiler, reembolsos, etc.)
+    tipo_especial: Mapped[SpecialTransactionType | None] = mapped_column(
+        String(20),
+        nullable=True,
+        index=True,
+        comment="Tipo especial: intermediaria, reembolso, compartida, etc.",
+    )
+    excluir_de_presupuesto: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="Si se debe excluir del cálculo de presupuesto (ej: alquiler intermediario)",
+    )
+    relacionada_con: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Descripción de la relación (ej: 'Alquiler Nov-2025', 'Compra compartida con Juan')",
     )
 
     # Montos
@@ -72,9 +97,10 @@ class Transaction(Base):
         Numeric(precision=15, scale=2),
         comment="Monto en la moneda original",
     )
-    moneda_original: Mapped[str] = mapped_column(
+    moneda_original: Mapped[Currency] = mapped_column(
         String(3),
-        comment="Moneda original: 'USD' o 'CRC'",
+        default=Currency.CRC,
+        comment="Moneda original: USD o CRC",
     )
     monto_crc: Mapped[Decimal] = mapped_column(
         Numeric(precision=15, scale=2),
@@ -135,6 +161,14 @@ class Transaction(Base):
         comment="Notas adicionales del usuario",
     )
 
+    # Soft delete
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment="Fecha de eliminación (soft delete)",
+    )
+
     # Metadatos
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -156,6 +190,16 @@ class Transaction(Base):
         back_populates="transactions",
     )
 
+    # Constraints e índices
+    __table_args__ = (
+        CheckConstraint("monto_crc > 0", name="check_transaction_monto_positive"),
+        CheckConstraint("monto_original > 0", name="check_transaction_original_positive"),
+        Index("ix_transactions_user_fecha", "user_email", "fecha_transaccion"),
+        Index("ix_transactions_user_tipo", "user_email", "tipo_transaccion"),
+        Index("ix_transactions_user_categoria", "user_email", "subcategory_id"),
+        Index("ix_transactions_comercio", "comercio"),
+    )
+
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return (
@@ -173,7 +217,7 @@ class Transaction(Base):
         Si era USD, muestra: "₡13,000.00 (originalmente $25.00 USD)"
         Si era CRC, muestra: "₡13,000.00"
         """
-        if self.moneda_original == "USD":
+        if self.moneda_original == Currency.USD:
             return (
                 f"₡{self.monto_crc:,.2f} "
                 f"(originalmente ${self.monto_original:,.2f} USD @ ₡{self.tipo_cambio_usado:.2f})"
@@ -185,4 +229,25 @@ class Transaction(Base):
         """Retorna True si la transacción fue fuera de Costa Rica."""
         return self.pais is not None and self.pais.lower() not in ["costa rica", "cr"]
 
+    @property
+    def es_especial(self) -> bool:
+        """Retorna True si es una transacción especial (intermediaria, reembolso, etc.)."""
+        return self.tipo_especial is not None
 
+    @property
+    def debe_contar_en_presupuesto(self) -> bool:
+        """Retorna True si la transacción debe contar en el presupuesto."""
+        return not self.excluir_de_presupuesto and self.deleted_at is None
+
+    @property
+    def esta_activa(self) -> bool:
+        """Verifica si la transacción no ha sido eliminada (soft delete)."""
+        return self.deleted_at is None
+
+    def soft_delete(self) -> None:
+        """Marca la transacción como eliminada (soft delete)."""
+        self.deleted_at = datetime.now(UTC)
+
+    def restore(self) -> None:
+        """Restaura una transacción eliminada."""
+        self.deleted_at = None
