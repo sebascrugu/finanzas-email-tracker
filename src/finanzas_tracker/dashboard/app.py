@@ -203,7 +203,7 @@ def main():
     # Acciones rápidas
     st.subheader("⚡ Acciones Rápidas")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         if st.button("➕ Agregar Ingreso", use_container_width=True):
@@ -215,8 +215,17 @@ def main():
 
     with col3:
         if sin_revisar > 0:
-            if st.button(f"📝 Revisar {sin_revisar} Transacciones", use_container_width=True):
+            if st.button(
+                f"📝 Revisar {sin_revisar} Transacciones", use_container_width=True, type="primary"
+            ):
                 st.switch_page("pages/4_📝_Transacciones.py")
+        else:
+            if st.button("📝 Ver Transacciones", use_container_width=True):
+                st.switch_page("pages/4_📝_Transacciones.py")
+
+    with col4:
+        if st.button("📧 Procesar Correos", use_container_width=True):
+            st.switch_page("pages/4_📝_Transacciones.py")
 
 
 if __name__ == "__main__":

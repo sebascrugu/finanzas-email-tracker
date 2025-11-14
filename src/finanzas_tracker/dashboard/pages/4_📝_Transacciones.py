@@ -97,9 +97,70 @@ def main():
             st.success("✅ ¡Excelente! No hay transacciones pendientes de revisión")
             st.info("💡 Todas tus transacciones están categorizadas")
 
+            st.markdown("---")
+
             # Botón para procesar más correos
-            if st.button("📧 Procesar Correos", use_container_width=True):
-                st.info("💡 Ejecuta `make process` en la terminal para procesar nuevos correos")
+            st.subheader("📧 Procesar Nuevos Correos")
+            st.markdown("""
+            ¿Recibiste nuevas transacciones en tu correo? 
+            Presiona el botón para buscar y procesar automáticamente.
+            """)
+
+            if st.button("📧 Procesar Correos Bancarios", type="primary", use_container_width=True):
+                with st.spinner("🔍 Buscando correos bancarios..."):
+                    try:
+                        # Importar y ejecutar el procesador
+                        from finanzas_tracker.services.transaction_processor import (
+                            TransactionProcessor,
+                        )
+
+                        processor = TransactionProcessor()
+
+                        # Procesar transacciones
+                        stats = processor.process_transactions(
+                            user_email=user.email,
+                            days_back=30,  # Últimos 30 días
+                        )
+
+                        # Mostrar resultados
+                        st.success(f"✅ ¡Proceso completado!")
+
+                        col1, col2, col3 = st.columns(3)
+
+                        with col1:
+                            st.metric("📧 Correos procesados", stats.get("correos_procesados", 0))
+
+                        with col2:
+                            st.metric(
+                                "✅ Transacciones nuevas", stats.get("transacciones_guardadas", 0)
+                            )
+
+                        with col3:
+                            st.metric(
+                                "🤖 Auto-categorizadas",
+                                stats.get("categorizadas_automaticamente", 0),
+                            )
+
+                        if stats.get("necesitan_revision", 0) > 0:
+                            st.info(
+                                f"📝 {stats['necesitan_revision']} transacción(es) necesitan tu revisión"
+                            )
+                            st.info("💡 Recarga la página para verlas")
+                        else:
+                            st.success(
+                                "🎉 Todas las transacciones fueron categorizadas automáticamente"
+                            )
+
+                        # Botón para recargar
+                        if st.button("🔄 Recargar Página"):
+                            st.rerun()
+
+                    except Exception as e:
+                        st.error(f"❌ Error al procesar correos: {e}")
+                        logger.error(f"Error en procesamiento: {e}", exc_info=True)
+                        st.info(
+                            "💡 Verifica que tu configuración de Outlook esté correcta en el archivo .env"
+                        )
 
             return
 
