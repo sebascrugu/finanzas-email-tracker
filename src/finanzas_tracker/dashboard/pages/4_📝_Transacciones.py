@@ -16,18 +16,12 @@ sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.user import User
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.models.category import Subcategory
 from finanzas_tracker.models.enums import TransactionType, SpecialTransactionType
+from finanzas_tracker.dashboard.helpers import require_profile
 
 logger = get_logger(__name__)
-
-
-def check_user_exists() -> User | None:
-    """Verifica si existe un usuario activo."""
-    with get_session() as session:
-        return session.query(User).filter(User.activo == True).first()  # noqa: E712
 
 
 def es_transferencia_o_sinpe(transaction: Transaction) -> bool:
@@ -38,13 +32,13 @@ def es_transferencia_o_sinpe(transaction: Transaction) -> bool:
     ]
 
 
-def buscar_patron_historico(comercio: str, user_email: str) -> dict | None:
+def buscar_patron_historico(comercio: str, profile_id: int) -> dict | None:
     """Busca patrones en transacciones anteriores del mismo comercio."""
     with get_session() as session:
         transacciones_anteriores = (
             session.query(Transaction)
             .filter(
-                Transaction.user_email == user_email,
+                Transaction.profile_id == profile_id,
                 Transaction.comercio == comercio,
                 Transaction.tipo_especial.isnot(None),
             )
@@ -73,19 +67,15 @@ def buscar_patron_historico(comercio: str, user_email: str) -> dict | None:
 def main():
     st.title("📝 Revisión de Transacciones")
 
-    user = check_user_exists()
-
-    if not user:
-        st.warning("⚠️ No hay usuario configurado")
-        st.info("👉 Ve a **Setup** para configurar tu cuenta primero.")
-        return
+    user, perfil_activo = require_profile()
+    st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
 
     # Obtener transacciones pendientes
     with get_session() as session:
         transacciones = (
             session.query(Transaction)
             .filter(
-                Transaction.user_email == user.email,
+                Transaction.profile_id == perfil_activo.id,
                 Transaction.necesita_revision == True,  # noqa: E712
                 Transaction.deleted_at.is_(None),
             )
@@ -117,11 +107,11 @@ def main():
                         from finanzas_tracker.models.card import Card
                         from finanzas_tracker.models.enums import BankName
 
-                        # 0. Obtener bancos del usuario (de sus tarjetas)
+                        # 0. Obtener bancos del perfil (de sus tarjetas)
                         with get_session() as card_session:
                             user_cards = (
                                 card_session.query(Card)
-                                .filter(Card.user_email == user.email, Card.activa == True)  # noqa: E712
+                                .filter(Card.profile_id == perfil_activo.id, Card.activa == True)  # noqa: E712
                                 .all()
                             )
 
@@ -373,7 +363,7 @@ def main():
                         st.markdown("#### 2️⃣ Tipo de Transferencia/SINPE")
 
                         # Buscar patrón histórico
-                        patron = buscar_patron_historico(tx.comercio, user.email)
+                        patron = buscar_patron_historico(tx.comercio, perfil_activo.id)
 
                         if patron:
                             st.info(

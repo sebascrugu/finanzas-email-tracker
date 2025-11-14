@@ -18,18 +18,12 @@ sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.user import User
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.enums import IncomeType, Currency, RecurrenceFrequency
 from finanzas_tracker.services.exchange_rate import ExchangeRateService
+from finanzas_tracker.dashboard.helpers import require_profile
 
 logger = get_logger(__name__)
-
-
-def check_user_exists() -> User | None:
-    """Verifica si existe un usuario activo."""
-    with get_session() as session:
-        return session.query(User).filter(User.activo == True).first()  # noqa: E712
 
 
 def calcular_proximo_ingreso(fecha_actual: date, frecuencia: RecurrenceFrequency) -> date:
@@ -68,12 +62,8 @@ def calcular_proximo_ingreso(fecha_actual: date, frecuencia: RecurrenceFrequency
 def main():
     st.title("💰 Gestión de Ingresos")
 
-    user = check_user_exists()
-
-    if not user:
-        st.warning("⚠️ No hay usuario configurado")
-        st.info("👉 Ve a **Setup** para configurar tu cuenta primero.")
-        return
+    user, perfil_activo = require_profile()
+    st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
 
     # Tabs
     tab1, tab2 = st.tabs(["➕ Agregar Ingreso", "📋 Mis Ingresos"])
@@ -167,6 +157,7 @@ def main():
                         # Guardar en BD
                         with get_session() as session:
                             nuevo_ingreso = Income(
+                                profile_id=perfil_activo.id,
                                 user_email=user.email,
                                 tipo=IncomeType(tipo[0]),
                                 descripcion=descripcion,
@@ -206,7 +197,7 @@ def main():
         with get_session() as session:
             ingresos = (
                 session.query(Income)
-                .filter(Income.user_email == user.email, Income.deleted_at.is_(None))
+                .filter(Income.profile_id == perfil_activo.id, Income.deleted_at.is_(None))
                 .order_by(Income.fecha.desc())
                 .all()
             )
