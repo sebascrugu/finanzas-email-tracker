@@ -109,8 +109,8 @@ class Settings(BaseSettings):
 
     # === Configuración de Claude ===
     claude_model: str = Field(
-        default="claude-3-5-haiku-20241022",
-        description="Modelo de Claude a utilizar (Haiku 4.5 - más rápido y económico)",
+        default="claude-haiku-4-5-20251001",
+        description="Modelo de Claude a utilizar (Haiku 4.5 - más rápido y económico, $1/M tokens)",
     )
     claude_max_tokens: int = Field(
         default=1024,
