@@ -161,13 +161,13 @@ class BACParser:
             if len(cells) >= 2:
                 # Obtener texto de la primera celda (etiqueta)
                 label_text = cells[0].get_text(strip=True)
-                
+
                 # Si encontramos "Monto", extraer valor de la segunda celda
                 if "Monto" in label_text or "monto" in label_text:
                     monto_text = cells[1].get_text(strip=True)
                     if monto_text:  # Verificar que no esté vacío
                         return monto_text
-        
+
         return None
 
     @staticmethod
@@ -304,4 +304,3 @@ class BACParser:
 
         logger.debug(f"✅ Retiro sin tarjeta parseado: {comercio} - {moneda} {monto}")
         return transaction_data
-

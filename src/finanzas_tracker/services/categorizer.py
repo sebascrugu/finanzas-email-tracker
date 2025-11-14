@@ -92,9 +92,7 @@ class TransactionCategorizer:
         with get_session() as session:
             # Obtener todas las subcategorías con keywords
             subcategories = (
-                session.query(Subcategory)
-                .filter(Subcategory.keywords.isnot(None))
-                .all()
+                session.query(Subcategory).filter(Subcategory.keywords.isnot(None)).all()
             )
 
             matches = []
@@ -201,7 +199,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 
         try:
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model=settings.claude_model,
                 max_tokens=1000,
                 temperature=0,
                 messages=[{"role": "user", "content": prompt}],
@@ -220,8 +218,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
             result = json.loads(response_text)
 
             logger.debug(
-                f"🤖 Claude: {result['categoria_sugerida']} "
-                f"(confianza: {result['confianza']}%)"
+                f"🤖 Claude: {result['categoria_sugerida']} " f"(confianza: {result['confianza']}%)"
             )
 
             return result
@@ -312,10 +309,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
                 subcat_name = nombre_completo
 
             subcat = (
-                session.query(Subcategory)
-                .filter(Subcategory.nombre == subcat_name.strip())
-                .first()
+                session.query(Subcategory).filter(Subcategory.nombre == subcat_name.strip()).first()
             )
 
             return subcat.id if subcat else None
-

@@ -114,11 +114,45 @@ def main():
                         from finanzas_tracker.services.transaction_processor import (
                             TransactionProcessor,
                         )
+                        from finanzas_tracker.models.card import Card
+                        from finanzas_tracker.models.enums import BankName
 
-                        # 1. Obtener correos
-                        st.info("📧 Conectando con Outlook...")
+                        # 0. Obtener bancos del usuario (de sus tarjetas)
+                        with get_session() as card_session:
+                            user_cards = (
+                                card_session.query(Card)
+                                .filter(Card.user_email == user.email, Card.activa == True)  # noqa: E712
+                                .all()
+                            )
+
+                            if not user_cards:
+                                st.error("❌ No tienes tarjetas registradas")
+                                st.info("💡 Ve a la página de Setup para agregar tus tarjetas")
+                                return
+
+                            # Obtener bancos únicos
+                            user_banks = list(set(card.banco for card in user_cards))
+                            bank_names = [
+                                bank.value if hasattr(bank, "value") else bank
+                                for bank in user_banks
+                            ]
+
+                        # 1. Obtener correos (solo de los bancos del usuario)
+                        st.info(
+                            f"📧 Conectando con Outlook... (bancos: {', '.join([b.upper() for b in bank_names])})"
+                        )
                         fetcher = EmailFetcher()
                         emails = fetcher.fetch_all_emails(days_back=30)  # Últimos 30 días
+
+                        # Filtrar correos solo de los bancos del usuario
+                        processor = TransactionProcessor()
+                        filtered_emails = []
+                        for email in emails:
+                            banco = processor._identify_bank(email)
+                            if banco and banco in bank_names:
+                                filtered_emails.append(email)
+
+                        emails = filtered_emails
 
                         if not emails:
                             st.warning("⚠️ No se encontraron correos bancarios nuevos")
@@ -127,10 +161,11 @@ def main():
                             )
                             return
 
-                        st.info(f"📬 {len(emails)} correo(s) encontrado(s). Procesando...")
+                        st.info(
+                            f"📬 {len(emails)} correo(s) de tus bancos encontrado(s). Procesando..."
+                        )
 
                         # 2. Procesar transacciones
-                        processor = TransactionProcessor()
                         stats = processor.process_emails(emails, user.email)
 
                         # Mostrar resultados
@@ -227,10 +262,18 @@ def main():
 
             with col2:
                 st.markdown(f"**📅 Fecha:** {tx.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
-                st.markdown(f"**🏦 Banco:** {tx.banco.value.upper()}")
+                banco_display = (
+                    tx.banco.value.upper() if hasattr(tx.banco, "value") else tx.banco.upper()
+                )
+                st.markdown(f"**🏦 Banco:** {banco_display}")
 
             with col3:
-                st.markdown(f"**🔖 Tipo:** {tx.tipo_transaccion.value}")
+                tipo_display = (
+                    tx.tipo_transaccion.value
+                    if hasattr(tx.tipo_transaccion, "value")
+                    else tx.tipo_transaccion
+                )
+                st.markdown(f"**🔖 Tipo:** {tipo_display}")
                 if tx.card:
                     st.markdown(f"**💳 Tarjeta:** {tx.card.nombre_display}")
 

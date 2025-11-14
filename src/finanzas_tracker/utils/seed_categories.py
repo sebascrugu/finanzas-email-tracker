@@ -157,14 +157,9 @@ def seed_categories() -> None:
         # Commit de todo
         session.commit()
 
-        total_subcats = (
-            len(subcats_necesidades) + len(subcats_gustos) + len(subcats_ahorros)
-        )
-        logger.success(
-            f"✅ Creadas 3 categorías principales y {total_subcats} subcategorías"
-        )
+        total_subcats = len(subcats_necesidades) + len(subcats_gustos) + len(subcats_ahorros)
+        logger.success(f"✅ Creadas 3 categorías principales y {total_subcats} subcategorías")
 
 
 if __name__ == "__main__":
     seed_categories()
-

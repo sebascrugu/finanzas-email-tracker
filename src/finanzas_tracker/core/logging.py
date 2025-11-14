@@ -154,7 +154,7 @@ def log_transaction(
         ...     amount=1290.00,
         ...     currency="CRC",
         ...     user="sebastian@example.com",
-        ...     details="DUNKIN TRES RIOS"
+        ...     details="DUNKIN TRES RIOS",
         ... )
     """
     logger.bind(transaction=True).info(
@@ -167,5 +167,3 @@ setup_logging()
 
 # Exportar logger para uso directo
 __all__ = ["logger", "get_logger", "log_transaction", "setup_logging"]
-
-

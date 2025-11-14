@@ -185,8 +185,7 @@ class PopularParser:
         if any(word in text or word in subject_lower for word in ["retiro", "withdrawal"]):
             return "retiro"
         if any(
-            word in text or word in subject_lower
-            for word in ["transferencia", "transfer", "sinpe"]
+            word in text or word in subject_lower for word in ["transferencia", "transfer", "sinpe"]
         ):
             return "transferencia"
         if any(
@@ -273,4 +272,3 @@ class PopularParser:
             return parts[0], None
 
         return None, None
-

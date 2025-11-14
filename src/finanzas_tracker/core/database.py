@@ -118,5 +118,3 @@ def drop_db() -> None:
 
 
 __all__ = ["Base", "engine", "SessionLocal", "get_db", "get_session", "init_db", "drop_db"]
-
-

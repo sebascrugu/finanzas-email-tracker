@@ -1,3 +1,1 @@
 """Schemas de validación Pydantic."""
-
-

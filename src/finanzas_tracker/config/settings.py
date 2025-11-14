@@ -192,5 +192,3 @@ def get_settings() -> Settings:
 
 # Instancia global de configuración
 settings = get_settings()
-
-

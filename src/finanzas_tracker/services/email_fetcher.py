@@ -184,10 +184,7 @@ class EmailFetcher:
 
         Example:
             >>> fetcher = EmailFetcher()
-            >>> emails = fetcher.fetch_emails_for_current_user(
-            ...     days_back=7,
-            ...     bank="bac"
-            ... )
+            >>> emails = fetcher.fetch_emails_for_current_user(days_back=7, bank="bac")
         """
         if days_back is None:
             days_back = settings.email_fetch_days_back
@@ -348,9 +345,7 @@ class EmailFetcher:
             display_name = user_data.get("displayName", "Unknown")
             email = user_data.get("mail") or user_data.get("userPrincipalName", "Unknown")
 
-            logger.success(
-                f"✅ Conexión exitosa - Usuario: {display_name} ({email})"
-            )
+            logger.success(f"✅ Conexión exitosa - Usuario: {display_name} ({email})")
             return True
 
         except Exception as e:
@@ -359,4 +354,3 @@ class EmailFetcher:
 
 
 __all__ = ["EmailFetcher"]
-

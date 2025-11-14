@@ -211,9 +211,7 @@ class TransactionProcessor:
 
             # Agregar resultado a transaction_data
             transaction_data["subcategory_id"] = result.get("subcategory_id")
-            transaction_data["categoria_sugerida_por_ia"] = result.get(
-                "categoria_sugerida"
-            )
+            transaction_data["categoria_sugerida_por_ia"] = result.get("categoria_sugerida")
             transaction_data["necesita_revision"] = result.get("necesita_revision", False)
 
             # Actualizar estadísticas
@@ -274,4 +272,3 @@ class TransactionProcessor:
 
 # Instancia singleton
 transaction_processor = TransactionProcessor()
-

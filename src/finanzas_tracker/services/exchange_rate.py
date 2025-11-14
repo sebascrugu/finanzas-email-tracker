@@ -14,7 +14,7 @@ logger = get_logger(__name__)
 class ExchangeRateService:
     """
     Servicio para obtener tipos de cambio históricos de USD a CRC.
-    
+
     Soporta múltiples fuentes con fallback automático:
     1. Cache local (para evitar requests repetidos)
     2. exchangerate-api.com (gratuita, confiable)
@@ -194,8 +194,7 @@ class ExchangeRateService:
         rate = self.get_rate(transaction_date)
         amount_crc = amount_usd * rate
         logger.debug(
-            f"Conversión: ${amount_usd:.2f} USD x ₡{rate:.2f} = "
-            f"₡{amount_crc:,.2f} CRC"
+            f"Conversión: ${amount_usd:.2f} USD x ₡{rate:.2f} = " f"₡{amount_crc:,.2f} CRC"
         )
         return amount_crc
 
@@ -211,4 +210,3 @@ class ExchangeRateService:
 
 # Singleton para uso global
 exchange_rate_service = ExchangeRateService()
-
