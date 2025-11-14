@@ -46,8 +46,11 @@ clean: ## Limpia archivos temporales y cache
 	rm -rf build/
 	@echo "$(BLUE)Limpieza completada$(NC)"
 
-run-dashboard: ## Inicia el dashboard de Streamlit
+dashboard: ## Inicia el dashboard web de Streamlit (interfaz principal)
 	poetry run streamlit run src/finanzas_tracker/dashboard/app.py
+
+run-dashboard: ## Alias de 'dashboard'
+	@make dashboard
 
 run-fetch: ## Ejecuta el script de extracción de correos
 	poetry run python scripts/fetch_emails.py

@@ -42,37 +42,42 @@ def setup_user() -> None:
     # Solicitar información del usuario
     logger.info("📋 INFORMACIÓN PERSONAL:")
     logger.info("")
-
+    
     email = input("📧 Email (Outlook/Hotmail): ").strip()
     nombre = input("👤 Nombre completo: ").strip()
 
     logger.info("")
     logger.info("💰 CONFIGURACIÓN DE PRESUPUESTO:")
     logger.info("")
-    logger.info("💡 Tip: Usa tu salario NETO (después de deducciones)")
-    logger.info("    Ejemplo: Si te depositan ₡280,000, ese es tu NETO")
-    logger.info("")
 
-    salario_str = input("💵 Salario mensual NETO (lo que te depositan): ₡").strip()
+    salario_str = input("💵 Salario/Ingreso mensual NETO (en colones): ₡").strip()
     salario = Decimal(salario_str.replace(",", ""))
 
     logger.info("")
-    logger.info("📊 REGLA 50/30/20 (Obligatoria):")
+    logger.info("📊 DISTRIBUCIÓN DEL PRESUPUESTO:")
     logger.info("")
-    logger.info("  ✅ 50% Necesidades → ₡{:,.0f}".format(salario * Decimal("0.50")))
-    logger.info("     (Transporte, trabajo, servicios básicos)")
-    logger.info("")
-    logger.info("  ✅ 30% Gustos → ₡{:,.0f}".format(salario * Decimal("0.30")))
-    logger.info("     (Comida fuera, entretenimiento, shopping)")
-    logger.info("")
-    logger.info("  ✅ 20% Ahorros → ₡{:,.0f}".format(salario * Decimal("0.20")))
-    logger.info("     (Ahorro regular, emergencias, metas)")
+    logger.info("Recomendación 50/30/20:")
+    logger.info("  - 50% Necesidades (transporte, trabajo, personal)")
+    logger.info("  - 30% Gustos (comida, entretenimiento, shopping)")
+    logger.info("  - 20% Ahorros (ahorro regular, metas)")
     logger.info("")
 
-    # Obligatorio: usar 50/30/20
-    pct_necesidades = Decimal("50.00")
-    pct_gustos = Decimal("30.00")
-    pct_ahorros = Decimal("20.00")
+    usar_recomendado = input("¿Usar distribución 50/30/20? (S/n): ").strip().lower()
+
+    if usar_recomendado in ["", "s", "si", "y", "yes"]:
+        pct_necesidades = Decimal("50.00")
+        pct_gustos = Decimal("30.00")
+        pct_ahorros = Decimal("20.00")
+    else:
+        logger.info("")
+        pct_necesidades = Decimal(input("% Necesidades: ").strip())
+        pct_gustos = Decimal(input("% Gustos: ").strip())
+        pct_ahorros = Decimal(input("% Ahorros: ").strip())
+
+        total = pct_necesidades + pct_gustos + pct_ahorros
+        if abs(total - Decimal("100")) > Decimal("0.01"):
+            logger.error(f"❌ Error: Los porcentajes suman {total}%, deben sumar 100%")
+            return
 
     logger.info("")
     logger.info("💳 TARJETAS BANCARIAS:")
@@ -98,14 +103,12 @@ def setup_user() -> None:
 
         alias = input("Alias opcional (ej: 'Tarjeta principal'): ").strip() or None
 
-        cards.append(
-            {
-                "ultimos_4_digitos": ultimos_4,
-                "tipo": tipo,
-                "banco": banco,
-                "alias": alias,
-            }
-        )
+        cards.append({
+            "ultimos_4_digitos": ultimos_4,
+            "tipo": tipo,
+            "banco": banco,
+            "alias": alias,
+        })
         logger.success(f"✅ Tarjeta ****{ultimos_4} agregada")
         logger.info("")
 
@@ -186,3 +189,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
