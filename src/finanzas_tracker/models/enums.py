@@ -90,9 +90,11 @@ class IncomeType(str, Enum):
     """Tipos de ingresos."""
 
     SALARY = "salario"
+    PENSION = "pension"
     FREELANCE = "freelance"
     BUSINESS = "negocio"
     INVESTMENT = "inversion"
+    INVESTMENT_RETURN = "rendimiento_inversion"
     SALE = "venta"
     GIFT = "regalo"
     REFUND = "devolucion"
