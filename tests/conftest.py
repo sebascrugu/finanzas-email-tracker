@@ -5,7 +5,27 @@ Este archivo contiene fixtures compartidos que pueden ser usados
 en todos los tests del proyecto.
 """
 
+import os
+
 import pytest
+
+
+# Setup de variables de entorno para tests (ejecuta antes de importar cualquier módulo)
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_env() -> None:
+    """
+    Configura variables de entorno para tests.
+
+    Se ejecuta automáticamente antes de todos los tests para asegurar
+    que Pydantic Settings no falle al intentar cargar configuración.
+    """
+    os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
+    os.environ.setdefault("AZURE_TENANT_ID", "test-tenant-id")
+    os.environ.setdefault("AZURE_CLIENT_SECRET", "test-secret")
+    os.environ.setdefault("USER_EMAIL", "test@example.com")
+    os.environ.setdefault("MOM_EMAIL", "mom@example.com")
+    os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
+    os.environ.setdefault("ENVIRONMENT", "testing")
 
 
 @pytest.fixture

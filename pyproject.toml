@@ -43,6 +43,7 @@ ruff = "^0.6.0"
 mypy = "^1.11.0"
 # Pre-commit hooks (opcional)
 pre-commit = "^3.6.0"
+pytest-env = "^1.2.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -82,5 +83,15 @@ markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "slow: Slow running tests",
+]
+# Variables de entorno para tests (pytest-env)
+env = [
+    "AZURE_CLIENT_ID=test-client-id",
+    "AZURE_TENANT_ID=test-tenant-id",
+    "AZURE_CLIENT_SECRET=test-secret",
+    "USER_EMAIL=test@example.com",
+    "MOM_EMAIL=mom@example.com",
+    "ANTHROPIC_API_KEY=sk-ant-test123",
+    "ENVIRONMENT=testing",
 ]
 
