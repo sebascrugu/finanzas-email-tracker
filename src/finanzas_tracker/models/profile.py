@@ -14,8 +14,8 @@ class Profile(Base):
     Modelo de Perfil - MODELO PRINCIPAL.
 
     Cada perfil representa un contexto financiero separado:
-    - 👤 Personal: Tus finanzas personales
-    - 💼 Negocio: Finanzas de tu empresa
+    -  Personal: Tus finanzas personales
+    -  Negocio: Finanzas de tu empresa
     - 👵 Mamá: Finanzas de tu mamá (en su email)
 
     Cada perfil tiene:
@@ -37,6 +37,7 @@ class Profile(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     email_outlook: Mapped[str] = mapped_column(
         String(255),
+        unique=True,
         index=True,
         comment="Email de Outlook donde se reciben los correos bancarios",
     )
@@ -49,7 +50,7 @@ class Profile(Base):
         Text, nullable=True, comment="Descripción opcional del perfil"
     )
     icono: Mapped[str | None] = mapped_column(
-        String(10), nullable=True, default="👤", comment="Icono emoji del perfil"
+        String(10), nullable=True, default="", comment="Icono emoji del perfil"
     )
 
     # Estado

@@ -2,24 +2,27 @@
 
 import streamlit as st
 
+
 st.set_page_config(
     page_title="Transacciones - Finanzas Tracker",
-    page_icon="📝",
+    page_icon="",
     layout="wide",
 )
 
-import sys
 from pathlib import Path
+import sys
+
 
 src_path = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.models.category import Subcategory
-from finanzas_tracker.models.enums import TransactionType, SpecialTransactionType
 from finanzas_tracker.dashboard.helpers import require_profile
+from finanzas_tracker.models.category import Subcategory
+from finanzas_tracker.models.enums import SpecialTransactionType, TransactionType
+from finanzas_tracker.models.transaction import Transaction
+
 
 logger = get_logger(__name__)
 
@@ -65,10 +68,10 @@ def buscar_patron_historico(comercio: str, profile_id: int) -> dict | None:
 
 
 def main():
-    st.title("📝 Revisión de Transacciones")
+    st.title(" Revisión de Transacciones")
 
     perfil_activo = require_profile()
-    st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
+    st.caption(f" Perfil: **{perfil_activo.nombre_completo}**")
 
     # Obtener transacciones pendientes
     with get_session() as session:
@@ -84,28 +87,27 @@ def main():
         )
 
         if not transacciones:
-            st.success("✅ ¡Excelente! No hay transacciones pendientes de revisión")
-            st.info("💡 Todas tus transacciones están categorizadas")
+            st.success(" ¡Excelente! No hay transacciones pendientes de revisión")
+            st.info(" Todas tus transacciones están categorizadas")
 
             st.markdown("---")
 
             # Botón para procesar más correos
-            st.subheader("📧 Procesar Nuevos Correos")
+            st.subheader(" Procesar Nuevos Correos")
             st.markdown("""
             ¿Recibiste nuevas transacciones en tu correo? 
             Presiona el botón para buscar y procesar automáticamente.
             """)
 
-            if st.button("📧 Procesar Correos Bancarios", type="primary", use_container_width=True):
-                with st.spinner("🔍 Buscando correos bancarios..."):
+            if st.button(" Procesar Correos Bancarios", type="primary", use_container_width=True):
+                with st.spinner(" Buscando correos bancarios..."):
                     try:
                         # Importar servicios necesarios
+                        from finanzas_tracker.models.card import Card
                         from finanzas_tracker.services.email_fetcher import EmailFetcher
                         from finanzas_tracker.services.transaction_processor import (
                             TransactionProcessor,
                         )
-                        from finanzas_tracker.models.card import Card
-                        from finanzas_tracker.models.enums import BankName
 
                         # 0. Obtener bancos del perfil (de sus tarjetas)
                         with get_session() as card_session:
@@ -116,8 +118,8 @@ def main():
                             )
 
                             if not user_cards:
-                                st.error("❌ No tienes tarjetas registradas")
-                                st.info("💡 Ve a la página de Setup para agregar tus tarjetas")
+                                st.error(" No tienes tarjetas registradas")
+                                st.info(" Ve a la página de Setup para agregar tus tarjetas")
                                 return
 
                             # Obtener bancos únicos
@@ -129,7 +131,7 @@ def main():
 
                         # 1. Obtener correos (solo de los bancos del usuario)
                         st.info(
-                            f"📧 Conectando con Outlook... (bancos: {', '.join([b.upper() for b in bank_names])})"
+                            f" Conectando con Outlook... (bancos: {', '.join([b.upper() for b in bank_names])})"
                         )
                         fetcher = EmailFetcher()
                         emails = fetcher.fetch_all_emails(days_back=30)  # Últimos 30 días
@@ -145,85 +147,85 @@ def main():
                         emails = filtered_emails
 
                         if not emails:
-                            st.warning("⚠️ No se encontraron correos bancarios nuevos")
+                            st.warning(" No se encontraron correos bancarios nuevos")
                             st.info(
-                                "💡 Verifica que tengas correos de transacciones en tu bandeja de entrada"
+                                " Verifica que tengas correos de transacciones en tu bandeja de entrada"
                             )
                             return
 
                         st.info(
-                            f"📬 {len(emails)} correo(s) de tus bancos encontrado(s). Procesando..."
+                            f" {len(emails)} correo(s) de tus bancos encontrado(s). Procesando..."
                         )
 
                         # 2. Procesar transacciones
                         stats = processor.process_emails(emails, perfil_activo.id)
 
                         # Mostrar resultados
-                        st.success(f"✅ ¡Proceso completado!")
+                        st.success(" ¡Proceso completado!")
 
                         col1, col2, col3, col4 = st.columns(4)
 
                         with col1:
-                            st.metric("📧 Correos procesados", stats.get("total", 0))
+                            st.metric(" Correos procesados", stats.get("total", 0))
 
                         with col2:
-                            st.metric("✅ Nuevas", stats.get("procesados", 0))
+                            st.metric(" Nuevas", stats.get("procesados", 0))
 
                         with col3:
                             st.metric(
-                                "🤖 Auto-categorizadas",
+                                " Auto-categorizadas",
                                 stats.get("categorizadas_automaticamente", 0),
                             )
 
                         with col4:
-                            st.metric("🔄 Duplicadas", stats.get("duplicados", 0))
+                            st.metric(" Duplicadas", stats.get("duplicados", 0))
 
                         # Detalles adicionales
                         st.markdown("---")
-                        st.markdown("### 📊 Detalles")
+                        st.markdown("###  Detalles")
 
                         col1, col2 = st.columns(2)
 
                         with col1:
-                            st.markdown(f"**🏦 BAC Credomatic:** {stats.get('bac', 0)}")
-                            st.markdown(f"**🏦 Banco Popular:** {stats.get('popular', 0)}")
+                            st.markdown(f"** BAC Credomatic:** {stats.get('bac', 0)}")
+                            st.markdown(f"** Banco Popular:** {stats.get('popular', 0)}")
 
                         with col2:
                             st.markdown(
-                                f"**💱 USD convertidas:** {stats.get('usd_convertidos', 0)}"
+                                f"** USD convertidas:** {stats.get('usd_convertidos', 0)}"
                             )
-                            st.markdown(f"**❌ Errores:** {stats.get('errores', 0)}")
+                            st.markdown(f"** Errores:** {stats.get('errores', 0)}")
 
                         st.markdown("---")
 
                         if stats.get("necesitan_revision", 0) > 0:
                             st.warning(
-                                f"📝 {stats['necesitan_revision']} transacción(es) necesitan tu revisión"
+                                f" {stats['necesitan_revision']} transacción(es) necesitan tu revisión"
                             )
-                            st.info("💡 Recarga la página para verlas y categorizarlas")
+                            st.info(" Recarga la página para verlas y categorizarlas")
                         elif stats.get("procesados", 0) > 0:
                             st.success(
-                                "🎉 Todas las transacciones fueron categorizadas automáticamente"
+                                " Todas las transacciones fueron categorizadas automáticamente"
                             )
                         else:
                             st.info(
-                                "ℹ️ No se guardaron nuevas transacciones (posiblemente todas son duplicadas)"
+                                " No se guardaron nuevas transacciones (posiblemente todas son duplicadas)"
                             )
 
                         # Botón para recargar
-                        if st.button("🔄 Recargar Página"):
+                        if st.button(" Recargar Página"):
                             st.rerun()
 
                     except Exception as e:
-                        st.error(f"❌ Error al procesar correos: {e}")
+                        st.error(f" Error al procesar correos: {e}")
                         logger.error(f"Error en procesamiento: {e}", exc_info=True)
                         st.info(
-                            "💡 Verifica que tu configuración de Outlook esté correcta en el archivo .env"
+                            " Verifica que tu configuración de Outlook esté correcta en el archivo .env"
                         )
 
             return
 
-        st.info(f"📊 Tienes **{len(transacciones)}** transacción(es) para revisar")
+        st.info(f" Tienes **{len(transacciones)}** transacción(es) para revisar")
 
         # Obtener subcategorías
         subcategorias = session.query(Subcategory).all()
@@ -241,21 +243,21 @@ def main():
     # Revisar cada transacción
     for i, tx in enumerate(transacciones, 1):
         with st.container():
-            st.subheader(f"📝 Transacción {i}/{len(transacciones)}")
+            st.subheader(f" Transacción {i}/{len(transacciones)}")
 
             # Info de la transacción
             col1, col2, col3 = st.columns(3)
 
             with col1:
                 st.markdown(f"**🏪 Comercio:** {tx.comercio}")
-                st.markdown(f"**💰 Monto:** {tx.monto_display}")
+                st.markdown(f"** Monto:** {tx.monto_display}")
 
             with col2:
-                st.markdown(f"**📅 Fecha:** {tx.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
+                st.markdown(f"** Fecha:** {tx.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
                 banco_display = (
                     tx.banco.value.upper() if hasattr(tx.banco, "value") else tx.banco.upper()
                 )
-                st.markdown(f"**🏦 Banco:** {banco_display}")
+                st.markdown(f"** Banco:** {banco_display}")
 
             with col3:
                 tipo_display = (
@@ -265,17 +267,17 @@ def main():
                 )
                 st.markdown(f"**🔖 Tipo:** {tipo_display}")
                 if tx.card:
-                    st.markdown(f"**💳 Tarjeta:** {tx.card.nombre_display}")
+                    st.markdown(f"** Tarjeta:** {tx.card.nombre_display}")
 
             # Sugerencia de IA
             if tx.categoria_sugerida_por_ia:
                 confianza = (
                     f" ({tx.confianza_categoria}%)" if hasattr(tx, "confianza_categoria") else ""
                 )
-                st.info(f"🤖 **IA sugiere:** {tx.categoria_sugerida_por_ia}{confianza}")
+                st.info(f" **IA sugiere:** {tx.categoria_sugerida_por_ia}{confianza}")
 
             # PASO 1: CATEGORIZACIÓN
-            st.markdown("#### 1️⃣ Selecciona la Categoría")
+            st.markdown("####  Selecciona la Categoría")
 
             # Mostrar categorías por grupo
             col1, col2, col3 = st.columns(3)
@@ -283,7 +285,7 @@ def main():
             categoria_seleccionada = None
 
             with col1:
-                st.markdown("**💰 Necesidades**")
+                st.markdown("** Necesidades**")
                 if "Necesidades" in por_categoria:
                     for subcat in por_categoria["Necesidades"]:
                         if st.button(
@@ -318,7 +320,7 @@ def main():
             # Botón para aceptar sugerencia de IA
             if tx.categoria_sugerida_por_ia:
                 if st.button(
-                    "✅ Aceptar Sugerencia IA",
+                    " Aceptar Sugerencia IA",
                     key=f"tx_{tx.id}_accept_ia",
                     use_container_width=True,
                     type="primary",
@@ -346,7 +348,7 @@ def main():
                             tx_db.necesita_revision = False
                             session.commit()
 
-                            st.success(f"✅ Categorizada como: {tx.categoria_sugerida_por_ia}")
+                            st.success(f" Categorizada como: {tx.categoria_sugerida_por_ia}")
                             st.rerun()
 
             # Si seleccionó categoría, proceder con tipo especial (si aplica)
@@ -360,23 +362,23 @@ def main():
                     # PASO 2: Solo para transferencias/SINPEs, preguntar tipo especial
                     if es_transferencia_o_sinpe(tx_db):
                         st.markdown("---")
-                        st.markdown("#### 2️⃣ Tipo de Transferencia/SINPE")
+                        st.markdown("####  Tipo de Transferencia/SINPE")
 
                         # Buscar patrón histórico
                         patron = buscar_patron_historico(tx.comercio, perfil_activo.id)
 
                         if patron:
                             st.info(
-                                f"🔍 **Patrón detectado:** Últimas {patron['frecuencia']} veces marcaste "
+                                f" **Patrón detectado:** Últimas {patron['frecuencia']} veces marcaste "
                                 f"'{tx.comercio}' de forma especial"
                             )
 
                         tipo_nombres = {
-                            "normal": "💵 Normal (tu gasto regular - SÍ cuenta en presupuesto)",
-                            "intermediaria": "🔄 Intermediaria (dinero que solo pasas - NO cuenta)",
-                            "compartida": "🤝 Compartida (tu parte - SÍ cuenta)",
-                            "ayuda_familiar": "👪 Ayuda familiar (SÍ cuenta)",
-                            "prestamo_dado": "💸 Préstamo dado (SÍ cuenta)",
+                            "normal": " Normal (tu gasto regular - SÍ cuenta en presupuesto)",
+                            "intermediaria": " Intermediaria (dinero que solo pasas - NO cuenta)",
+                            "compartida": " Compartida (tu parte - SÍ cuenta)",
+                            "ayuda_familiar": " Ayuda familiar (SÍ cuenta)",
+                            "prestamo_dado": " Préstamo dado (SÍ cuenta)",
                         }
 
                         col1, col2 = st.columns(2)
@@ -392,7 +394,7 @@ def main():
                                 tx_db.excluir_de_presupuesto = False
                                 tx_db.relacionada_con = None
                                 session.commit()
-                                st.success("✅ Categorizada como gasto normal")
+                                st.success(" Categorizada como gasto normal")
                                 st.rerun()
 
                             if st.button(
@@ -403,7 +405,7 @@ def main():
                                 tx_db.tipo_especial = SpecialTransactionType.SHARED
                                 tx_db.excluir_de_presupuesto = False
                                 session.commit()
-                                st.success("✅ Marcada como gasto compartido")
+                                st.success(" Marcada como gasto compartido")
                                 st.rerun()
 
                             if st.button(
@@ -414,7 +416,7 @@ def main():
                                 tx_db.tipo_especial = SpecialTransactionType.LOAN_GIVEN
                                 tx_db.excluir_de_presupuesto = False
                                 session.commit()
-                                st.success("✅ Marcada como préstamo dado")
+                                st.success(" Marcada como préstamo dado")
                                 st.rerun()
 
                         with col2:
@@ -426,7 +428,7 @@ def main():
                                 tx_db.tipo_especial = SpecialTransactionType.INTERMEDIATE
                                 tx_db.excluir_de_presupuesto = True
                                 session.commit()
-                                st.warning("⚠️ Esta transacción NO contará en tu presupuesto")
+                                st.warning(" Esta transacción NO contará en tu presupuesto")
                                 st.rerun()
 
                             if st.button(
@@ -437,14 +439,14 @@ def main():
                                 tx_db.tipo_especial = SpecialTransactionType.FAMILY_SUPPORT
                                 tx_db.excluir_de_presupuesto = False
                                 session.commit()
-                                st.success("✅ Marcada como ayuda familiar")
+                                st.success(" Marcada como ayuda familiar")
                                 st.rerun()
 
                     else:
                         # No es transferencia, guardar directamente
                         session.commit()
                         st.success(
-                            f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}"
+                            f" Categorizada como: {categoria_seleccionada.nombre_completo}"
                         )
                         st.rerun()
 

@@ -1,9 +1,10 @@
 """Script para gestionar ingresos del usuario."""
 
-import sys
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+import sys
+
 
 # Agregar el directorio src al path
 src_path = Path(__file__).parent.parent / "src"
@@ -15,6 +16,7 @@ from finanzas_tracker.models.enums import Currency, IncomeType, RecurrenceFreque
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.user import User
 from finanzas_tracker.services.exchange_rate import ExchangeRateService
+
 
 logger = get_logger(__name__)
 
@@ -35,23 +37,23 @@ def listar_ingresos(user_email: str) -> None:
         )
 
         if not ingresos:
-            logger.info("📭 No tienes ingresos registrados todavía")
+            logger.info(" No tienes ingresos registrados todavía")
             return
 
-        logger.info(f"\n📊 Tienes {len(ingresos)} ingreso(s) registrado(s):\n")
+        logger.info(f"\n Tienes {len(ingresos)} ingreso(s) registrado(s):\n")
 
         for i, ingreso in enumerate(ingresos, 1):
-            recurrente = "🔁" if ingreso.es_recurrente else "1️⃣"
+            recurrente = "🔁" if ingreso.es_recurrente else ""
             logger.info(f"{i}. {recurrente} {ingreso.tipo.value.upper()}")
-            logger.info(f"   💰 {ingreso.monto_display}")
-            logger.info(f"   📅 {ingreso.fecha.strftime('%d/%m/%Y')}")
-            logger.info(f"   📝 {ingreso.descripcion}")
+            logger.info(f"    {ingreso.monto_display}")
+            logger.info(f"    {ingreso.fecha.strftime('%d/%m/%Y')}")
+            logger.info(f"    {ingreso.descripcion}")
 
             if ingreso.es_recurrente and ingreso.frecuencia:
-                logger.info(f"   🔄 {ingreso.frecuencia.value}")
+                logger.info(f"    {ingreso.frecuencia.value}")
                 if ingreso.proximo_ingreso_esperado:
                     logger.info(
-                        f"   ⏭️  Próximo: {ingreso.proximo_ingreso_esperado.strftime('%d/%m/%Y')}"
+                        f"     Próximo: {ingreso.proximo_ingreso_esperado.strftime('%d/%m/%Y')}"
                     )
 
             logger.info("")
@@ -70,11 +72,11 @@ def calcular_proximo_ingreso_esperado(fecha_actual: date, frecuencia: Recurrence
     """
     if frecuencia == RecurrenceFrequency.DAILY:
         return fecha_actual + timedelta(days=1)
-    elif frecuencia == RecurrenceFrequency.WEEKLY:
+    if frecuencia == RecurrenceFrequency.WEEKLY:
         return fecha_actual + timedelta(weeks=1)
-    elif frecuencia == RecurrenceFrequency.BIWEEKLY:
+    if frecuencia == RecurrenceFrequency.BIWEEKLY:
         return fecha_actual + timedelta(weeks=2)
-    elif frecuencia == RecurrenceFrequency.MONTHLY:
+    if frecuencia == RecurrenceFrequency.MONTHLY:
         # Próximo mes, mismo día
         next_month = fecha_actual.month + 1
         year = fecha_actual.year
@@ -130,19 +132,19 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
         user_email: Email del usuario
     """
     logger.info("\n" + "=" * 80)
-    logger.info("💰 REGISTRAR NUEVO INGRESO")
+    logger.info(" REGISTRAR NUEVO INGRESO")
     logger.info("=" * 80 + "\n")
 
     # Paso 1: Tipo de ingreso
     print("¿Qué tipo de ingreso es?\n")
     tipos = [
-        ("1", IncomeType.SALARY, "💼 Salario"),
-        ("2", IncomeType.PENSION, "👴 Pensión"),
+        ("1", IncomeType.SALARY, " Salario"),
+        ("2", IncomeType.PENSION, " Pensión"),
         ("3", IncomeType.FREELANCE, "💻 Freelance"),
-        ("4", IncomeType.SALE, "🛍️  Venta (ej: PS5, carro)"),
-        ("5", IncomeType.INVESTMENT_RETURN, "📈 Rendimiento inversión"),
-        ("6", IncomeType.GIFT, "🎁 Regalo/Ayuda"),
-        ("7", IncomeType.OTHER, "📦 Otro"),
+        ("4", IncomeType.SALE, "  Venta (ej: PS5, carro)"),
+        ("5", IncomeType.INVESTMENT_RETURN, " Rendimiento inversión"),
+        ("6", IncomeType.GIFT, " Regalo/Ayuda"),
+        ("7", IncomeType.OTHER, " Otro"),
     ]
 
     for num, _, desc in tipos:
@@ -154,32 +156,32 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
         if tipo_choice in tipo_map:
             tipo = tipo_map[tipo_choice]
             break
-        print("❌ Opción inválida. Intenta de nuevo.")
+        print(" Opción inválida. Intenta de nuevo.")
 
     # Paso 2: Monto y moneda
     while True:
-        monto_str = input("\n💰 Monto (ej: 500000 o 1000): ").strip()
+        monto_str = input("\n Monto (ej: 500000 o 1000): ").strip()
         try:
             monto = Decimal(monto_str)
             if monto <= 0:
-                print("❌ El monto debe ser mayor a 0")
+                print(" El monto debe ser mayor a 0")
                 continue
             break
         except:
-            print("❌ Formato inválido. Usa solo números (sin comas ni símbolos)")
+            print(" Formato inválido. Usa solo números (sin comas ni símbolos)")
 
     while True:
         moneda_choice = input("Moneda (1=CRC, 2=USD): ").strip()
         if moneda_choice == "1":
             moneda = Currency.CRC
             break
-        elif moneda_choice == "2":
+        if moneda_choice == "2":
             moneda = Currency.USD
             break
-        print("❌ Opción inválida. Usa 1 o 2.")
+        print(" Opción inválida. Usa 1 o 2.")
 
     # Paso 3: Fecha
-    print("\n📅 ¿Cuándo recibiste este ingreso?")
+    print("\n ¿Cuándo recibiste este ingreso?")
     print("  1. Hoy")
     print("  2. Otra fecha")
 
@@ -188,25 +190,25 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
         if fecha_choice == "1":
             fecha_ingreso = date.today()
             break
-        elif fecha_choice == "2":
+        if fecha_choice == "2":
             fecha_str = input("Fecha (DD/MM/YYYY): ").strip()
             try:
                 fecha_ingreso = datetime.strptime(fecha_str, "%d/%m/%Y").date()
                 break
             except:
-                print("❌ Formato inválido. Usa DD/MM/YYYY (ej: 15/11/2025)")
+                print(" Formato inválido. Usa DD/MM/YYYY (ej: 15/11/2025)")
         else:
-            print("❌ Opción inválida. Usa 1 o 2.")
+            print(" Opción inválida. Usa 1 o 2.")
 
     # Paso 4: Descripción (requerida)
     while True:
-        descripcion = input("\n📝 Descripción (ej: 'Salario Nov 2025', 'Venta PS5'): ").strip()
+        descripcion = input("\n Descripción (ej: 'Salario Nov 2025', 'Venta PS5'): ").strip()
         if descripcion:
             break
-        print("❌ La descripción es requerida. Intenta de nuevo.")
+        print(" La descripción es requerida. Intenta de nuevo.")
 
     # Paso 5: ¿Es recurrente?
-    print("\n🔄 ¿Este ingreso es recurrente?")
+    print("\n ¿Este ingreso es recurrente?")
     print("  1. Sí (se repite regularmente)")
     print("  2. No (solo una vez)")
 
@@ -222,11 +224,11 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
             # Preguntar frecuencia
             print("\n¿Cada cuánto se repite?")
             frecuencias = [
-                ("1", RecurrenceFrequency.WEEKLY, "📅 Semanal"),
+                ("1", RecurrenceFrequency.WEEKLY, " Semanal"),
                 ("2", RecurrenceFrequency.BIWEEKLY, "📆 Quincenal (cada 2 semanas)"),
                 ("3", RecurrenceFrequency.MONTHLY, "🗓️  Mensual"),
-                ("4", RecurrenceFrequency.QUARTERLY, "📊 Trimestral"),
-                ("5", RecurrenceFrequency.ANNUAL, "📈 Anual"),
+                ("4", RecurrenceFrequency.QUARTERLY, " Trimestral"),
+                ("5", RecurrenceFrequency.ANNUAL, " Anual"),
             ]
 
             for num, _, desc in frecuencias:
@@ -241,18 +243,17 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
                         fecha_ingreso, frecuencia
                     )
                     break
-                print("❌ Opción inválida. Intenta de nuevo.")
+                print(" Opción inválida. Intenta de nuevo.")
 
             break
-        elif rec_choice == "2":
+        if rec_choice == "2":
             break
-        else:
-            print("❌ Opción inválida. Usa 1 o 2.")
+        print(" Opción inválida. Usa 1 o 2.")
 
     # Paso 7: Convertir a CRC si es USD
     tipo_cambio = None
     if moneda == Currency.USD:
-        logger.info(f"\n🔄 Convirtiendo ${monto} USD a CRC...")
+        logger.info(f"\n Convirtiendo ${monto} USD a CRC...")
         exchange_service = ExchangeRateService()
         tipo_cambio = exchange_service.get_rate(fecha_ingreso)
         monto_crc = monto * Decimal(str(tipo_cambio))
@@ -263,7 +264,7 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
 
     # Paso 6: Resumen y confirmación
     print("\n" + "─" * 80)
-    print("📋 RESUMEN:")
+    print(" RESUMEN:")
     print("─" * 80)
     print(f"Tipo:        {tipo.value}")
     print(
@@ -282,7 +283,7 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
 
     confirmar = input("\n¿Guardar este ingreso? (S/n): ").strip().lower()
     if confirmar == "n":
-        logger.warning("❌ Ingreso cancelado")
+        logger.warning(" Ingreso cancelado")
         return
 
     # Paso 7: Guardar en base de datos
@@ -305,11 +306,11 @@ def agregar_ingreso_interactivo(user_email: str) -> None:
             session.add(nuevo_ingreso)
             session.commit()
 
-            logger.success("\n✅ ¡Ingreso registrado exitosamente!")
+            logger.success("\n ¡Ingreso registrado exitosamente!")
             logger.info(f"   ID: {nuevo_ingreso.id[:8]}...")
 
     except Exception as e:
-        logger.error(f"❌ Error al guardar ingreso: {e}")
+        logger.error(f" Error al guardar ingreso: {e}")
         raise
 
 
@@ -365,33 +366,33 @@ def mostrar_balance_mensual(user_email: str) -> None:
 
         # Mostrar resultados
         logger.info("\n" + "=" * 80)
-        logger.info(f"📊 BALANCE DE {hoy.strftime('%B %Y').upper()}")
+        logger.info(f" BALANCE DE {hoy.strftime('%B %Y').upper()}")
         logger.info("=" * 80 + "\n")
 
-        logger.info(f"💰 Ingresos:  ₡{total_ingresos:>15,.2f} ({len(ingresos)} registro(s))")
-        logger.info(f"💸 Gastos:    ₡{total_gastos:>15,.2f} ({len(gastos)} transacción(es))")
+        logger.info(f" Ingresos:  ₡{total_ingresos:>15,.2f} ({len(ingresos)} registro(s))")
+        logger.info(f" Gastos:    ₡{total_gastos:>15,.2f} ({len(gastos)} transacción(es))")
         logger.info("   " + "─" * 76)
 
         if balance >= 0:
-            logger.success(f"✅ Balance:   ₡{balance:>15,.2f} (POSITIVO)")
+            logger.success(f" Balance:   ₡{balance:>15,.2f} (POSITIVO)")
         else:
-            logger.warning(f"⚠️  Balance:   ₡{balance:>15,.2f} (NEGATIVO)")
+            logger.warning(f"  Balance:   ₡{balance:>15,.2f} (NEGATIVO)")
 
         logger.info("")
 
         # Calcular porcentaje gastado
         if total_ingresos > 0:
             porcentaje = (total_gastos / total_ingresos) * 100
-            logger.info(f"📊 Has gastado el {porcentaje:.1f}% de tus ingresos del mes")
+            logger.info(f" Has gastado el {porcentaje:.1f}% de tus ingresos del mes")
 
             if porcentaje > 100:
-                logger.warning("⚠️  ¡Estás gastando más de lo que ingresas!")
+                logger.warning("  ¡Estás gastando más de lo que ingresas!")
             elif porcentaje > 90:
-                logger.warning("⚠️  ¡Cuidado! Ya gastaste más del 90%")
+                logger.warning("  ¡Cuidado! Ya gastaste más del 90%")
             elif porcentaje > 75:
-                logger.info("💡 Estás en buen camino, pero controla tus gastos")
+                logger.info(" Estás en buen camino, pero controla tus gastos")
             else:
-                logger.success("✅ ¡Excelente control de gastos!")
+                logger.success(" ¡Excelente control de gastos!")
 
         logger.info("")
 
@@ -405,13 +406,13 @@ def menu_principal(user_email: str) -> None:
     """
     while True:
         logger.info("\n" + "=" * 80)
-        logger.info("💰 GESTIÓN DE INGRESOS")
+        logger.info(" GESTIÓN DE INGRESOS")
         logger.info("=" * 80 + "\n")
 
         print("¿Qué deseas hacer?\n")
-        print("  1. 📊 Ver balance del mes actual")
-        print("  2. 📝 Listar todos mis ingresos")
-        print("  3. ➕ Agregar nuevo ingreso")
+        print("  1.  Ver balance del mes actual")
+        print("  2.  Listar todos mis ingresos")
+        print("  3.  Agregar nuevo ingreso")
         print("  0. 🚪 Salir")
         print()
 
@@ -424,10 +425,10 @@ def menu_principal(user_email: str) -> None:
         elif choice == "3":
             agregar_ingreso_interactivo(user_email)
         elif choice == "0":
-            logger.info("👋 ¡Hasta luego!")
+            logger.info(" ¡Hasta luego!")
             break
         else:
-            logger.warning("❌ Opción inválida. Intenta de nuevo.")
+            logger.warning(" Opción inválida. Intenta de nuevo.")
 
 
 def main() -> None:
@@ -437,18 +438,18 @@ def main() -> None:
             # Obtener usuario activo
             user = session.query(User).filter(User.activo == True).first()  # noqa: E712
             if not user:
-                logger.error("❌ No hay usuario activo. Ejecuta 'make setup-user' primero.")
+                logger.error(" No hay usuario activo. Ejecuta 'make setup-user' primero.")
                 return
 
-            logger.info(f"👤 Usuario: {user.nombre} ({user.email})")
+            logger.info(f" Usuario: {user.nombre} ({user.email})")
 
         # Mostrar menú
         menu_principal(user.email)
 
     except KeyboardInterrupt:
-        logger.warning("\n\n⚠️  Operación cancelada por el usuario")
+        logger.warning("\n\n  Operación cancelada por el usuario")
     except Exception as e:
-        logger.error(f"\n\n❌ Error: {e}")
+        logger.error(f"\n\n Error: {e}")
         raise
 
 

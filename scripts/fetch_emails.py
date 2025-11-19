@@ -4,8 +4,9 @@ Script para ejecutar la extracción de correos bancarios.
 Este script puede ejecutarse manualmente o programarse con cron/launchd.
 """
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar el directorio src al path para importar módulos
 src_path = Path(__file__).parent.parent / "src"
@@ -29,7 +30,7 @@ def test_connection() -> bool:
     logger.info("🔌 Probando conexión con Microsoft Graph...")
 
     if not auth_manager.test_connection():
-        logger.error("❌ No se pudo conectar con Microsoft Graph API")
+        logger.error(" No se pudo conectar con Microsoft Graph API")
         return False
 
     return True
@@ -43,7 +44,7 @@ def fetch_emails(days_back: int = 30, bank: str | None = None) -> None:
         days_back: Días hacia atrás para buscar (default: 30)
         bank: Banco específico ('bac', 'popular') o None para ambos
     """
-    logger.info("📧 Iniciando extracción de correos...")
+    logger.info(" Iniciando extracción de correos...")
 
     fetcher = EmailFetcher()
 
@@ -57,15 +58,15 @@ def fetch_emails(days_back: int = 30, bank: str | None = None) -> None:
     total = len(emails)
 
     logger.info("=" * 60)
-    logger.info("📊 RESUMEN DE EXTRACCIÓN")
+    logger.info(" RESUMEN DE EXTRACCIÓN")
     logger.info("=" * 60)
-    logger.success(f"✅ Usuario autenticado: {user_email}")
-    logger.success(f"✅ Correos encontrados: {total}")
+    logger.success(f" Usuario autenticado: {user_email}")
+    logger.success(f" Correos encontrados: {total}")
     logger.info("=" * 60)
 
     # Mostrar muestra de correos
     if total > 0:
-        logger.info("\n📧 Muestra de correos (primeros 5):")
+        logger.info("\n Muestra de correos (primeros 5):")
         for i, email in enumerate(emails[:5], 1):
             subject = email.get("subject", "Sin asunto")
             from_email = email.get("from", {}).get("emailAddress", {}).get("address", "Unknown")
@@ -74,7 +75,7 @@ def fetch_emails(days_back: int = 30, bank: str | None = None) -> None:
             logger.info(f"     De: {from_email}")
             logger.info(f"     Fecha: {date}")
     else:
-        logger.warning("\n⚠️  No se encontraron correos bancarios")
+        logger.warning("\n  No se encontraron correos bancarios")
         logger.info("Posibles razones:")
         logger.info("  • No hay correos de BAC o Banco Popular en los últimos 30 días")
         logger.info("  • Los correos fueron eliminados")
@@ -82,7 +83,7 @@ def fetch_emails(days_back: int = 30, bank: str | None = None) -> None:
 
     # Información sobre cambio de cuenta
     logger.info("\n" + "=" * 60)
-    logger.info("💡 CAMBIAR DE CUENTA")
+    logger.info(" CAMBIAR DE CUENTA")
     logger.info("=" * 60)
     logger.info("Para ver correos de otra cuenta:")
     logger.info("  1. Ejecuta: poetry run python scripts/logout.py")
@@ -112,19 +113,19 @@ def main() -> None:
         if not test_connection():
             sys.exit(1)
 
-        logger.success("✅ Conexión exitosa con Microsoft Graph API\n")
+        logger.success(" Conexión exitosa con Microsoft Graph API\n")
 
         # 2. Extraer correos
         fetch_emails(days_back=30)  # Últimos 30 días
 
-        logger.success("\n✅ Extracción completada exitosamente")
+        logger.success("\n Extracción completada exitosamente")
 
     except KeyboardInterrupt:
-        logger.warning("\n⚠️  Extracción interrumpida por el usuario")
+        logger.warning("\n  Extracción interrumpida por el usuario")
         sys.exit(0)
 
     except Exception as e:
-        logger.error(f"\n❌ Error durante la extracción de correos: {e}")
+        logger.error(f"\n Error durante la extracción de correos: {e}")
         logger.exception("Detalles del error:")
         sys.exit(1)
 

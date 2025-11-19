@@ -22,23 +22,23 @@ def check_poetry() -> bool:
             capture_output=True,
             text=True,
         )
-        print("✅ Poetry está instalado")
+        print(" Poetry está instalado")
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("❌ Poetry no está instalado")
+        print(" Poetry no está instalado")
         print("   Instálalo desde: https://python-poetry.org/docs/#installation")
         return False
 
 
 def install_dependencies() -> bool:
     """Instala las dependencias del proyecto."""
-    print("\n📦 Instalando dependencias con Poetry...")
+    print("\n Instalando dependencias con Poetry...")
     try:
         subprocess.run(["poetry", "install"], check=True)
-        print("✅ Dependencias instaladas correctamente")
+        print(" Dependencias instaladas correctamente")
         return True
     except subprocess.CalledProcessError:
-        print("❌ Error al instalar dependencias")
+        print(" Error al instalar dependencias")
         return False
 
 
@@ -50,19 +50,19 @@ def create_directories() -> None:
     for directory in directories:
         path = Path(directory)
         path.mkdir(exist_ok=True)
-        print(f"   ✅ {directory}/")
+        print(f"    {directory}/")
 
 
 def check_env_file() -> bool:
     """Verifica que exista el archivo .env."""
-    print("\n🔍 Verificando archivo .env...")
+    print("\n Verificando archivo .env...")
     env_path = Path(".env")
     env_example_path = Path(".env.example")
 
     if env_path.exists():
-        print("✅ Archivo .env encontrado")
+        print(" Archivo .env encontrado")
         return True
-    print("⚠️  Archivo .env no encontrado")
+    print("  Archivo .env no encontrado")
     if env_example_path.exists():
         print("   Copia .env.example a .env y configura tus credenciales:")
         print("   cp .env.example .env")
@@ -91,19 +91,19 @@ def main() -> None:
 
     # Resumen
     print("\n" + "=" * 60)
-    print("📋 RESUMEN")
+    print(" RESUMEN")
     print("=" * 60)
-    print("✅ Poetry instalado")
-    print("✅ Dependencias instaladas")
-    print("✅ Directorios creados")
+    print(" Poetry instalado")
+    print(" Dependencias instaladas")
+    print(" Directorios creados")
 
     if env_exists:
-        print("✅ Archivo .env configurado")
+        print(" Archivo .env configurado")
     else:
-        print("⚠️  Falta configurar .env")
+        print("  Falta configurar .env")
 
     print("\n" + "=" * 60)
-    print("🎉 SIGUIENTE PASO:")
+    print(" SIGUIENTE PASO:")
     print("=" * 60)
 
     if not env_exists:
@@ -120,5 +120,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

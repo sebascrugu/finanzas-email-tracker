@@ -4,10 +4,12 @@ Gestor de autenticación con Microsoft Graph API usando MSAL.
 Este módulo maneja toda la autenticación OAuth 2.0 con Microsoft Graph,
 incluyendo la obtención y renovación de tokens de acceso.
 Soporta cuentas personales de Microsoft (outlook.com, hotmail.com).
+
+SEGURIDAD: Los tokens se almacenan de forma segura usando el keyring del sistema
+operativo (Keychain en macOS, Credential Locker en Windows, Secret Service en Linux).
 """
 
-from pathlib import Path
-
+import keyring
 import msal
 
 from finanzas_tracker.config.settings import settings
@@ -16,8 +18,9 @@ from finanzas_tracker.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Archivo para cache de tokens (para no tener que autenticarse cada vez)
-TOKEN_CACHE_FILE = Path("data/.token_cache.bin")
+# Configuración para almacenamiento seguro en keyring del SO
+KEYRING_SERVICE_NAME = "finanzas-email-tracker"
+KEYRING_USERNAME = "msal-token-cache"
 
 
 class AuthManager:
@@ -40,10 +43,12 @@ class AuthManager:
         # Para cuentas personales, usamos "consumers" en vez de un tenant específico
         self.authority = "https://login.microsoftonline.com/consumers"
 
-        # Cargar cache de tokens si existe
+        # Cargar cache de tokens desde keyring (almacenamiento seguro del SO)
         self.cache = msal.SerializableTokenCache()
-        if TOKEN_CACHE_FILE.exists():
-            self.cache.deserialize(TOKEN_CACHE_FILE.read_text())
+        cached_data = keyring.get_password(KEYRING_SERVICE_NAME, KEYRING_USERNAME)
+        if cached_data:
+            self.cache.deserialize(cached_data)
+            logger.debug("Token cache cargado desde keyring del sistema")
 
         # Crear aplicación pública de MSAL (para autenticación interactiva)
         self.app = msal.PublicClientApplication(
@@ -55,10 +60,10 @@ class AuthManager:
         logger.info("AuthManager inicializado (modo interactivo para cuentas personales)")
 
     def _save_cache(self) -> None:
-        """Guarda el cache de tokens en disco."""
+        """Guarda el cache de tokens de forma segura en el keyring del sistema."""
         if self.cache.has_state_changed:
-            TOKEN_CACHE_FILE.parent.mkdir(exist_ok=True)
-            TOKEN_CACHE_FILE.write_text(self.cache.serialize())
+            keyring.set_password(KEYRING_SERVICE_NAME, KEYRING_USERNAME, self.cache.serialize())
+            logger.debug("Token cache guardado de forma segura en keyring del sistema")
 
     def get_access_token(self, interactive: bool = True) -> str | None:
         """
@@ -106,7 +111,7 @@ class AuthManager:
             )
 
             if "access_token" in result:
-                logger.success("✅ Autenticación exitosa!")
+                logger.success(" Autenticación exitosa!")
                 self._save_cache()
                 return result["access_token"]
 
@@ -161,10 +166,12 @@ class AuthManager:
         for account in accounts:
             self.app.remove_account(account)
 
-        if TOKEN_CACHE_FILE.exists():
-            TOKEN_CACHE_FILE.unlink()
-
-        logger.info("Sesión cerrada, cache eliminado")
+        # Eliminar cache del keyring del sistema
+        try:
+            keyring.delete_password(KEYRING_SERVICE_NAME, KEYRING_USERNAME)
+            logger.info("Sesión cerrada, cache eliminado del keyring del sistema")
+        except keyring.errors.PasswordDeleteError:
+            logger.debug("No había cache almacenado en el keyring")
 
     def test_connection(self) -> bool:
         """
@@ -187,11 +194,11 @@ class AuthManager:
         if token:
             user_email = self.get_current_user_email()
             if user_email:
-                logger.success(f"✅ Autenticado como: {user_email}")
-            logger.success("✅ Conexión exitosa con Microsoft Graph API")
+                logger.success(f" Autenticado como: {user_email}")
+            logger.success(" Conexión exitosa con Microsoft Graph API")
             return True
 
-        logger.error("❌ No se pudo conectar con Microsoft Graph API")
+        logger.error(" No se pudo conectar con Microsoft Graph API")
         return False
 
 

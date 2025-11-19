@@ -1,3 +1,1 @@
 """Tests de integración."""
-
-

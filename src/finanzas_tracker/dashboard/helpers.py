@@ -1,6 +1,7 @@
 """Helpers compartidos para las páginas del dashboard."""
 
 import streamlit as st
+
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.models.profile import Profile
 
@@ -37,8 +38,8 @@ def require_profile() -> Profile:
     perfil_activo = get_active_profile()
 
     if not perfil_activo:
-        st.warning("⚠️ No tienes perfiles configurados")
-        st.info("👉 Ve a la página **⚙️ Setup** para crear tu primer perfil")
+        st.warning(" No tienes perfiles configurados")
+        st.info("👉 Ve a la página ** Setup** para crear tu primer perfil")
         st.stop()
 
     return perfil_activo

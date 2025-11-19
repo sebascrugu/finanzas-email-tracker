@@ -1,8 +1,9 @@
 """Script para mostrar balance rápido del mes actual."""
 
-import sys
 from datetime import date
 from pathlib import Path
+import sys
+
 
 # Agregar el directorio src al path
 src_path = Path(__file__).parent.parent / "src"
@@ -14,6 +15,7 @@ from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.models.user import User
 
+
 logger = get_logger(__name__)
 
 
@@ -24,7 +26,7 @@ def main() -> None:
             # Obtener usuario activo
             user = session.query(User).filter(User.activo == True).first()  # noqa: E712
             if not user:
-                logger.error("❌ No hay usuario activo. Ejecuta 'make setup-user' primero.")
+                logger.error(" No hay usuario activo. Ejecuta 'make setup-user' primero.")
                 return
 
             # Mes actual
@@ -70,44 +72,44 @@ def main() -> None:
             # Mostrar resultados
             print()
             logger.info("=" * 80)
-            logger.info(f"📊 BALANCE DE {hoy.strftime('%B %Y').upper()}")
+            logger.info(f" BALANCE DE {hoy.strftime('%B %Y').upper()}")
             logger.info("=" * 80)
             print()
 
-            logger.info(f"💰 Ingresos:  ₡{total_ingresos:>15,.2f}")
-            logger.info(f"💸 Gastos:    ₡{total_gastos:>15,.2f}")
+            logger.info(f" Ingresos:  ₡{total_ingresos:>15,.2f}")
+            logger.info(f" Gastos:    ₡{total_gastos:>15,.2f}")
             logger.info("   " + "─" * 76)
 
             if balance >= 0:
-                logger.success(f"✅ Balance:   ₡{balance:>15,.2f} (POSITIVO)")
+                logger.success(f" Balance:   ₡{balance:>15,.2f} (POSITIVO)")
             else:
-                logger.warning(f"⚠️  Balance:   ₡{balance:>15,.2f} (NEGATIVO)")
+                logger.warning(f"  Balance:   ₡{balance:>15,.2f} (NEGATIVO)")
 
             print()
 
             # Calcular porcentaje gastado
             if total_ingresos > 0:
                 porcentaje = (total_gastos / total_ingresos) * 100
-                logger.info(f"📊 Has gastado el {porcentaje:.1f}% de tus ingresos")
+                logger.info(f" Has gastado el {porcentaje:.1f}% de tus ingresos")
 
                 if porcentaje > 100:
-                    logger.warning("⚠️  ¡Gastas más de lo que ingresas!")
+                    logger.warning("  ¡Gastas más de lo que ingresas!")
                 elif porcentaje > 90:
-                    logger.warning("⚠️  ¡Cuidado! Ya gastaste más del 90%")
+                    logger.warning("  ¡Cuidado! Ya gastaste más del 90%")
                 elif porcentaje > 75:
-                    logger.info("💡 Buen control, pero vigila tus gastos")
+                    logger.info(" Buen control, pero vigila tus gastos")
                 else:
-                    logger.success("✅ ¡Excelente control de gastos!")
+                    logger.success(" ¡Excelente control de gastos!")
             elif total_ingresos == 0 and total_gastos > 0:
-                logger.warning("⚠️  Tienes gastos pero no ingresos registrados")
-                logger.info("💡 Ejecuta 'make income' para registrar tus ingresos")
+                logger.warning("  Tienes gastos pero no ingresos registrados")
+                logger.info(" Ejecuta 'make income' para registrar tus ingresos")
             elif total_ingresos == 0 and total_gastos == 0:
-                logger.info("📭 No hay transacciones para este mes todavía")
+                logger.info(" No hay transacciones para este mes todavía")
 
             print()
 
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
+        logger.error(f" Error: {e}")
         raise
 
 

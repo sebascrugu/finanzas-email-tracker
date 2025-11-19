@@ -255,7 +255,7 @@ class EmailFetcher:
                     logger.debug(f"Marketing/info filtrado: {subject}")
 
             logger.success(
-                f"✅ {len(filtered_emails)} correos de transacciones encontrados "
+                f" {len(filtered_emails)} correos de transacciones encontrados "
                 f"para {user_email}"
             )
             if marketing_count > 0:
@@ -291,11 +291,11 @@ class EmailFetcher:
             >>> emails = fetcher.fetch_all_emails(days_back=30)
             >>> print(f"Total de correos: {len(emails)}")
         """
-        logger.info("🔍 Iniciando búsqueda de correos...")
+        logger.info(" Iniciando búsqueda de correos...")
 
         emails = self.fetch_emails_for_current_user(days_back, bank)
 
-        logger.success(f"✅ Total de correos encontrados: {len(emails)}")
+        logger.success(f" Total de correos encontrados: {len(emails)}")
 
         return emails
 
@@ -345,11 +345,11 @@ class EmailFetcher:
             display_name = user_data.get("displayName", "Unknown")
             email = user_data.get("mail") or user_data.get("userPrincipalName", "Unknown")
 
-            logger.success(f"✅ Conexión exitosa - Usuario: {display_name} ({email})")
+            logger.success(f" Conexión exitosa - Usuario: {display_name} ({email})")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Error al probar conexión: {e}")
+            logger.error(f" Error al probar conexión: {e}")
             return False
 
 

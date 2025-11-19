@@ -17,6 +17,7 @@ from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 
+
 __all__ = [
     # Models
     "Budget",

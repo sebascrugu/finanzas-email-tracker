@@ -4,6 +4,7 @@ from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.category import Category, Subcategory
 
+
 logger = get_logger(__name__)
 
 
@@ -30,7 +31,7 @@ def seed_categories() -> None:
             tipo="necesidades",
             nombre="Necesidades",
             descripcion="Gastos esenciales para vivir (transporte, trabajo, personal)",
-            icono="💰",
+            icono="",
         )
         session.add(cat_necesidades)
         session.flush()  # Para obtener el ID
@@ -48,7 +49,7 @@ def seed_categories() -> None:
                 category_id=cat_necesidades.id,
                 nombre="Trabajo",
                 descripcion="Almuerzos en la oficina, transporte al trabajo",
-                icono="💼",
+                icono="",
                 keywords="almuerzo,oficina,trabajo,comida trabajo",
             ),
             Subcategory(
@@ -134,14 +135,14 @@ def seed_categories() -> None:
                 category_id=cat_ahorros.id,
                 nombre="Ahorro Regular",
                 descripcion="Ahorro mensual para emergencias o metas",
-                icono="🏦",
+                icono="",
                 keywords="ahorro,transferencia ahorro,cuenta ahorro",
             ),
             Subcategory(
                 category_id=cat_ahorros.id,
                 nombre="Inversiones",
                 descripcion="Inversiones en fondos, acciones, criptomonedas",
-                icono="📈",
+                icono="",
                 keywords="inversion,bolsa,cripto,bitcoin,acciones",
             ),
             Subcategory(
@@ -158,7 +159,7 @@ def seed_categories() -> None:
         session.commit()
 
         total_subcats = len(subcats_necesidades) + len(subcats_gustos) + len(subcats_ahorros)
-        logger.success(f"✅ Creadas 3 categorías principales y {total_subcats} subcategorías")
+        logger.success(f" Creadas 3 categorías principales y {total_subcats} subcategorías")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 import sys
 
+
 # Agregar el directorio src al path
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
@@ -15,6 +16,7 @@ from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.user import User
 from finanzas_tracker.utils.seed_categories import seed_categories
+
 
 logger = get_logger(__name__)
 
@@ -30,7 +32,7 @@ def setup_user() -> None:
     - Tarjetas bancarias
     """
     logger.info("=" * 80)
-    logger.info("👤 SETUP DE USUARIO")
+    logger.info(" SETUP DE USUARIO")
     logger.info("=" * 80)
     logger.info("")
 
@@ -40,21 +42,21 @@ def setup_user() -> None:
     logger.info("")
 
     # Solicitar información del usuario
-    logger.info("📋 INFORMACIÓN PERSONAL:")
-    logger.info("")
-    
-    email = input("📧 Email (Outlook/Hotmail): ").strip()
-    nombre = input("👤 Nombre completo: ").strip()
-
-    logger.info("")
-    logger.info("💰 CONFIGURACIÓN DE PRESUPUESTO:")
+    logger.info(" INFORMACIÓN PERSONAL:")
     logger.info("")
 
-    salario_str = input("💵 Salario/Ingreso mensual NETO (en colones): ₡").strip()
+    email = input(" Email (Outlook/Hotmail): ").strip()
+    nombre = input(" Nombre completo: ").strip()
+
+    logger.info("")
+    logger.info(" CONFIGURACIÓN DE PRESUPUESTO:")
+    logger.info("")
+
+    salario_str = input(" Salario/Ingreso mensual NETO (en colones): ₡").strip()
     salario = Decimal(salario_str.replace(",", ""))
 
     logger.info("")
-    logger.info("📊 DISTRIBUCIÓN DEL PRESUPUESTO:")
+    logger.info(" DISTRIBUCIÓN DEL PRESUPUESTO:")
     logger.info("")
     logger.info("Recomendación 50/30/20:")
     logger.info("  - 50% Necesidades (transporte, trabajo, personal)")
@@ -76,11 +78,11 @@ def setup_user() -> None:
 
         total = pct_necesidades + pct_gustos + pct_ahorros
         if abs(total - Decimal("100")) > Decimal("0.01"):
-            logger.error(f"❌ Error: Los porcentajes suman {total}%, deben sumar 100%")
+            logger.error(f" Error: Los porcentajes suman {total}%, deben sumar 100%")
             return
 
     logger.info("")
-    logger.info("💳 TARJETAS BANCARIAS:")
+    logger.info(" TARJETAS BANCARIAS:")
     logger.info("")
     logger.info("Registra tus tarjetas (necesario para detectar uso de crédito)")
     logger.info("")
@@ -103,18 +105,20 @@ def setup_user() -> None:
 
         alias = input("Alias opcional (ej: 'Tarjeta principal'): ").strip() or None
 
-        cards.append({
-            "ultimos_4_digitos": ultimos_4,
-            "tipo": tipo,
-            "banco": banco,
-            "alias": alias,
-        })
-        logger.success(f"✅ Tarjeta ****{ultimos_4} agregada")
+        cards.append(
+            {
+                "ultimos_4_digitos": ultimos_4,
+                "tipo": tipo,
+                "banco": banco,
+                "alias": alias,
+            }
+        )
+        logger.success(f" Tarjeta ****{ultimos_4} agregada")
         logger.info("")
 
     # Guardar en base de datos
     logger.info("")
-    logger.info("💾 Guardando configuración...")
+    logger.info(" Guardando configuración...")
     logger.info("")
 
     try:
@@ -152,19 +156,19 @@ def setup_user() -> None:
             session.commit()
 
             logger.success("=" * 80)
-            logger.success("✅ USUARIO CONFIGURADO EXITOSAMENTE")
+            logger.success(" USUARIO CONFIGURADO EXITOSAMENTE")
             logger.success("=" * 80)
             logger.info("")
-            logger.info(f"👤 Usuario: {nombre} ({email})")
-            logger.info(f"💰 Salario: ₡{salario:,.0f}")
-            logger.info(f"📊 Distribución: {pct_necesidades}% / {pct_gustos}% / {pct_ahorros}%")
+            logger.info(f" Usuario: {nombre} ({email})")
+            logger.info(f" Salario: ₡{salario:,.0f}")
+            logger.info(f" Distribución: {pct_necesidades}% / {pct_gustos}% / {pct_ahorros}%")
             logger.info("")
-            logger.info("💵 Presupuestos mensuales:")
-            logger.info(f"  💰 Necesidades: ₡{budget.monto_necesidades:,.0f}")
+            logger.info(" Presupuestos mensuales:")
+            logger.info(f"   Necesidades: ₡{budget.monto_necesidades:,.0f}")
             logger.info(f"  🎮 Gustos: ₡{budget.monto_gustos:,.0f}")
             logger.info(f"  💎 Ahorros: ₡{budget.monto_ahorros:,.0f}")
             logger.info("")
-            logger.info(f"💳 Tarjetas registradas: {len(cards)}")
+            logger.info(f" Tarjetas registradas: {len(cards)}")
             logger.info("")
             logger.info("🎯 PRÓXIMOS PASOS:")
             logger.info("  1. make process  → Procesar transacciones de correos")
@@ -172,7 +176,7 @@ def setup_user() -> None:
             logger.info("")
 
     except Exception as e:
-        logger.error(f"❌ Error guardando configuración: {e}")
+        logger.error(f" Error guardando configuración: {e}")
         raise
 
 
@@ -181,12 +185,11 @@ def main() -> None:
     try:
         setup_user()
     except KeyboardInterrupt:
-        logger.warning("\n\n⚠️  Setup cancelado por el usuario")
+        logger.warning("\n\n  Setup cancelado por el usuario")
     except Exception as e:
-        logger.error(f"\n\n❌ Error en setup: {e}")
+        logger.error(f"\n\n Error en setup: {e}")
         raise
 
 
 if __name__ == "__main__":
     main()
-

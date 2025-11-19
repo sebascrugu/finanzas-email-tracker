@@ -82,7 +82,7 @@ def test_fetch_emails_for_user_success(
     mock_get.return_value = mock_response
 
     # Ejecutar
-    emails = email_fetcher.fetch_emails_for_user("test@outlook.com", days_back=7)
+    emails = email_fetcher.fetch_emails_for_current_user(days_back=7)
 
     # Verificar
     assert len(emails) == 2
@@ -101,7 +101,7 @@ def test_fetch_emails_for_user_empty(
     mock_response.raise_for_status = MagicMock()
     mock_get.return_value = mock_response
 
-    emails = email_fetcher.fetch_emails_for_user("test@outlook.com")
+    emails = email_fetcher.fetch_emails_for_current_user()
 
     assert len(emails) == 0
 
@@ -114,7 +114,7 @@ def test_fetch_emails_for_user_error(
     """Test que verifica el manejo de errores en la extracción."""
     mock_get.side_effect = Exception("API Error")
 
-    emails = email_fetcher.fetch_emails_for_user("test@outlook.com")
+    emails = email_fetcher.fetch_emails_for_current_user()
 
     assert len(emails) == 0  # Debe retornar lista vacía en caso de error
 
@@ -128,5 +128,7 @@ def test_bac_senders_defined(email_fetcher: EmailFetcher) -> None:
 def test_banco_popular_senders_defined(email_fetcher: EmailFetcher) -> None:
     """Test que verifica que los remitentes del Banco Popular estén definidos."""
     assert len(email_fetcher.BANCO_POPULAR_SENDERS) > 0
-    assert any("bp.fi.cr" in sender or "bancopopular" in sender for sender in email_fetcher.BANCO_POPULAR_SENDERS)
-
+    assert any(
+        "bp.fi.cr" in sender or "bancopopular" in sender
+        for sender in email_fetcher.BANCO_POPULAR_SENDERS
+    )

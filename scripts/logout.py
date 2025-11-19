@@ -4,8 +4,9 @@ Script para cerrar sesión y limpiar el cache de tokens.
 Útil cuando quieres cambiar de cuenta o resolver problemas de autenticación.
 """
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar el directorio src al path para importar módulos
 src_path = Path(__file__).parent.parent / "src"
@@ -33,10 +34,10 @@ def main() -> None:
         logger.info("No hay sesión activa")
 
     # Cerrar sesión
-    logger.info("\n🔄 Cerrando sesión...")
+    logger.info("\n Cerrando sesión...")
     auth_manager.logout()
 
-    logger.success("✅ Sesión cerrada correctamente")
+    logger.success(" Sesión cerrada correctamente")
     logger.info("\nLa próxima vez que ejecutes el script de extracción,")
     logger.info("se te pedirá que inicies sesión nuevamente.")
     logger.info("=" * 60)
@@ -44,4 +45,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

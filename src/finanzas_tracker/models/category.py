@@ -48,7 +48,7 @@ class Category(Base):
     )
     icono: Mapped[str] = mapped_column(
         String(10),
-        default="📊",
+        default="",
         comment="Emoji o icono para la categoría",
     )
 

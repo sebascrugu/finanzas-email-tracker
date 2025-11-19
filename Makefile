@@ -1,6 +1,6 @@
 # Makefile para facilitar comandos comunes del proyecto
 
-.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db migrate seed income balance
+.PHONY: help install dev-install test coverage lint format type-check clean run-dashboard run-fetch init-db migrate seed income balance db-migrate db-upgrade db-downgrade db-current db-history migrate-tokens
 
 # Colores para output
 BLUE := \033[0;34m
@@ -75,6 +75,10 @@ seed: ## Pobla la base de datos con categorías iniciales
 logout: ## Cierra sesión y limpia el cache de tokens
 	poetry run python scripts/logout.py
 
+migrate-tokens: ## Migra tokens del archivo antiguo al keyring del sistema (solo una vez)
+	@echo "$(BLUE)Migrando tokens al keyring del sistema...$(NC)"
+	poetry run python scripts/migrate_token_cache.py
+
 income: ## Gestiona tus ingresos (agregar, listar, balance)
 	poetry run python scripts/manage_income.py
 
@@ -84,7 +88,30 @@ balance: ## Muestra el balance rápido del mes actual
 init-db: ## Inicializa la base de datos
 	@echo "$(BLUE)Inicializando base de datos...$(NC)"
 	@mkdir -p data logs
-	@poetry run alembic upgrade head || echo "$(BLUE)Alembic aún no configurado, continuando...$(NC)"
+	@poetry run alembic upgrade head
+
+db-migrate: ## Crea una nueva migración de base de datos (uso: make db-migrate MSG="descripción")
+	@if [ -z "$(MSG)" ]; then \
+		echo "$(BLUE)Error: Debes especificar un mensaje. Ejemplo: make db-migrate MSG='add user table'$(NC)"; \
+		exit 1; \
+	fi
+	poetry run alembic revision --autogenerate -m "$(MSG)"
+
+db-upgrade: ## Aplica todas las migraciones pendientes
+	@echo "$(BLUE)Aplicando migraciones...$(NC)"
+	poetry run alembic upgrade head
+	@echo "$(BLUE)Migraciones aplicadas$(NC)"
+
+db-downgrade: ## Revierte la última migración
+	@echo "$(BLUE)Revirtiendo última migración...$(NC)"
+	poetry run alembic downgrade -1
+	@echo "$(BLUE)Migración revertida$(NC)"
+
+db-current: ## Muestra la versión actual de la base de datos
+	poetry run alembic current
+
+db-history: ## Muestra el historial de migraciones
+	poetry run alembic history
 
 setup: dev-install init-db ## Setup completo del proyecto
 	@echo "$(BLUE)¡Setup completado!$(NC)"

@@ -1,41 +1,45 @@
 """Página de Balance Mensual."""
 
-import streamlit as st
 from datetime import date
+
+import streamlit as st
+
 
 st.set_page_config(
     page_title="Balance - Finanzas Tracker",
-    page_icon="📊",
+    page_icon="",
     layout="wide",
 )
 
-import sys
 from pathlib import Path
+import sys
+
 
 src_path = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.dashboard.helpers import require_profile
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.dashboard.helpers import require_profile
+
 
 logger = get_logger(__name__)
 
 
 def main():
-    st.title("📊 Balance Mensual")
+    st.title(" Balance Mensual")
 
     perfil_activo = require_profile()
-    st.caption(f"📊 Perfil: **{perfil_activo.nombre_completo}**")
+    st.caption(f" Perfil: **{perfil_activo.nombre_completo}**")
 
     # Selector de mes
     col1, col2 = st.columns([1, 3])
 
     with col1:
         mes_actual = date.today()
-        mes_seleccionado = st.date_input("📅 Seleccionar Fecha", value=mes_actual)
+        mes_seleccionado = st.date_input(" Seleccionar Fecha", value=mes_actual)
 
     # Calcular rango del mes
     primer_dia = date(mes_seleccionado.year, mes_seleccionado.month, 1)
@@ -84,20 +88,20 @@ def main():
 
     with col1:
         st.metric(
-            label="💰 Ingresos",
+            label=" Ingresos",
             value=f"₡{total_ingresos:,.0f}",
             delta=f"{len(ingresos)} registro(s)",
         )
 
     with col2:
         st.metric(
-            label="💸 Gastos", value=f"₡{total_gastos:,.0f}", delta=f"{len(gastos)} transacción(es)"
+            label=" Gastos", value=f"₡{total_gastos:,.0f}", delta=f"{len(gastos)} transacción(es)"
         )
 
     with col3:
         delta_color = "normal" if balance >= 0 else "inverse"
         st.metric(
-            label="📊 Balance",
+            label=" Balance",
             value=f"₡{balance:,.0f}",
             delta="Positivo" if balance >= 0 else "Negativo",
             delta_color=delta_color,
@@ -109,20 +113,20 @@ def main():
     if total_ingresos > 0:
         porcentaje_gastado = (total_gastos / total_ingresos) * 100
 
-        st.subheader("📈 Progreso de Gastos")
+        st.subheader(" Progreso de Gastos")
 
         st.progress(min(porcentaje_gastado / 100, 1.0))
 
         st.markdown(f"**Has gastado el {porcentaje_gastado:.1f}% de tus ingresos**")
 
         if porcentaje_gastado > 100:
-            st.error("⚠️ ¡Estás gastando más de lo que ingresas!")
+            st.error(" ¡Estás gastando más de lo que ingresas!")
         elif porcentaje_gastado > 90:
-            st.warning("⚠️ ¡Cuidado! Ya gastaste más del 90%")
+            st.warning(" ¡Cuidado! Ya gastaste más del 90%")
         elif porcentaje_gastado > 75:
-            st.info("💡 Buen control, pero vigila tus gastos")
+            st.info(" Buen control, pero vigila tus gastos")
         else:
-            st.success("✅ ¡Excelente control de gastos!")
+            st.success(" ¡Excelente control de gastos!")
 
         st.markdown("---")
 
@@ -130,7 +134,7 @@ def main():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.subheader("💰 Ingresos Detallados")
+            st.subheader(" Ingresos Detallados")
 
             if ingresos:
                 for ing in ingresos:
@@ -141,7 +145,7 @@ def main():
                 st.info("Sin ingresos este mes")
 
         with col2:
-            st.subheader("💸 Gastos Detallados")
+            st.subheader(" Gastos Detallados")
 
             if gastos:
                 # Agrupar por categoría
@@ -160,11 +164,11 @@ def main():
                 st.info("Sin gastos este mes")
 
     elif total_gastos > 0:
-        st.warning("⚠️ Tienes gastos pero no ingresos registrados")
-        st.info("💡 Ve a **Ingresos** para registrar tus ingresos del mes")
+        st.warning(" Tienes gastos pero no ingresos registrados")
+        st.info(" Ve a **Ingresos** para registrar tus ingresos del mes")
 
     else:
-        st.info("📭 No hay transacciones para este mes")
+        st.info(" No hay transacciones para este mes")
 
 
 if __name__ == "__main__":

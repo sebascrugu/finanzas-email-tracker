@@ -106,7 +106,7 @@ def drop_db() -> None:
     """
     Elimina todas las tablas de la base de datos.
 
-    ⚠️ PRECAUCIÓN: Esta función borra TODOS los datos.
+     PRECAUCIÓN: Esta función borra TODOS los datos.
     Solo debe usarse en desarrollo o testing.
     """
     if settings.is_production():

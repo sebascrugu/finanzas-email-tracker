@@ -10,6 +10,7 @@ from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.category import Subcategory
 
+
 logger = get_logger(__name__)
 
 
@@ -66,13 +67,13 @@ class TransactionCategorizer:
         keyword_match = self._categorize_by_keywords(comercio)
         if keyword_match:
             logger.debug(
-                f"✅ Match por keywords: {keyword_match['categoria_sugerida']} "
+                f" Match por keywords: {keyword_match['categoria_sugerida']} "
                 f"(confianza: {keyword_match['confianza']}%)"
             )
             return keyword_match
 
         # 2. Usar Claude AI para casos ambiguos
-        logger.debug(f"🤖 Usando Claude AI para: {comercio}")
+        logger.debug(f" Usando Claude AI para: {comercio}")
         claude_result = self._categorize_with_claude(
             comercio=comercio,
             monto_crc=monto_crc,
@@ -218,7 +219,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
             result = json.loads(response_text)
 
             logger.debug(
-                f"🤖 Claude: {result['categoria_sugerida']} " f"(confianza: {result['confianza']}%)"
+                f" Claude: {result['categoria_sugerida']} " f"(confianza: {result['confianza']}%)"
             )
 
             return result

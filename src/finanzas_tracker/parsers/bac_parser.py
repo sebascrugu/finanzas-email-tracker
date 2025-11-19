@@ -1,13 +1,14 @@
 """Parser de correos de BAC Credomatic."""
 
-import re
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import re
 from typing import Any
 
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.core.logging import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -71,7 +72,7 @@ class BACParser:
                 "pais": pais,
             }
 
-            logger.debug(f"✅ Transacción parseada: {comercio} - {moneda} {monto}")
+            logger.debug(f" Transacción parseada: {comercio} - {moneda} {monto}")
             return transaction_data
 
         except Exception as e:
@@ -201,7 +202,7 @@ class BACParser:
         # Convertir a Decimal
         try:
             monto = Decimal(monto_clean)
-        except Exception:
+        except (ValueError, InvalidOperation):
             monto = Decimal("0")
 
         return moneda, monto
@@ -302,5 +303,5 @@ class BACParser:
             "pais": "Costa Rica",
         }
 
-        logger.debug(f"✅ Retiro sin tarjeta parseado: {comercio} - {moneda} {monto}")
+        logger.debug(f" Retiro sin tarjeta parseado: {comercio} - {moneda} {monto}")
         return transaction_data

@@ -1,4 +1,4 @@
-# 💰 Finanzas Email Tracker
+# Finanzas Email Tracker
 
 Sistema automatizado para rastrear y categorizar transacciones bancarias desde correos de Outlook usando Inteligencia Artificial.
 
@@ -7,37 +7,37 @@ Sistema automatizado para rastrear y categorizar transacciones bancarias desde c
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-## 📋 Descripción
+## Descripción
 
 Esta aplicación permite monitorear automáticamente correos electrónicos de notificaciones bancarias, extraer información de transacciones, categorizarlas inteligentemente usando Claude AI, y visualizarlas en un dashboard interactivo con Streamlit.
 
-**🏦 Bancos Soportados Actualmente:**
-- ✅ BAC Credomatic (Costa Rica)
-- ✅ Banco Popular de Costa Rica
-- 📧 Solo Outlook/Microsoft 365
+**Bancos Soportados Actualmente:**
+- BAC Credomatic (Costa Rica)
+- Banco Popular de Costa Rica
+- Solo Outlook/Microsoft 365
 
-**🔜 Próximamente:** Se planea agregar soporte para más bancos y proveedores de correo.
+**Próximamente:** Se planea agregar soporte para más bancos y proveedores de correo.
 
-> **🚀 Quick Start**: Si ya sabes lo que haces, ve directo a [QUICKSTART.md](QUICKSTART.md)
+> **Quick Start**: Si ya sabes lo que haces, ve directo a [QUICKSTART.md](QUICKSTART.md)
 
-### ✨ Características Principales
+### Características Principales
 
-- 🎭 **Sistema de Perfiles Multi-Contexto**: Separa finanzas personales, negocio, familia (cada uno con sus tarjetas y presupuesto)
-- 📧 **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook/Microsoft 365
-- 🏦 **Multi-Banco**: BAC Credomatic y Banco Popular (Costa Rica) — más bancos próximamente
-- 🤖 **Categorización Inteligente con IA**: Usa Claude Haiku 4.5 para clasificar gastos automáticamente
-- 🧠 **Sistema de Aprendizaje**: Aprende de tus decisiones para mejorar la categorización
-- 💰 **Gestión de Ingresos**: Trackea salarios, ventas, freelance y más (recurrentes o únicos)
-- 📊 **Balance Mensual**: Ve ingresos vs gastos y tu salud financiera en tiempo real
-- 💱 **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales (API Hacienda CR)
-- 🔍 **Detección de Patrones**: Identifica transacciones recurrentes y sugiere categorías automáticamente
-- 🎯 **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
-- 📈 **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
-- 🔒 **Seguridad**: Manejo seguro de credenciales con variables de entorno
-- 💾 **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
-- 👥 **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos separados
+- **Sistema de Perfiles Multi-Contexto**: Separa finanzas personales, negocio, familia (cada uno con sus tarjetas y presupuesto)
+- **Extracción Automática de Correos**: Conexión con Microsoft Graph API para leer correos de Outlook/Microsoft 365
+- **Multi-Banco**: BAC Credomatic y Banco Popular (Costa Rica) — más bancos próximamente
+- **Categorización Inteligente con IA**: Usa Claude Haiku 4.5 para clasificar gastos automáticamente
+- **Sistema de Aprendizaje**: Aprende de tus decisiones para mejorar la categorización
+- **Gestión de Ingresos**: Trackea salarios, ventas, freelance y más (recurrentes o únicos)
+- **Balance Mensual**: Ve ingresos vs gastos y tu salud financiera en tiempo real
+- **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales (API Hacienda CR)
+- **Detección de Patrones**: Identifica transacciones recurrentes y sugiere categorías automáticamente
+- **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
+- **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
+- **Seguridad**: Manejo seguro de credenciales con variables de entorno
+- **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
+- **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos separados
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 - **Lenguaje**: Python 3.11+
 - **Gestión de Dependencias**: Poetry
@@ -50,7 +50,7 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - **Linting**: Ruff
 - **Testing**: Pytest
 
-## 📦 Requisitos Previos
+## Requisitos Previos
 
 - Python 3.11 o superior
 - Poetry instalado ([Instrucciones de instalación](https://python-poetry.org/docs/#installation))
@@ -59,7 +59,7 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - API Key de Anthropic Claude
 - Credenciales de Azure AD (para Microsoft Graph API)
 
-## 🚀 Instalación
+## Instalación
 
 ### 1. Clonar el repositorio
 
@@ -115,7 +115,7 @@ mkdir -p data logs
 poetry run alembic upgrade head
 ```
 
-## 💻 Uso
+## Uso
 
 ### Configuración Inicial
 
@@ -137,7 +137,7 @@ make process
 make review
 ```
 
-### Gestión de Ingresos 💰
+### Gestión de Ingresos
 
 ```bash
 # Ver balance rápido del mes (ingresos vs gastos)
@@ -150,7 +150,7 @@ make income
 #   3. Agregar nuevo ingreso (salario, venta, freelance, etc.)
 ```
 
-> 📚 **Guía completa**: Ver [GUIA_INGRESOS.md](GUIA_INGRESOS.md) para instrucciones detalladas
+> **Guía completa**: Ver [GUIA_INGRESOS.md](GUIA_INGRESOS.md) para instrucciones detalladas
 
 ### Dashboard Interactivo (Próximamente)
 
@@ -186,7 +186,7 @@ make logout
 make clean
 ```
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 finanzas-email-tracker/
@@ -239,7 +239,7 @@ finanzas-email-tracker/
 └── README.md                          # Este archivo
 ```
 
-## 🔐 Seguridad
+## Seguridad
 
 - **NUNCA** compartas tu archivo `.env` — contiene credenciales sensibles
 - **NUNCA** subas credenciales a Git
@@ -248,41 +248,41 @@ finanzas-email-tracker/
 - Solo tú tienes acceso a tus datos bancarios
 - La aplicación funciona 100% en tu computadora local
 
-## 🏦 Bancos y Proveedores Soportados
+## Bancos y Proveedores Soportados
 
-### 📧 Proveedores de Correo
-- ✅ **Outlook/Microsoft 365** (mediante Microsoft Graph API)
-- 🔜 Gmail (planificado)
-- 🔜 Otros proveedores (a petición)
+### Proveedores de Correo
+- **Outlook/Microsoft 365** (mediante Microsoft Graph API)
+- Gmail (planificado)
+- Otros proveedores (a petición)
 
-### 🏦 Bancos (Costa Rica)
+### Bancos (Costa Rica)
 
 **BAC Credomatic**
-- ✅ Notificaciones de transacciones
-- ✅ Tarjetas de crédito y débito
-- ✅ Transferencias y SINPE
-- ✅ Retiros sin tarjeta
-- ✅ Extracción de: monto, fecha, comercio, número de tarjeta
+- Notificaciones de transacciones
+- Tarjetas de crédito y débito
+- Transferencias y SINPE
+- Retiros sin tarjeta
+- Extracción de: monto, fecha, comercio, número de tarjeta
 
 **Banco Popular**
-- ✅ Notificaciones de transacciones
-- ✅ Tarjetas de crédito y débito
-- ✅ Extracción de: monto, fecha, comercio, número de tarjeta
+- Notificaciones de transacciones
+- Tarjetas de crédito y débito
+- Extracción de: monto, fecha, comercio, número de tarjeta
 
-### 🔜 Próximamente
+### Próximamente
 - Más bancos de Costa Rica (Scotiabank, BCR, etc.)
 - Bancos de otros países latinoamericanos
 - Soporte para Gmail y otros proveedores de correo
 - Parsing de estados de cuenta PDF
 
-## 🤝 Contribuciones
+## Contribuciones
 
 Este es un proyecto personal, pero las sugerencias y mejoras son bienvenidas. Si encuentras un bug o tienes una idea:
 
 1. Abre un Issue describiendo el problema o sugerencia
 2. Si quieres contribuir código, abre un Pull Request
 
-## 📝 Roadmap
+## Roadmap
 
 - [x] Setup inicial del proyecto
 - [x] Implementar extracción de correos con Microsoft Graph
@@ -310,26 +310,26 @@ Este es un proyecto personal, pero las sugerencias y mejoras son bienvenidas. Si
 - [ ] Tracking de cashback y puntos
 - [ ] Soporte para más bancos (a petición)
 
-## 📄 Licencia
+## Licencia
 
 Este proyecto es de código abierto y está disponible bajo la licencia MIT.
 
-## 👤 Autor
+## Autor
 
 **Sebastian Cruz**  
-Ingeniero en Computación | Costa Rica 🇨🇷
+Ingeniero en Computación | Costa Rica
 
-## 💡 Motivación
+## Motivación
 
 Este proyecto nace de la necesidad de tener un control real y automatizado de finanzas personales en Costa Rica, donde la mayoría de soluciones disponibles son:
-- 🚫 De otros países (no soportan bancos locales)
-- 🚫 Requieren acceso bancario directo (inseguro)
-- 🚫 Son de pago y costosas
-- 🚫 No usan IA para categorización inteligente
+- De otros países (no soportan bancos locales)
+- Requieren acceso bancario directo (inseguro)
+- Son de pago y costosas
+- No usan IA para categorización inteligente
 
 **Finanzas Email Tracker** es 100% local, seguro, gratuito (excepto API de Claude) y diseñado específicamente para el contexto costarricense.
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
 - Microsoft Graph API por facilitar el acceso a correos
 - Anthropic por Claude API

@@ -68,4 +68,3 @@ def mock_transaction_data() -> dict[str, str | float]:
         "transaction_type": "COMPRA",
         "user_email": "test@example.com",
     }
-

@@ -66,5 +66,3 @@ def test_settings_environment_checks(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert settings.is_development() is True
     assert settings.is_production() is False
-
-

@@ -8,6 +8,7 @@ import requests
 from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.logging import get_logger
 
+
 logger = get_logger(__name__)
 
 

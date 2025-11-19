@@ -1,11 +1,9 @@
 """Servicio para procesar transacciones desde correos."""
 
-from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
@@ -14,6 +12,7 @@ from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
+
 
 logger = get_logger(__name__)
 
@@ -80,7 +79,7 @@ class TransactionProcessor:
             "necesitan_revision": 0,
         }
 
-        logger.info(f"📊 Procesando {len(emails)} correos...")
+        logger.info(f" Procesando {len(emails)} correos...")
 
         for email in emails:
             try:
@@ -132,7 +131,7 @@ class TransactionProcessor:
                 stats["errores"] += 1
 
         logger.success(
-            f"✅ Procesamiento completado: "
+            f" Procesamiento completado: "
             f"{stats['procesados']} nuevas, "
             f"{stats['duplicados']} duplicadas, "
             f"{stats['errores']} errores"
@@ -185,7 +184,7 @@ class TransactionProcessor:
         transaction_data["tipo_cambio_usado"] = Decimal(str(tipo_cambio))
 
         logger.debug(
-            f"💱 Conversión: ${monto_usd} USD x ₡{tipo_cambio:.2f} = "
+            f" Conversión: ${monto_usd} USD x ₡{tipo_cambio:.2f} = "
             f"₡{monto_crc:,.2f} CRC ({fecha_date})"
         )
 
@@ -218,14 +217,14 @@ class TransactionProcessor:
             if result.get("necesita_revision"):
                 stats["necesitan_revision"] += 1
                 logger.info(
-                    f"🤔 {transaction_data['comercio']}: "
+                    f" {transaction_data['comercio']}: "
                     f"Sugerencia: {result.get('categoria_sugerida')} "
                     f"(necesita revisión - confianza: {result.get('confianza')}%)"
                 )
             else:
                 stats["categorizadas_automaticamente"] += 1
                 logger.success(
-                    f"✅ {transaction_data['comercio']}: "
+                    f" {transaction_data['comercio']}: "
                     f"{result.get('categoria_sugerida')} "
                     f"(confianza: {result.get('confianza')}%)"
                 )
@@ -255,14 +254,14 @@ class TransactionProcessor:
                 session.commit()
 
                 logger.debug(
-                    f"💾 Transacción guardada: {transaction.comercio} - "
+                    f" Transacción guardada: {transaction.comercio} - "
                     f"₡{transaction.monto_crc:,.2f}"
                 )
                 return True
 
         except IntegrityError:
             # Ya existe (email_id es único)
-            logger.debug(f"⏭️  Transacción duplicada (ya existe): {transaction_data['email_id']}")
+            logger.debug(f"  Transacción duplicada (ya existe): {transaction_data['email_id']}")
             return False
 
         except Exception as e:

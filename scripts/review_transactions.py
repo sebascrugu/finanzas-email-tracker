@@ -1,7 +1,8 @@
 """Script interactivo mejorado para revisar y categorizar transacciones."""
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar el directorio src al path
 src_path = Path(__file__).parent.parent / "src"
@@ -12,6 +13,7 @@ from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.category import Category, Subcategory
 from finanzas_tracker.models.enums import SpecialTransactionType, TransactionType
 from finanzas_tracker.models.transaction import Transaction
+
 
 logger = get_logger(__name__)
 
@@ -26,16 +28,16 @@ def display_transaction(transaction: Transaction, index: int, total: int) -> Non
         total: Total de transacciones
     """
     print("\n" + "=" * 80)
-    print(f"📝 TRANSACCIÓN {index}/{total} - ID: {transaction.id[:8]}")
+    print(f" TRANSACCIÓN {index}/{total} - ID: {transaction.id[:8]}")
     print("=" * 80)
     print(f"🏪 Comercio:  {transaction.comercio}")
-    print(f"💰 Monto:     {transaction.monto_display}")
-    print(f"📅 Fecha:     {transaction.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
-    print(f"🏦 Banco:     {transaction.banco.value.upper()}")
+    print(f" Monto:     {transaction.monto_display}")
+    print(f" Fecha:     {transaction.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
+    print(f" Banco:     {transaction.banco.value.upper()}")
     print(f"🔖 Tipo:      {transaction.tipo_transaccion.value}")
 
     if transaction.card:
-        print(f"💳 Tarjeta:   {transaction.card.nombre_display}")
+        print(f" Tarjeta:   {transaction.card.nombre_display}")
 
     if transaction.ciudad or transaction.pais:
         print(f"📍 Ubicación: {transaction.ciudad or 'N/A'}, {transaction.pais or 'N/A'}")
@@ -49,9 +51,9 @@ def display_transaction(transaction: Transaction, index: int, total: int) -> Non
             if hasattr(transaction, "confianza_categoria")
             else ""
         )
-        print(f"🤖 IA sugiere: {transaction.categoria_sugerida_por_ia} {confianza}")
+        print(f" IA sugiere: {transaction.categoria_sugerida_por_ia} {confianza}")
     else:
-        print("🤖 IA sugiere: Sin sugerencia")
+        print(" IA sugiere: Sin sugerencia")
 
 
 def get_all_subcategories() -> list[Subcategory]:
@@ -79,7 +81,7 @@ def display_categories_menu(subcategories: list[Subcategory]) -> None:
     Args:
         subcategories: Lista de subcategorías
     """
-    print("\n📊 CATEGORÍAS DISPONIBLES:")
+    print("\n CATEGORÍAS DISPONIBLES:")
     print()
 
     current_category = None
@@ -95,8 +97,8 @@ def display_categories_menu(subcategories: list[Subcategory]) -> None:
         print(f"  {i:2d}. {subcat.icono} {subcat.nombre}")
 
     print()
-    print("  a. ✅ Aceptar sugerencia IA")
-    print("  0. ⏭️  Omitir / Revisar después")
+    print("  a.  Aceptar sugerencia IA")
+    print("  0.   Omitir / Revisar después")
     print()
 
 
@@ -172,13 +174,13 @@ def preguntar_tipo_especial(
         tuple: (tipo_especial, excluir_de_presupuesto, relacionada_con)
     """
     print("\n" + "─" * 80)
-    print("⚠️  DETECTADA TRANSFERENCIA/SINPE")
+    print("  DETECTADA TRANSFERENCIA/SINPE")
     print("─" * 80)
 
     # Mostrar patrón si existe
     if patron:
         print(
-            f"🔍 Patrón detectado: Últimas {patron['frecuencia']} veces "
+            f" Patrón detectado: Últimas {patron['frecuencia']} veces "
             f"marcaste '{transaction.comercio}' como:"
         )
         tipo_nombre = {
@@ -195,14 +197,14 @@ def preguntar_tipo_especial(
 
     print("¿Qué tipo de transferencia es?")
     print()
-    print("  1. 💵 Normal (tu gasto regular - SÍ cuenta en presupuesto)")
-    print("  2. 🔄 Intermediaria (dinero que solo pasas - NO cuenta en presupuesto)")
+    print("  1.  Normal (tu gasto regular - SÍ cuenta en presupuesto)")
+    print("  2.  Intermediaria (dinero que solo pasas - NO cuenta en presupuesto)")
     print("     Ej: Alquiler que pasas, compras para otros")
-    print("  3. 🤝 Compartida (tu parte de algo grupal - SÍ cuenta en presupuesto)")
+    print("  3.  Compartida (tu parte de algo grupal - SÍ cuenta en presupuesto)")
     print("     Ej: Fútbol semanal, pizza con amigos")
-    print("  4. 👪 Ayuda familiar (das dinero a familiar - SÍ cuenta en presupuesto)")
+    print("  4.  Ayuda familiar (das dinero a familiar - SÍ cuenta en presupuesto)")
     print("     Ej: Ayuda a abuela, mesada a hermano")
-    print("  5. 💸 Préstamo dado (le prestas a alguien - SÍ cuenta en presupuesto)")
+    print("  5.  Préstamo dado (le prestas a alguien - SÍ cuenta en presupuesto)")
     print()
 
     # Sugerir el patrón si existe
@@ -214,7 +216,7 @@ def preguntar_tipo_especial(
             SpecialTransactionType.LOAN_GIVEN: "5",
         }
         sugerencia = tipo_map.get(patron["tipo_especial"], "1")
-        print(f"💡 Sugerencia: {sugerencia} (basado en patrón detectado)")
+        print(f" Sugerencia: {sugerencia} (basado en patrón detectado)")
 
     while True:
         choice = input("\nElige una opción (1-5) o Enter para aceptar sugerencia: ").strip()
@@ -231,20 +233,19 @@ def preguntar_tipo_especial(
 
         if choice == "1":
             return None, False, None
-        elif choice == "2":
+        if choice == "2":
             desc = input("Descripción (ej: 'Alquiler Nov-2025'): ").strip()
             return SpecialTransactionType.INTERMEDIATE, True, desc or None
-        elif choice == "3":
+        if choice == "3":
             desc = input("Descripción (ej: 'Fútbol semanal'): ").strip()
             return SpecialTransactionType.SHARED, False, desc or None
-        elif choice == "4":
+        if choice == "4":
             desc = input("Descripción (ej: 'Ayuda a abuela'): ").strip()
             return SpecialTransactionType.FAMILY_SUPPORT, False, desc or None
-        elif choice == "5":
+        if choice == "5":
             desc = input("A quién prestaste: ").strip()
             return SpecialTransactionType.LOAN_GIVEN, False, desc or None
-        else:
-            print("❌ Opción inválida. Intenta de nuevo.")
+        print(" Opción inválida. Intenta de nuevo.")
 
 
 def review_transaction(
@@ -290,15 +291,15 @@ def review_transaction(
                     transaction.subcategory_id = subcat.id
 
             transaction.necesita_revision = False
-            logger.success(f"✅ Categoría: {transaction.categoria_sugerida_por_ia}")
+            logger.success(f" Categoría: {transaction.categoria_sugerida_por_ia}")
             break
 
-        elif choice == "0":
+        if choice == "0":
             # Omitir
-            logger.info("⏭️  Transacción omitida para revisar después")
+            logger.info("  Transacción omitida para revisar después")
             return False
 
-        elif choice.isdigit():
+        if choice.isdigit():
             choice_num = int(choice)
             if 1 <= choice_num <= len(subcategories):
                 # Asignar categoría seleccionada
@@ -306,12 +307,11 @@ def review_transaction(
                 transaction.subcategory_id = selected.id
                 transaction.categoria_sugerida_por_ia = selected.nombre_completo
                 transaction.necesita_revision = False
-                logger.success(f"✅ Categoría: {selected.nombre_completo}")
+                logger.success(f" Categoría: {selected.nombre_completo}")
                 break
-            else:
-                print("❌ Número fuera de rango. Intenta de nuevo.")
+            print(" Número fuera de rango. Intenta de nuevo.")
         else:
-            print("❌ Opción inválida. Usa número, 'a' o '0'.")
+            print(" Opción inválida. Usa número, 'a' o '0'.")
 
     # PASO 2: Solo para transferencias/SINPEs, preguntar tipo especial
     if es_transferencia_o_sinpe(transaction):
@@ -326,9 +326,9 @@ def review_transaction(
 
         # Mensaje de confirmación
         if excluir:
-            print("\n⚠️  Esta transacción NO contará en tu presupuesto (dinero intermediario)")
+            print("\n  Esta transacción NO contará en tu presupuesto (dinero intermediario)")
         elif tipo_especial:
-            print("\n✅ Esta transacción SÍ contará en tu presupuesto (tu gasto)")
+            print("\n Esta transacción SÍ contará en tu presupuesto (tu gasto)")
 
     return True
 
@@ -336,7 +336,7 @@ def review_transaction(
 def main() -> None:
     """Función principal."""
     logger.info("=" * 80)
-    logger.info("🔍 REVISIÓN INTELIGENTE DE TRANSACCIONES")
+    logger.info(" REVISIÓN INTELIGENTE DE TRANSACCIONES")
     logger.info("=" * 80)
     logger.info("")
 
@@ -347,7 +347,7 @@ def main() -> None:
 
             user = session.query(User).filter(User.activo == True).first()  # noqa: E712
             if not user:
-                logger.error("❌ No hay usuario activo. Ejecuta 'make setup-user' primero.")
+                logger.error(" No hay usuario activo. Ejecuta 'make setup-user' primero.")
                 return
 
             # Obtener transacciones que necesitan revisión
@@ -362,10 +362,10 @@ def main() -> None:
             )
 
             if not transactions:
-                logger.success("✅ ¡Excelente! No hay transacciones pendientes de revisión")
+                logger.success(" ¡Excelente! No hay transacciones pendientes de revisión")
                 return
 
-            logger.info(f"📊 {len(transactions)} transacciones para revisar")
+            logger.info(f" {len(transactions)} transacciones para revisar")
             logger.info("")
 
             # Obtener subcategorías disponibles
@@ -391,7 +391,7 @@ def main() -> None:
             # Resumen final
             logger.info("")
             logger.success("=" * 80)
-            logger.success("✅ REVISIÓN COMPLETADA")
+            logger.success(" REVISIÓN COMPLETADA")
             logger.success("=" * 80)
             logger.info(f"  Categorizadas:  {modified_count}")
 
@@ -407,14 +407,14 @@ def main() -> None:
             logger.info("")
 
             if remaining == 0:
-                logger.success("🎉 ¡Todas las transacciones están categorizadas!")
+                logger.success(" ¡Todas las transacciones están categorizadas!")
             else:
-                logger.info("💡 Ejecuta 'make review' de nuevo para continuar")
+                logger.info(" Ejecuta 'make review' de nuevo para continuar")
 
     except KeyboardInterrupt:
-        logger.warning("\n\n⚠️  Revisión cancelada por el usuario")
+        logger.warning("\n\n  Revisión cancelada por el usuario")
     except Exception as e:
-        logger.error(f"\n\n❌ Error en revisión: {e}")
+        logger.error(f"\n\n Error en revisión: {e}")
         raise
 
 

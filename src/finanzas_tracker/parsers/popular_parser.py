@@ -1,13 +1,14 @@
 """Parser de correos de Banco Popular."""
 
-import re
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import re
 from typing import Any
 
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.core.logging import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -68,7 +69,7 @@ class PopularParser:
                 "pais": pais,
             }
 
-            logger.debug(f"✅ Transacción parseada: {comercio} - {moneda} {monto}")
+            logger.debug(f" Transacción parseada: {comercio} - {moneda} {monto}")
             return transaction_data
 
         except Exception as e:
@@ -152,19 +153,16 @@ class PopularParser:
 
         # Intentar parsear fecha
         if fecha_str:
-            try:
-                # Intentar diferentes formatos
-                for fmt in ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"]:
-                    try:
-                        fecha = datetime.strptime(fecha_str, fmt)
-                        if hora_str:
-                            hora = datetime.strptime(hora_str, "%H:%M")
-                            fecha = fecha.replace(hour=hora.hour, minute=hora.minute)
-                        return fecha
-                    except ValueError:
-                        continue
-            except Exception:
-                pass
+            # Intentar diferentes formatos
+            for fmt in ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d"]:
+                try:
+                    fecha = datetime.strptime(fecha_str, fmt)
+                    if hora_str:
+                        hora = datetime.strptime(hora_str, "%H:%M")
+                        fecha = fecha.replace(hour=hora.hour, minute=hora.minute)
+                    return fecha
+                except ValueError:
+                    continue
 
         # Fallback: usar fecha del correo
         received_str = email_data.get("receivedDateTime", "")
@@ -245,7 +243,7 @@ class PopularParser:
         # Convertir a Decimal
         try:
             monto = Decimal(monto_clean)
-        except Exception:
+        except (ValueError, InvalidOperation):
             monto = Decimal("0")
 
         return moneda, monto
