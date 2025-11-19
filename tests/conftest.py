@@ -6,8 +6,16 @@ en todos los tests del proyecto.
 """
 
 import os
+import sys
+from unittest.mock import MagicMock
 
 import pytest
+
+# Mock keyring ANTES de que cualquier módulo lo importe
+keyring_mock = MagicMock()
+keyring_mock.get_password.return_value = None
+keyring_mock.set_password.return_value = None
+sys.modules["keyring"] = keyring_mock
 
 
 # Setup de variables de entorno para tests (ejecuta antes de importar cualquier módulo)
