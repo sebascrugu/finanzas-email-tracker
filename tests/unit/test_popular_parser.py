@@ -18,6 +18,7 @@ import pytest
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.parsers.popular_parser import PopularParser
+from finanzas_tracker.utils.parser_utils import ParserUtils
 
 
 class TestPopularParserComprasCRC:
@@ -384,38 +385,38 @@ class TestPopularParserMetodosPrivados:
     """Tests para métodos privados y utilidades."""
 
     def test_parse_monto_crc(self) -> None:
-        """Test del método _parse_monto con colones."""
-        moneda, monto = PopularParser._parse_monto("CRC 8,500.50")
+        """Test del método parse_monto con colones."""
+        moneda, monto = ParserUtils.parse_monto("CRC 8,500.50")
         assert moneda == "CRC"
         assert monto == Decimal("8500.50")
 
     def test_parse_monto_usd(self) -> None:
-        """Test del método _parse_monto con dólares."""
-        moneda, monto = PopularParser._parse_monto("USD 25.99")
+        """Test del método parse_monto con dólares."""
+        moneda, monto = ParserUtils.parse_monto("USD 25.99")
         assert moneda == "USD"
         assert monto == Decimal("25.99")
 
     def test_parse_monto_solo_numeros(self) -> None:
-        """Test del método _parse_monto con solo números."""
-        moneda, monto = PopularParser._parse_monto("1500.75")
+        """Test del método parse_monto con solo números."""
+        moneda, monto = ParserUtils.parse_monto("1500.75")
         assert moneda == "CRC"  # Default
         assert monto == Decimal("1500.75")
 
     def test_parse_ubicacion_completa(self) -> None:
-        """Test del método _parse_ubicacion con ciudad y país."""
-        ciudad, pais = PopularParser._parse_ubicacion("CARTAGO, Costa Rica")
+        """Test del método parse_ubicacion con ciudad y país."""
+        ciudad, pais = ParserUtils.parse_ubicacion("CARTAGO, Costa Rica")
         assert ciudad == "CARTAGO"
         assert pais == "Costa Rica"
 
     def test_parse_ubicacion_solo_ciudad(self) -> None:
-        """Test del método _parse_ubicacion con solo ciudad."""
-        ciudad, pais = PopularParser._parse_ubicacion("HEREDIA")
+        """Test del método parse_ubicacion con solo ciudad."""
+        ciudad, pais = ParserUtils.parse_ubicacion("HEREDIA")
         assert ciudad == "HEREDIA"
         assert pais is None
 
     def test_parse_ubicacion_vacia(self) -> None:
-        """Test del método _parse_ubicacion con string vacío."""
-        ciudad, pais = PopularParser._parse_ubicacion("")
+        """Test del método parse_ubicacion con string vacío."""
+        ciudad, pais = ParserUtils.parse_ubicacion("")
         assert ciudad is None
         assert pais is None
 

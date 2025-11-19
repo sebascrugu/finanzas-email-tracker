@@ -18,6 +18,7 @@ import pytest
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.parsers.bac_parser import BACParser
+from finanzas_tracker.utils.parser_utils import ParserUtils
 
 
 class TestBACParserComprasCRC:
@@ -433,38 +434,38 @@ class TestBACParserMetodosPrivados:
     """Tests para métodos privados y utilidades."""
 
     def test_parse_monto_crc(self) -> None:
-        """Test del método _parse_monto con colones."""
-        moneda, monto = BACParser._parse_monto("CRC 1,290.00")
+        """Test del método parse_monto con colones."""
+        moneda, monto = ParserUtils.parse_monto("CRC 1,290.00")
         assert moneda == "CRC"
         assert monto == Decimal("1290.00")
 
     def test_parse_monto_usd(self) -> None:
-        """Test del método _parse_monto con dólares."""
-        moneda, monto = BACParser._parse_monto("USD 49.99")
+        """Test del método parse_monto con dólares."""
+        moneda, monto = ParserUtils.parse_monto("USD 49.99")
         assert moneda == "USD"
         assert monto == Decimal("49.99")
 
     def test_parse_monto_solo_numeros(self) -> None:
-        """Test del método _parse_monto con solo números."""
-        moneda, monto = BACParser._parse_monto("5000.50")
+        """Test del método parse_monto con solo números."""
+        moneda, monto = ParserUtils.parse_monto("5000.50")
         assert moneda == "CRC"  # Default
         assert monto == Decimal("5000.50")
 
     def test_parse_ubicacion_completa(self) -> None:
-        """Test del método _parse_ubicacion con ciudad y país."""
-        ciudad, pais = BACParser._parse_ubicacion("SAN JOSE, Costa Rica")
+        """Test del método parse_ubicacion con ciudad y país."""
+        ciudad, pais = ParserUtils.parse_ubicacion("SAN JOSE, Costa Rica")
         assert ciudad == "SAN JOSE"
         assert pais == "Costa Rica"
 
     def test_parse_ubicacion_solo_ciudad(self) -> None:
-        """Test del método _parse_ubicacion con solo ciudad."""
-        ciudad, pais = BACParser._parse_ubicacion("SAN JOSE")
+        """Test del método parse_ubicacion con solo ciudad."""
+        ciudad, pais = ParserUtils.parse_ubicacion("SAN JOSE")
         assert ciudad == "SAN JOSE"
         assert pais is None
 
     def test_parse_ubicacion_vacia(self) -> None:
-        """Test del método _parse_ubicacion con string vacío."""
-        ciudad, pais = BACParser._parse_ubicacion("")
+        """Test del método parse_ubicacion con string vacío."""
+        ciudad, pais = ParserUtils.parse_ubicacion("")
         assert ciudad is None
         assert pais is None
 
