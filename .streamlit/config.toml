@@ -1,0 +1,31 @@
+# Streamlit Configuration
+# Configuración del tema para el dashboard financiero
+
+[theme]
+# Base theme: "light" or "dark"
+base = "light"
+
+# Primary color - Used for interactive elements
+primaryColor = "#667eea"
+
+# Background color - Main background
+backgroundColor = "#fafafa"
+
+# Secondary background color - Used for sidebar and containers
+secondaryBackgroundColor = "#ffffff"
+
+# Text color
+textColor = "#111827"
+
+# Font family
+font = "sans serif"
+
+[server]
+# Run the server on startup
+headless = true
+
+# Enable CORS for development
+enableCORS = false
+
+# Enable XSRF protection
+enableXsrfProtection = true

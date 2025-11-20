@@ -25,65 +25,30 @@ st.set_page_config(
     },
 )
 
-# CSS personalizado - FORZAR LIGHT MODE completamente
+# CSS personalizado - Solo estilos específicos del diseño
+# El tema base se configura en .streamlit/config.toml
 st.markdown(
     """
     <style>
-    /* ===== FORZAR LIGHT MODE - Sobrescribir dark mode del sistema ===== */
-
-    /* Root y body - Forzar fondo claro */
-    [data-testid="stAppViewContainer"],
-    [data-testid="stApp"],
-    .main,
-    body {
-        background-color: #fafafa !important;
-    }
-
+    /* Layout y espaciado */
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1200px;
-        background-color: #fafafa !important;
     }
 
-    /* Sidebar - Forzar fondo blanco y texto oscuro */
-    section[data-testid="stSidebar"],
-    section[data-testid="stSidebar"] > div,
-    [data-testid="stSidebarNav"],
-    [data-testid="stSidebarContent"] {
-        background-color: #ffffff !important;
-    }
-
-    /* Sidebar - Texto oscuro */
-    section[data-testid="stSidebar"] * {
-        color: #1f2937 !important;
-    }
-
-    section[data-testid="stSidebar"] h1,
-    section[data-testid="stSidebar"] h2,
-    section[data-testid="stSidebar"] h3,
-    section[data-testid="stSidebar"] p,
-    section[data-testid="stSidebar"] span,
-    section[data-testid="stSidebar"] label {
-        color: #1f2937 !important;
-    }
-
-    section[data-testid="stSidebar"] {
-        border-right: 1px solid #e5e7eb;
-    }
-
-    /* Hero metric - Grande y prominente */
+    /* Hero metric - Card destacada con gradiente */
     .hero-metric {
         text-align: center;
         padding: 2.5rem 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 16px;
         margin-bottom: 2rem;
         box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
     }
 
     .hero-metric h1 {
-        color: white !important;
+        color: white;
         font-size: 3.5rem;
         font-weight: 700;
         margin: 0;
@@ -91,30 +56,27 @@ st.markdown(
     }
 
     .hero-metric p {
-        color: rgba(255,255,255,0.95) !important;
+        color: rgba(255, 255, 255, 0.95);
         font-size: 1.1rem;
         margin: 0.5rem 0 0 0;
         font-weight: 400;
     }
 
-    /* Metric cards - Minimalistas */
+    /* Metric cards - Diseño mejorado */
     div[data-testid="metric-container"] {
-        background-color: #ffffff !important;
-        border: 1px solid #e5e7eb !important;
         border-radius: 12px;
         padding: 1.25rem 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
         transition: all 0.2s ease;
     }
 
     div[data-testid="metric-container"]:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         transform: translateY(-2px);
     }
 
     div[data-testid="stMetricLabel"] {
         font-size: 0.85rem;
-        color: #6b7280 !important;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -123,90 +85,51 @@ st.markdown(
     div[data-testid="stMetricValue"] {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #111827 !important;
     }
 
-    div[data-testid="stMetricDelta"] {
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
-
-    /* Botones modernos */
+    /* Botones con mejor interacción */
     .stButton>button {
         border-radius: 10px;
         font-weight: 600;
         padding: 0.6rem 1.2rem;
-        border: none;
         transition: all 0.2s ease;
         font-size: 0.9rem;
-        background-color: #f3f4f6 !important;
-        color: #111827 !important;
     }
 
     .stButton>button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        background-color: #e5e7eb !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
     }
 
-    .stButton>button[kind="primary"] {
-        background-color: #667eea !important;
-        color: white !important;
-    }
-
-    .stButton>button[kind="primary"]:hover {
-        background-color: #5568d3 !important;
-    }
-
-    /* Barras de progreso */
+    /* Barras de progreso con gradiente */
     .stProgress > div > div > div > div {
         background: linear-gradient(90deg, #10b981 0%, #059669 100%);
         border-radius: 10px;
     }
 
-    /* Headers y títulos - Texto oscuro */
-    .main h1, .main h2, .main h3 {
-        color: #111827 !important;
-        font-weight: 700 !important;
-    }
-
+    /* Headers con mejor jerarquía */
     .main h3 {
-        font-size: 1.25rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
+        font-size: 1.25rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
     }
 
-    .main p {
-        color: #374151 !important;
-    }
-
-    /* Dividers más sutiles */
+    /* Dividers sutiles */
     .main hr {
         margin: 2rem 0;
         border: none;
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
     }
 
-    /* Charts - bordes redondeados y fondo claro */
+    /* Charts con bordes redondeados */
     .element-container iframe {
         border-radius: 12px;
-        background-color: #ffffff !important;
     }
 
-    /* Info boxes con fondo claro */
+    /* Alerts con bordes redondeados */
     .stAlert {
         border-radius: 10px;
-        background-color: #ffffff !important;
-    }
-
-    div[data-baseweb="notification"] {
-        background-color: #ffffff !important;
-    }
-
-    /* Forzar todos los inputs y selectores a fondo claro */
-    input, select, textarea {
-        background-color: #ffffff !important;
-        color: #111827 !important;
     }
     </style>
     """,
