@@ -149,6 +149,7 @@ from sqlalchemy.orm import joinedload
 
 from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.models.account import Account
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
@@ -327,7 +328,11 @@ def main():
         else:
             proximo_mes = date(hoy.year, hoy.month + 1, 1)
 
-        # PATRIMONIO TOTAL - Todos los ingresos menos todos los gastos
+        # PATRIMONIO TOTAL - Cuentas + Movimientos
+        # 1. Saldo en cuentas (ahorros, CDPs, inversiones, efectivo)
+        patrimonio_cuentas = Account.calcular_patrimonio_total(session, perfil_activo.id)
+
+        # 2. Movimientos históricos (ingresos - gastos desde que usas la app)
         total_ingresos_historicos = (
             session.query(Income)
             .filter(
@@ -347,7 +352,15 @@ def main():
             .all()
         )
         patrimonio_gastos = sum(g.monto_crc for g in total_gastos_historicos)
-        patrimonio_total = patrimonio_ingresos - patrimonio_gastos
+        movimientos_netos = patrimonio_ingresos - patrimonio_gastos
+
+        # PATRIMONIO REAL = Cuentas + Movimientos
+        patrimonio_total = patrimonio_cuentas + movimientos_netos
+
+        # Intereses proyectados
+        intereses_mensuales = Account.calcular_intereses_mensuales_totales(
+            session, perfil_activo.id
+        )
 
         # DATOS DEL MES ACTUAL
         ingresos_mes = (
@@ -426,7 +439,7 @@ def main():
         <div class="hero-metric">
             <p style='margin: 0 0 0.5rem 0; font-size: 0.9rem; text-transform: uppercase;
                       letter-spacing: 1px; opacity: 0.9;'>
-                Balance Total
+                Patrimonio Total
             </p>
             <h1>₡{patrimonio_total:,.0f}</h1>
             <p>{cambio_text} este mes</p>
@@ -434,6 +447,45 @@ def main():
         """,
         unsafe_allow_html=True,
     )
+
+    # PROYECCIONES DE INTERESES (si hay cuentas con interés)
+    if intereses_mensuales > 0:
+        st.markdown("### 💰 Proyección de Ganancias por Intereses")
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                label="Este Mes",
+                value=f"₡{intereses_mensuales:,.0f}",
+                delta="Intereses ganados",
+                delta_color="normal",
+            )
+
+        with col2:
+            intereses_3meses = intereses_mensuales * 3
+            st.metric(
+                label="3 Meses",
+                value=f"₡{intereses_3meses:,.0f}",
+                delta=f"₡{intereses_mensuales:,.0f}/mes",
+            )
+
+        with col3:
+            intereses_6meses = intereses_mensuales * 6
+            st.metric(
+                label="6 Meses",
+                value=f"₡{intereses_6meses:,.0f}",
+                delta=f"₡{intereses_mensuales:,.0f}/mes",
+            )
+
+        with col4:
+            intereses_anuales = intereses_mensuales * 12
+            st.metric(
+                label="1 Año",
+                value=f"₡{intereses_anuales:,.0f}",
+                delta=f"₡{intereses_mensuales:,.0f}/mes",
+            )
+
+        st.markdown("---")
 
     # MÉTRICAS DEL MES - Grid de 4 columnas
     col1, col2, col3, col4 = st.columns(4)
