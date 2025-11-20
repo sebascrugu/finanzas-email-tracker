@@ -154,6 +154,7 @@ from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.utils.seed_categories import seed_categories
+from finanzas_tracker.utils.seed_merchants import seed_merchants
 
 
 logger = get_logger(__name__)
@@ -163,6 +164,9 @@ init_db()
 
 # Seed categorías si no existen
 seed_categories()
+
+# Seed merchants si no existen
+seed_merchants()
 
 
 def get_active_profile() -> Profile | None:
