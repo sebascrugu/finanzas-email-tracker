@@ -351,104 +351,114 @@ def main():
                             st.success(f" Categorizada como: {tx.categoria_sugerida_por_ia}")
                             st.rerun()
 
-            # Si seleccionó categoría, proceder con tipo especial (si aplica)
+            # Si seleccionó categoría, proceder con contexto y tipo especial
             if categoria_seleccionada:
-                with get_session() as session:
-                    tx_db = session.query(Transaction).get(tx.id)
-                    tx_db.subcategory_id = categoria_seleccionada.id
-                    tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
-                    tx_db.necesita_revision = False
+                st.markdown("---")
+                st.markdown("#### 🔍 Información Adicional _(opcional)_")
 
-                    # PASO 2: Solo para transferencias/SINPEs, preguntar tipo especial
-                    if es_transferencia_o_sinpe(tx_db):
-                        st.markdown("---")
-                        st.markdown("####  Tipo de Transferencia/SINPE")
+                # Formulario para contexto y tipo especial
+                with st.form(f"tx_{tx.id}_context_form"):
+                    contexto = st.text_area(
+                        "💬 Contexto",
+                        placeholder="Ej: Compré con plata de mamá, Gasto intermediario para el alquiler, etc.",
+                        help="Explica el contexto si este gasto es especial",
+                        height=80,
+                        key=f"contexto_{tx.id}",
+                    )
 
-                        # Buscar patrón histórico
-                        patron = buscar_patron_historico(tx.comercio, perfil_activo.id)
+                    st.markdown("**🏷️ Tipo de Gasto**")
 
-                        if patron:
-                            st.info(
-                                f" **Patrón detectado:** Últimas {patron['frecuencia']} veces marcaste "
-                                f"'{tx.comercio}' de forma especial"
-                            )
+                    # Buscar patrón histórico
+                    patron = buscar_patron_historico(tx.comercio, perfil_activo.id)
 
-                        tipo_nombres = {
-                            "normal": " Normal (tu gasto regular - SÍ cuenta en presupuesto)",
-                            "intermediaria": " Intermediaria (dinero que solo pasas - NO cuenta)",
-                            "compartida": " Compartida (tu parte - SÍ cuenta)",
-                            "ayuda_familiar": " Ayuda familiar (SÍ cuenta)",
-                            "prestamo_dado": " Préstamo dado (SÍ cuenta)",
-                        }
-
-                        col1, col2 = st.columns(2)
-
-                        with col1:
-                            if st.button(
-                                tipo_nombres["normal"],
-                                key=f"tx_{tx.id}_tipo_normal",
-                                use_container_width=True,
-                                type="primary" if not patron else "secondary",
-                            ):
-                                tx_db.tipo_especial = None
-                                tx_db.excluir_de_presupuesto = False
-                                tx_db.relacionada_con = None
-                                session.commit()
-                                st.success(" Categorizada como gasto normal")
-                                st.rerun()
-
-                            if st.button(
-                                tipo_nombres["compartida"],
-                                key=f"tx_{tx.id}_tipo_compartida",
-                                use_container_width=True,
-                            ):
-                                tx_db.tipo_especial = SpecialTransactionType.SHARED
-                                tx_db.excluir_de_presupuesto = False
-                                session.commit()
-                                st.success(" Marcada como gasto compartido")
-                                st.rerun()
-
-                            if st.button(
-                                tipo_nombres["prestamo_dado"],
-                                key=f"tx_{tx.id}_tipo_prestamo",
-                                use_container_width=True,
-                            ):
-                                tx_db.tipo_especial = SpecialTransactionType.LOAN_GIVEN
-                                tx_db.excluir_de_presupuesto = False
-                                session.commit()
-                                st.success(" Marcada como préstamo dado")
-                                st.rerun()
-
-                        with col2:
-                            if st.button(
-                                tipo_nombres["intermediaria"],
-                                key=f"tx_{tx.id}_tipo_intermediaria",
-                                use_container_width=True,
-                            ):
-                                tx_db.tipo_especial = SpecialTransactionType.INTERMEDIATE
-                                tx_db.excluir_de_presupuesto = True
-                                session.commit()
-                                st.warning(" Esta transacción NO contará en tu presupuesto")
-                                st.rerun()
-
-                            if st.button(
-                                tipo_nombres["ayuda_familiar"],
-                                key=f"tx_{tx.id}_tipo_familia",
-                                use_container_width=True,
-                            ):
-                                tx_db.tipo_especial = SpecialTransactionType.FAMILY_SUPPORT
-                                tx_db.excluir_de_presupuesto = False
-                                session.commit()
-                                st.success(" Marcada como ayuda familiar")
-                                st.rerun()
-
-                    else:
-                        # No es transferencia, guardar directamente
-                        session.commit()
-                        st.success(
-                            f" Categorizada como: {categoria_seleccionada.nombre_completo}"
+                    if patron:
+                        st.info(
+                            f"💡 **Patrón detectado:** Últimas {patron['frecuencia']} veces marcaste "
+                            f"'{tx.comercio}' de forma especial"
                         )
-                        st.rerun()
+
+                    tipo_opciones = [
+                        ("normal", "✅ Normal (gasto regular - SÍ cuenta en presupuesto)"),
+                        ("gasto_ajeno", "💸 Gasto ajeno (con dinero de otra persona - NO cuenta)"),
+                        ("intermediaria", "🔄 Intermediaria (solo paso dinero - NO cuenta)"),
+                        ("reembolso", "↩️ Reembolso (me devolvieron plata)"),
+                        ("compartida", "👥 Compartida (dividí con alguien - cuenta mi parte)"),
+                        ("transferencia_propia", "🔁 Transferencia entre mis cuentas - NO cuenta"),
+                    ]
+
+                    tipo_especial = st.radio(
+                        "Selecciona el tipo:",
+                        options=[o[0] for o in tipo_opciones],
+                        format_func=lambda x: next(o[1] for o in tipo_opciones if o[0] == x),
+                        index=0,
+                        key=f"tipo_{tx.id}",
+                    )
+
+                    # Checkbox para excluir explícitamente
+                    excluir_presupuesto = st.checkbox(
+                        "🚫 Excluir de presupuesto mensual",
+                        value=tipo_especial in ["gasto_ajeno", "intermediaria", "transferencia_propia"],
+                        help="No se contará en el presupuesto 50/30/20",
+                        key=f"excluir_{tx.id}",
+                    )
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        guardar_btn = st.form_submit_button(
+                            "💾 Guardar",
+                            type="primary",
+                            use_container_width=True,
+                        )
+
+                    with col2:
+                        saltar_btn = st.form_submit_button(
+                            "⏭️ Saltar (categorizar sin contexto)",
+                            use_container_width=True,
+                        )
+
+                    if guardar_btn:
+                        with get_session() as session:
+                            tx_db = session.query(Transaction).get(tx.id)
+                            tx_db.subcategory_id = categoria_seleccionada.id
+                            tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
+                            tx_db.necesita_revision = False
+
+                            # Guardar contexto y tipo especial
+                            tx_db.contexto = contexto.strip() if contexto and contexto.strip() else None
+
+                            if tipo_especial != "normal":
+                                tx_db.tipo_especial = tipo_especial
+                            else:
+                                tx_db.tipo_especial = None
+
+                            tx_db.excluir_de_presupuesto = excluir_presupuesto
+
+                            session.commit()
+
+                            if tipo_especial == "normal":
+                                st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
+                            else:
+                                st.success(
+                                    f"✅ Categorizada como: {categoria_seleccionada.nombre_completo} "
+                                    f"(tipo: {tipo_especial})"
+                                )
+
+                            if excluir_presupuesto:
+                                st.warning("⚠️ Esta transacción NO contará en tu presupuesto")
+
+                            st.rerun()
+
+                    if saltar_btn:
+                        with get_session() as session:
+                            tx_db = session.query(Transaction).get(tx.id)
+                            tx_db.subcategory_id = categoria_seleccionada.id
+                            tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
+                            tx_db.necesita_revision = False
+                            session.commit()
+
+                            st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
+                            st.rerun()
 
             st.markdown("---")
 
