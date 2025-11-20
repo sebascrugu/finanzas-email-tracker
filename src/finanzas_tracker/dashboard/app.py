@@ -333,6 +333,7 @@ def main():
         patrimonio_cuentas = Account.calcular_patrimonio_total(session, perfil_activo.id)
 
         # 2. Movimientos históricos (ingresos - gastos desde que usas la app)
+        # IMPORTANTE: Usar calcular_monto_patrimonio() para considerar desgloses y exclusiones
         total_ingresos_historicos = (
             session.query(Income)
             .filter(
@@ -341,7 +342,7 @@ def main():
             )
             .all()
         )
-        patrimonio_ingresos = sum(i.monto_crc for i in total_ingresos_historicos)
+        patrimonio_ingresos = sum(i.calcular_monto_patrimonio() for i in total_ingresos_historicos)
 
         total_gastos_historicos = (
             session.query(Transaction)
@@ -351,7 +352,7 @@ def main():
             )
             .all()
         )
-        patrimonio_gastos = sum(g.monto_crc for g in total_gastos_historicos)
+        patrimonio_gastos = sum(g.calcular_monto_patrimonio() for g in total_gastos_historicos)
         movimientos_netos = patrimonio_ingresos - patrimonio_gastos
 
         # PATRIMONIO REAL = Cuentas + Movimientos

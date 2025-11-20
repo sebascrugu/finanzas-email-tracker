@@ -72,6 +72,10 @@ class SpecialTransactionType(str, Enum):
     - LOAN_GIVEN: Préstamo que diste a alguien
     - LOAN_RECEIVED: Préstamo que recibiste
     - FAMILY_SUPPORT: Ayuda económica a familiares (ej: mamá→abuela)
+    - TRANSFERENCIA_PROPIA: Transferencia entre tus propias cuentas
+    - DINERO_AJENO: Dinero de otra persona que te pasaron para algo
+    - GASTO_AJENO: Gasto que hiciste con dinero de otra persona
+    - AJUSTE_INICIAL: Ajuste de saldo inicial al comenzar a usar la app
     """
 
     INTERMEDIATE = "intermediaria"
@@ -80,6 +84,10 @@ class SpecialTransactionType(str, Enum):
     LOAN_GIVEN = "prestamo_dado"
     LOAN_RECEIVED = "prestamo_recibido"
     FAMILY_SUPPORT = "ayuda_familiar"
+    TRANSFERENCIA_PROPIA = "transferencia_propia"
+    DINERO_AJENO = "dinero_ajeno"
+    GASTO_AJENO = "gasto_ajeno"
+    AJUSTE_INICIAL = "ajuste_inicial"
 
     def __str__(self) -> str:
         """Retorna el valor del enum como string."""
