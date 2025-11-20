@@ -13,6 +13,7 @@ from finanzas_tracker.models.enums import (
     SpecialTransactionType,
     TransactionType,
 )
+from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
@@ -23,6 +24,7 @@ __all__ = [
     "Budget",
     "Card",
     "Category",
+    "ExchangeRateCache",
     "Income",
     "Profile",
     "Subcategory",
