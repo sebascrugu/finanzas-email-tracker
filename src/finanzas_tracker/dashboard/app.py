@@ -5,9 +5,11 @@ Esta es la página principal que se muestra al usuario.
 """
 
 import calendar
-from datetime import date
+from datetime import date, timedelta
+from collections import defaultdict
 
 import streamlit as st
+import pandas as pd
 
 
 # Configurar página
@@ -55,9 +57,69 @@ st.markdown(
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
-    /* Barras de progreso más bonitas */
+    /* Hero metric - Grande y prominente */
+    .hero-metric {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
+    }
+
+    .hero-metric h1 {
+        color: white;
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -1px;
+    }
+
+    .hero-metric p {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.1rem;
+        margin: 0.5rem 0 0 0;
+        font-weight: 400;
+    }
+
+    /* Metric cards - Minimalistas */
+    div[data-testid="metric-container"] {
+        background-color: #ffffff;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        padding: 1.25rem 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: all 0.2s ease;
+    }
+
+    div[data-testid="metric-container"]:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.85rem;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    div[data-testid="stMetricValue"] {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    div[data-testid="stMetricDelta"] {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    /* Barras de progreso */
     .stProgress > div > div > div > div {
-        background-image: linear-gradient(to right, #00c853, #64dd17);
+        background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        border-radius: 10px;
     }
 
     /* Sidebar más bonito */
@@ -65,13 +127,28 @@ st.markdown(
         background-color: #f8f9fa;
     }
 
-    /* Métricas con mejor espaciado */
-    div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    /* Headers y títulos */
+    h1, h2, h3 {
+        color: #111827 !important;
+        font-weight: 700 !important;
+    }
+
+    h3 {
+        font-size: 1.25rem !important;
+        margin-top: 2rem !important;
+        margin-bottom: 1rem !important;
+    }
+
+    /* Dividers más sutiles */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    /* Charts - bordes redondeados */
+    .element-container iframe {
+        border-radius: 12px;
     }
     </style>
     """,
@@ -287,35 +364,26 @@ def main():
     # Perfil activo: mostrar selector si hay múltiples
     mostrar_selector_perfiles(perfil_activo)
 
-    # Header del dashboard con diseño mejorado
+    # Obtener fecha actual
     hoy = date.today()
     mes_nombre = calendar.month_name[hoy.month]
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown(
-            f"""
-            <div style='margin-bottom: 1rem;'>
-                <h1 style='margin: 0; color: #1f1f1f; font-size: 2.5rem;'>
-                    💰 Dashboard Financiero
-                </h1>
-                <p style='margin: 0.5rem 0 0 0; color: #666; font-size: 1.1rem;'>
-                    Bienvenido, <strong>{perfil_activo.nombre_completo}</strong> 👋
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with col2:
-        st.metric(
-            label="📅 Período Actual",
-            value=f"{mes_nombre} {hoy.year}",
-            delta=f"Día {hoy.day}",
-        )
+    # Header minimalista
+    st.markdown(
+        f"""
+        <div style='margin-bottom: 1.5rem;'>
+            <p style='margin: 0; color: #6b7280; font-size: 0.95rem; font-weight: 500;'>
+                {mes_nombre} {hoy.year} • Día {hoy.day}
+            </p>
+            <h1 style='margin: 0.25rem 0 0 0; color: #111827; font-size: 2rem; font-weight: 700;'>
+                Hola, {perfil_activo.nombre_completo.split()[0]} 👋
+            </h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("---")
-
-    # Obtener datos del mes actual del perfil activo
+    # Obtener datos del perfil activo
     with get_session() as session:
         primer_dia = date(hoy.year, hoy.month, 1)
         if hoy.month == 12:
@@ -323,8 +391,30 @@ def main():
         else:
             proximo_mes = date(hoy.year, hoy.month + 1, 1)
 
-        # Ingresos del perfil
-        ingresos = (
+        # PATRIMONIO TOTAL - Todos los ingresos menos todos los gastos
+        total_ingresos_historicos = (
+            session.query(Income)
+            .filter(
+                Income.profile_id == perfil_activo.id,
+                Income.deleted_at.is_(None),
+            )
+            .all()
+        )
+        patrimonio_ingresos = sum(i.monto_crc for i in total_ingresos_historicos)
+
+        total_gastos_historicos = (
+            session.query(Transaction)
+            .filter(
+                Transaction.profile_id == perfil_activo.id,
+                Transaction.deleted_at.is_(None),
+            )
+            .all()
+        )
+        patrimonio_gastos = sum(g.monto_crc for g in total_gastos_historicos)
+        patrimonio_total = patrimonio_ingresos - patrimonio_gastos
+
+        # DATOS DEL MES ACTUAL
+        ingresos_mes = (
             session.query(Income)
             .filter(
                 Income.profile_id == perfil_activo.id,
@@ -334,10 +424,9 @@ def main():
             )
             .all()
         )
-        total_ingresos = sum(i.monto_crc for i in ingresos)
+        total_ingresos_mes = sum(i.monto_crc for i in ingresos_mes)
 
-        # Gastos del perfil (que cuentan en presupuesto)
-        gastos = (
+        gastos_mes = (
             session.query(Transaction)
             .filter(
                 Transaction.profile_id == perfil_activo.id,
@@ -348,9 +437,10 @@ def main():
             )
             .all()
         )
-        total_gastos = sum(g.monto_crc for g in gastos)
+        total_gastos_mes = sum(g.monto_crc for g in gastos_mes)
+        balance_mes = total_ingresos_mes - total_gastos_mes
 
-        # Transacciones sin revisar del perfil
+        # Transacciones sin revisar
         sin_revisar = (
             session.query(Transaction)
             .filter(
@@ -361,175 +451,139 @@ def main():
             .count()
         )
 
-        balance = total_ingresos - total_gastos
+        # Gastos por día del mes (para gráfico)
+        gastos_por_dia = defaultdict(float)
+        for gasto in gastos_mes:
+            dia = gasto.fecha_transaccion.day
+            gastos_por_dia[dia] += gasto.monto_crc
 
-        # Calcular porcentaje gastado
-        porcentaje_gastado = (total_gastos / total_ingresos * 100) if total_ingresos > 0 else 0
+        # Gastos por categoría (top 5)
+        gastos_por_categoria = defaultdict(float)
+        for gasto in gastos_mes:
+            if gasto.categoria:
+                gastos_por_categoria[gasto.categoria.nombre] += gasto.monto_crc
 
-    # Métricas principales con diseño mejorado
-    st.markdown("### 📊 Resumen Financiero del Mes")
-    st.markdown("")  # Espacio
+    # HERO METRIC - Patrimonio Total (estilo Revolut/N26)
+    cambio_mes = balance_mes
+    cambio_text = f"+₡{cambio_mes:,.0f}" if cambio_mes >= 0 else f"₡{cambio_mes:,.0f}"
 
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.metric(
-            label="💵 Ingresos Totales",
-            value=f"₡{total_ingresos:,.0f}",
-            delta=f"+{len(ingresos)} registro(s)" if len(ingresos) > 0 else "Sin ingresos",
-            delta_color="normal",
-        )
-
-    with col2:
-        delta_gastos = f"-{len(gastos)} transacción(es)" if len(gastos) > 0 else "Sin gastos"
-        st.metric(
-            label="🛒 Gastos del Mes",
-            value=f"₡{total_gastos:,.0f}",
-            delta=delta_gastos,
-            delta_color="inverse" if len(gastos) > 0 else "off",
-        )
-
-    with col3:
-        delta_color = "normal" if balance >= 0 else "inverse"
-        delta_text = f"+₡{balance:,.0f}" if balance >= 0 else f"₡{balance:,.0f}"
-        st.metric(
-            label="💰 Balance Neto",
-            value=f"₡{balance:,.0f}",
-            delta=delta_text,
-            delta_color=delta_color,
-        )
-
-    with col4:
-        if sin_revisar > 0:
-            st.metric(
-                label="⚠️ Pendientes de Revisar",
-                value=sin_revisar,
-                delta="Requieren atención",
-                delta_color="inverse",
-            )
-        else:
-            st.metric(
-                label="✅ Transacciones",
-                value="Todo OK",
-                delta="Nada que revisar",
-                delta_color="normal",
-            )
-
-    st.markdown("---")
-
-    # Progreso de gastos con diseño mejorado
-    if total_ingresos > 0:
-        porcentaje_gastado = (total_gastos / total_ingresos) * 100
-
-        st.markdown("### 📊 Progreso de Gastos del Mes")
-        st.markdown("")  # Espacio
-
-        # Barra de progreso con color dinámico
-        progress_value = min(porcentaje_gastado / 100, 1.0)
-        st.progress(progress_value)
-
-        # Espacio
-        st.markdown("")
-
-        # Análisis de gastos con mejor diseño
-        col1, col2, col3 = st.columns([2, 1, 1])
-
-        with col1:
-            # Mensaje contextual según el nivel de gasto
-            if porcentaje_gastado > 100:
-                st.error(
-                    f"### 🚨 ¡Atención!\n"
-                    f"Gastaste **{porcentaje_gastado:.1f}%** de tus ingresos. "
-                    f"Estás excediendo tu presupuesto por **₡{abs(balance):,.0f}**"
-                )
-            elif porcentaje_gastado > 90:
-                st.warning(
-                    f"### ⚠️ Cuidado\n"
-                    f"Has gastado **{porcentaje_gastado:.1f}%** de tus ingresos. "
-                    f"Te quedan solo **₡{balance:,.0f}** para el resto del mes."
-                )
-            elif porcentaje_gastado > 75:
-                st.info(
-                    f"### 📌 Buen ritmo\n"
-                    f"Llevas gastado **{porcentaje_gastado:.1f}%** de tus ingresos. "
-                    f"Controla tus gastos para mantener el balance positivo."
-                )
-            else:
-                st.success(
-                    f"### ✅ ¡Excelente!\n"
-                    f"Solo has gastado **{porcentaje_gastado:.1f}%** de tus ingresos. "
-                    f"Tienes un excelente control financiero."
-                )
-
-        with col2:
-            st.metric(
-                label="📈 Porcentaje Gastado",
-                value=f"{porcentaje_gastado:.1f}%",
-                delta=f"{100 - porcentaje_gastado:.1f}% disponible",
-                delta_color="normal" if porcentaje_gastado <= 90 else "inverse",
-            )
-
-        with col3:
-            st.metric(
-                label="💵 Balance Restante",
-                value=f"₡{balance:,.0f}",
-                delta="Positivo" if balance >= 0 else "Negativo",
-                delta_color="normal" if balance >= 0 else "inverse",
-            )
-    else:
-        st.info(
-            "💡 **Tip:** Agrega tus ingresos mensuales para ver el progreso de gastos y obtener "
-            "análisis detallados de tu situación financiera. Ve a la página **📥 Ingresos** para comenzar."
-        )
-
-    st.markdown("---")
-
-    # Acciones rápidas con mejor diseño
-    st.markdown("### ⚡ Acciones Rápidas")
     st.markdown(
-        "<p style='color: #666; margin-bottom: 1rem;'>"
-        "Accesos directos a las funciones más utilizadas"
-        "</p>",
+        f"""
+        <div class="hero-metric">
+            <p style='margin: 0 0 0.5rem 0; font-size: 0.9rem; text-transform: uppercase;
+                      letter-spacing: 1px; opacity: 0.9;'>
+                Balance Total
+            </p>
+            <h1>₡{patrimonio_total:,.0f}</h1>
+            <p>{cambio_text} este mes</p>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    col1, col2, col3, col4 = st.columns(4)
+    # MÉTRICAS DEL MES - Grid limpio de 3 columnas
+    col1, col2, col3 = st.columns(3)
 
     with col1:
-        if st.button("💰 Agregar Ingreso", use_container_width=True, help="Registra un nuevo ingreso"):
+        st.metric(
+            label="Ingresos del Mes",
+            value=f"₡{total_ingresos_mes:,.0f}",
+            delta=f"{len(ingresos_mes)} registros" if len(ingresos_mes) > 0 else "Sin movimientos",
+        )
+
+    with col2:
+        st.metric(
+            label="Gastos del Mes",
+            value=f"₡{total_gastos_mes:,.0f}",
+            delta=f"{len(gastos_mes)} transacciones" if len(gastos_mes) > 0 else "Sin gastos",
+            delta_color="inverse" if total_gastos_mes > 0 else "off",
+        )
+
+    with col3:
+        porcentaje_ahorro = (
+            (balance_mes / total_ingresos_mes * 100) if total_ingresos_mes > 0 else 0
+        )
+        st.metric(
+            label="Tasa de Ahorro",
+            value=f"{porcentaje_ahorro:.1f}%",
+            delta="Positivo" if balance_mes >= 0 else "Negativo",
+            delta_color="normal" if balance_mes >= 0 else "inverse",
+        )
+
+    # GRÁFICOS Y ANÁLISIS
+    if total_gastos_mes > 0:
+        st.markdown("---")
+        st.markdown("### 📈 Análisis de Gastos")
+
+        # Dos columnas para los gráficos
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Gráfico de gastos por día
+            st.markdown("**Gastos Diarios**")
+            dias_del_mes = list(range(1, hoy.day + 1))
+            montos_por_dia = [gastos_por_dia.get(dia, 0) for dia in dias_del_mes]
+
+            df_dias = pd.DataFrame({"Día": dias_del_mes, "Monto": montos_por_dia})
+
+            st.line_chart(df_dias.set_index("Día"), height=250)
+
+        with col2:
+            # Gráfico de top categorías
+            st.markdown("**Top Categorías de Gasto**")
+            if gastos_por_categoria:
+                top_categorias = sorted(
+                    gastos_por_categoria.items(), key=lambda x: x[1], reverse=True
+                )[:5]
+
+                df_cats = pd.DataFrame(
+                    {
+                        "Categoría": [cat[0] for cat in top_categorias],
+                        "Monto": [cat[1] for cat in top_categorias],
+                    }
+                )
+
+                st.bar_chart(df_cats.set_index("Categoría"), height=250)
+            else:
+                st.info("Sin categorías asignadas")
+
+        # Alerta contextual si hay pendientes
+        if sin_revisar > 0:
+            st.markdown("---")
+            st.warning(
+                f"⚠️ **Tienes {sin_revisar} transacciones sin revisar.** "
+                f"Revísalas para mantener tu presupuesto actualizado."
+            )
+    else:
+        st.info(
+            "💡 **Comienza agregando transacciones** para ver análisis detallados "
+            "de tus gastos y patrones de consumo."
+        )
+
+    # ACCIONES RÁPIDAS - Simplificadas
+    st.markdown("---")
+    st.markdown("### ⚡ Acciones Rápidas")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("💰 Agregar Ingreso", use_container_width=True):
             st.switch_page("pages/2__Ingresos.py")
 
     with col2:
-        if st.button(
-            "📊 Balance Detallado",
-            use_container_width=True,
-            help="Ver análisis completo de ingresos y gastos",
-        ):
-            st.switch_page("pages/3__Balance.py")
-
-    with col3:
         if sin_revisar > 0:
             if st.button(
-                f"⚠️ Revisar {sin_revisar} Transacciones",
+                f"⚠️ Revisar Transacciones ({sin_revisar})",
                 use_container_width=True,
                 type="primary",
-                help=f"Hay {sin_revisar} transacciones pendientes de revisión",
             ):
                 st.switch_page("pages/4__Transacciones.py")
         else:
-            if st.button(
-                "✅ Ver Transacciones",
-                use_container_width=True,
-                help="Ver todas tus transacciones",
-            ):
+            if st.button("📊 Ver Transacciones", use_container_width=True):
                 st.switch_page("pages/4__Transacciones.py")
 
-    with col4:
-        if st.button(
-            "📧 Procesar Correos",
-            use_container_width=True,
-            help="Importar nuevas transacciones desde tus correos bancarios",
-        ):
+    with col3:
+        if st.button("📧 Procesar Correos", use_container_width=True):
             st.switch_page("pages/4__Transacciones.py")
 
 
