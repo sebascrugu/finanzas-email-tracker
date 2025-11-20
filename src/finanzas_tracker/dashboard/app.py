@@ -17,7 +17,7 @@ st.set_page_config(
     page_title="Dashboard - Finanzas Tracker",
     page_icon="💰",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     menu_items={
         "Get Help": None,
         "Report a bug": None,
@@ -190,7 +190,7 @@ def get_active_profile() -> Profile | None:
 
 
 def mostrar_sidebar_simple(perfil_actual: Profile):
-    """Muestra sidebar minimalista - solo perfil y selector."""
+    """Muestra sidebar minimalista - solo selector si hay múltiples perfiles."""
     with get_session() as session:
         perfiles = (
             session.query(Profile)
@@ -198,12 +198,8 @@ def mostrar_sidebar_simple(perfil_actual: Profile):
             .all()
         )
 
-        # Solo mostrar nombre del perfil
-        st.sidebar.markdown(f"### {perfil_actual.icono} {perfil_actual.nombre}")
-
         # Selector solo si hay múltiples perfiles
         if len(perfiles) > 1:
-            st.sidebar.markdown("---")
             st.sidebar.markdown("**Cambiar Perfil**")
 
             perfil_nombres = [f"{p.icono} {p.nombre}" for p in perfiles]
