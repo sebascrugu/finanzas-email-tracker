@@ -189,8 +189,8 @@ def get_active_profile() -> Profile | None:
         return perfil
 
 
-def mostrar_selector_perfiles(perfil_actual: Profile):
-    """Muestra selector de perfiles en el sidebar."""
+def mostrar_sidebar_resumen(perfil_actual: Profile, datos_mes: dict):
+    """Muestra resumen financiero útil en el sidebar."""
     with get_session() as session:
         perfiles = (
             session.query(Profile)
@@ -210,24 +210,46 @@ def mostrar_selector_perfiles(perfil_actual: Profile):
             _ = p.cards
             _ = p.bancos_asociados
 
-        st.sidebar.markdown(f"## {perfil_actual.nombre_completo}")
+        # Header del sidebar
+        st.sidebar.markdown(f"### {perfil_actual.icono} {perfil_actual.nombre}")
 
-        # Mostrar info del perfil
-        presupuesto = next((b for b in perfil_actual.budgets if b.fecha_fin is None), None)
-        if presupuesto:
-            st.sidebar.metric(" Presupuesto", f"₡{presupuesto.salario_mensual:,.0f}/mes")
+        st.sidebar.markdown("---")
 
-        tarjetas_activas = [c for c in perfil_actual.cards if c.activa]
-        st.sidebar.metric(" Tarjetas", len(tarjetas_activas))
+        # Resumen del mes
+        st.sidebar.markdown("#### 📊 Resumen del Mes")
 
-        bancos = perfil_actual.bancos_asociados
-        if bancos:
-            st.sidebar.markdown(f"** Bancos:** {', '.join([b.upper() for b in bancos])}")
+        # Métricas compactas
+        st.sidebar.metric(
+            "Balance",
+            f"₡{datos_mes['balance_mes']:,.0f}",
+            delta=f"{datos_mes['porcentaje_ahorro']:.0f}% ahorro",
+        )
+
+        st.sidebar.metric(
+            "Gastos",
+            f"₡{datos_mes['total_gastos_mes']:,.0f}",
+            delta=f"{len(datos_mes['gastos_mes'])} transacciones",
+            delta_color="inverse",
+        )
+
+        # Progreso visual de gastos vs ingresos
+        if datos_mes['total_ingresos_mes'] > 0:
+            porcentaje_gastado = (
+                datos_mes['total_gastos_mes'] / datos_mes['total_ingresos_mes'] * 100
+            )
+            st.sidebar.markdown("**Progreso de Gastos**")
+            st.sidebar.progress(min(porcentaje_gastado / 100, 1.0))
+            st.sidebar.caption(f"{porcentaje_gastado:.0f}% del ingreso mensual")
+
+        # Alertas importantes
+        if datos_mes['sin_revisar'] > 0:
+            st.sidebar.markdown("---")
+            st.sidebar.warning(f"⚠️ {datos_mes['sin_revisar']} sin revisar")
 
         # Selector solo si hay múltiples perfiles
         if len(perfiles) > 1:
             st.sidebar.markdown("---")
-            st.sidebar.markdown("###  Cambiar Perfil")
+            st.sidebar.markdown("#### 👥 Cambiar Perfil")
 
             perfil_nombres = [p.nombre_completo for p in perfiles]
             perfil_ids = [p.id for p in perfiles]
@@ -239,12 +261,11 @@ def mostrar_selector_perfiles(perfil_actual: Profile):
                 pass
 
             seleccion = st.sidebar.selectbox(
-                "Seleccionar:",
+                "Perfil:",
                 options=range(len(perfiles)),
                 format_func=lambda i: perfil_nombres[i],
                 index=idx_actual,
                 key="selector_perfil",
-                label_visibility="collapsed",
             )
 
             # Si cambió el perfil, actualizar
@@ -342,29 +363,11 @@ def main():
 
         return
 
-    # Perfil activo: mostrar selector si hay múltiples
-    mostrar_selector_perfiles(perfil_activo)
-
     # Obtener fecha actual
     hoy = date.today()
     mes_nombre = calendar.month_name[hoy.month]
 
-    # Header minimalista
-    st.markdown(
-        f"""
-        <div style='margin-bottom: 1.5rem;'>
-            <p style='margin: 0; color: #6b7280; font-size: 0.95rem; font-weight: 500;'>
-                {mes_nombre} {hoy.year} • Día {hoy.day}
-            </p>
-            <h1 style='margin: 0.25rem 0 0 0; color: #111827; font-size: 2rem; font-weight: 700;'>
-                Hola, {perfil_activo.nombre} 👋
-            </h1>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Obtener datos del perfil activo
+    # Recolectar datos del mes para sidebar y dashboard
     with get_session() as session:
         primer_dia = date(hoy.year, hoy.month, 1)
         if hoy.month == 12:
@@ -444,6 +447,35 @@ def main():
             if gasto.categoria:
                 gastos_por_categoria[gasto.categoria.nombre] += gasto.monto_crc
 
+    # Preparar datos para sidebar
+    porcentaje_ahorro = (balance_mes / total_ingresos_mes * 100) if total_ingresos_mes > 0 else 0
+    datos_mes = {
+        "balance_mes": balance_mes,
+        "total_gastos_mes": total_gastos_mes,
+        "total_ingresos_mes": total_ingresos_mes,
+        "gastos_mes": gastos_mes,
+        "sin_revisar": sin_revisar,
+        "porcentaje_ahorro": porcentaje_ahorro,
+    }
+
+    # Mostrar sidebar con resumen
+    mostrar_sidebar_resumen(perfil_activo, datos_mes)
+
+    # Header minimalista
+    st.markdown(
+        f"""
+        <div style='margin-bottom: 1.5rem;'>
+            <p style='margin: 0; color: #6b7280; font-size: 0.95rem; font-weight: 500;'>
+                {mes_nombre} {hoy.year} • Día {hoy.day}
+            </p>
+            <h1 style='margin: 0.25rem 0 0 0; color: #111827; font-size: 2rem; font-weight: 700;'>
+                Hola, {perfil_activo.nombre} 👋
+            </h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # HERO METRIC - Patrimonio Total (estilo Revolut/N26)
     cambio_mes = balance_mes
     cambio_text = f"+₡{cambio_mes:,.0f}" if cambio_mes >= 0 else f"₡{cambio_mes:,.0f}"
@@ -496,22 +528,35 @@ def main():
         st.markdown("---")
         st.markdown("### 📈 Análisis de Gastos")
 
-        # Dos columnas para los gráficos
-        col1, col2 = st.columns(2)
+        # Tres columnas para los gráficos
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            # Gráfico de gastos por día
-            st.markdown("**Gastos Diarios**")
+            # Gráfico de gastos diarios
+            st.markdown("**💸 Gastos Diarios**")
             dias_del_mes = list(range(1, hoy.day + 1))
             montos_por_dia = [gastos_por_dia.get(dia, 0) for dia in dias_del_mes]
 
             df_dias = pd.DataFrame({"Día": dias_del_mes, "Monto": montos_por_dia})
-
-            st.line_chart(df_dias.set_index("Día"), height=250)
+            st.line_chart(df_dias.set_index("Día"), height=200)
 
         with col2:
+            # Gráfico de gastos acumulados
+            st.markdown("**📊 Acumulado del Mes**")
+            gastos_acumulados = []
+            acumulado = 0
+            for dia in dias_del_mes:
+                acumulado += gastos_por_dia.get(dia, 0)
+                gastos_acumulados.append(acumulado)
+
+            df_acumulado = pd.DataFrame(
+                {"Día": dias_del_mes, "Acumulado": gastos_acumulados}
+            )
+            st.area_chart(df_acumulado.set_index("Día"), height=200)
+
+        with col3:
             # Gráfico de top categorías
-            st.markdown("**Top Categorías de Gasto**")
+            st.markdown("**🏷️ Top Categorías**")
             if gastos_por_categoria:
                 top_categorias = sorted(
                     gastos_por_categoria.items(), key=lambda x: x[1], reverse=True
@@ -523,10 +568,9 @@ def main():
                         "Monto": [cat[1] for cat in top_categorias],
                     }
                 )
-
-                st.bar_chart(df_cats.set_index("Categoría"), height=250)
+                st.bar_chart(df_cats.set_index("Categoría"), height=200)
             else:
-                st.info("Sin categorías asignadas")
+                st.info("Sin categorías")
 
         # Alerta contextual si hay pendientes
         if sin_revisar > 0:
@@ -540,32 +584,6 @@ def main():
             "💡 **Comienza agregando transacciones** para ver análisis detallados "
             "de tus gastos y patrones de consumo."
         )
-
-    # ACCIONES RÁPIDAS - Simplificadas
-    st.markdown("---")
-    st.markdown("### ⚡ Acciones Rápidas")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        if st.button("💰 Agregar Ingreso", use_container_width=True):
-            st.switch_page("pages/2__Ingresos.py")
-
-    with col2:
-        if sin_revisar > 0:
-            if st.button(
-                f"⚠️ Revisar Transacciones ({sin_revisar})",
-                use_container_width=True,
-                type="primary",
-            ):
-                st.switch_page("pages/4__Transacciones.py")
-        else:
-            if st.button("📊 Ver Transacciones", use_container_width=True):
-                st.switch_page("pages/4__Transacciones.py")
-
-    with col3:
-        if st.button("📧 Procesar Correos", use_container_width=True):
-            st.switch_page("pages/4__Transacciones.py")
 
 
 if __name__ == "__main__":
