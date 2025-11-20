@@ -189,69 +189,24 @@ def get_active_profile() -> Profile | None:
         return perfil
 
 
-def mostrar_sidebar_resumen(perfil_actual: Profile, datos_mes: dict):
-    """Muestra resumen financiero útil en el sidebar."""
+def mostrar_sidebar_simple(perfil_actual: Profile):
+    """Muestra sidebar minimalista - solo perfil y selector."""
     with get_session() as session:
         perfiles = (
             session.query(Profile)
-            .options(
-                joinedload(Profile.budgets),
-                joinedload(Profile.cards),
-            )
-            .filter(
-                Profile.activo == True,  # noqa: E712
-            )
+            .filter(Profile.activo == True)  # noqa: E712
             .all()
         )
 
-        # Forzar carga de relaciones
-        for p in perfiles:
-            _ = p.budgets
-            _ = p.cards
-            _ = p.bancos_asociados
-
-        # Header del sidebar
+        # Solo mostrar nombre del perfil
         st.sidebar.markdown(f"### {perfil_actual.icono} {perfil_actual.nombre}")
-
-        st.sidebar.markdown("---")
-
-        # Resumen del mes
-        st.sidebar.markdown("#### 📊 Resumen del Mes")
-
-        # Métricas compactas
-        st.sidebar.metric(
-            "Balance",
-            f"₡{datos_mes['balance_mes']:,.0f}",
-            delta=f"{datos_mes['porcentaje_ahorro']:.0f}% ahorro",
-        )
-
-        st.sidebar.metric(
-            "Gastos",
-            f"₡{datos_mes['total_gastos_mes']:,.0f}",
-            delta=f"{len(datos_mes['gastos_mes'])} transacciones",
-            delta_color="inverse",
-        )
-
-        # Progreso visual de gastos vs ingresos
-        if datos_mes['total_ingresos_mes'] > 0:
-            porcentaje_gastado = (
-                datos_mes['total_gastos_mes'] / datos_mes['total_ingresos_mes'] * 100
-            )
-            st.sidebar.markdown("**Progreso de Gastos**")
-            st.sidebar.progress(min(porcentaje_gastado / 100, 1.0))
-            st.sidebar.caption(f"{porcentaje_gastado:.0f}% del ingreso mensual")
-
-        # Alertas importantes
-        if datos_mes['sin_revisar'] > 0:
-            st.sidebar.markdown("---")
-            st.sidebar.warning(f"⚠️ {datos_mes['sin_revisar']} sin revisar")
 
         # Selector solo si hay múltiples perfiles
         if len(perfiles) > 1:
             st.sidebar.markdown("---")
-            st.sidebar.markdown("#### 👥 Cambiar Perfil")
+            st.sidebar.markdown("**Cambiar Perfil**")
 
-            perfil_nombres = [p.nombre_completo for p in perfiles]
+            perfil_nombres = [f"{p.icono} {p.nombre}" for p in perfiles]
             perfil_ids = [p.id for p in perfiles]
 
             idx_actual = 0
@@ -266,6 +221,7 @@ def mostrar_sidebar_resumen(perfil_actual: Profile, datos_mes: dict):
                 format_func=lambda i: perfil_nombres[i],
                 index=idx_actual,
                 key="selector_perfil",
+                label_visibility="collapsed",
             )
 
             # Si cambió el perfil, actualizar
@@ -447,19 +403,8 @@ def main():
             if gasto.categoria:
                 gastos_por_categoria[gasto.categoria.nombre] += gasto.monto_crc
 
-    # Preparar datos para sidebar
-    porcentaje_ahorro = (balance_mes / total_ingresos_mes * 100) if total_ingresos_mes > 0 else 0
-    datos_mes = {
-        "balance_mes": balance_mes,
-        "total_gastos_mes": total_gastos_mes,
-        "total_ingresos_mes": total_ingresos_mes,
-        "gastos_mes": gastos_mes,
-        "sin_revisar": sin_revisar,
-        "porcentaje_ahorro": porcentaje_ahorro,
-    }
-
-    # Mostrar sidebar con resumen
-    mostrar_sidebar_resumen(perfil_activo, datos_mes)
+    # Mostrar sidebar simple (solo perfil)
+    mostrar_sidebar_simple(perfil_activo)
 
     # Header minimalista
     st.markdown(
@@ -494,19 +439,19 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # MÉTRICAS DEL MES - Grid limpio de 3 columnas
-    col1, col2, col3 = st.columns(3)
+    # MÉTRICAS DEL MES - Grid de 4 columnas
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         st.metric(
-            label="Ingresos del Mes",
+            label="💵 Ingresos",
             value=f"₡{total_ingresos_mes:,.0f}",
-            delta=f"{len(ingresos_mes)} registros" if len(ingresos_mes) > 0 else "Sin movimientos",
+            delta=f"{len(ingresos_mes)} ingresos" if len(ingresos_mes) > 0 else "Sin ingresos",
         )
 
     with col2:
         st.metric(
-            label="Gastos del Mes",
+            label="💸 Gastos",
             value=f"₡{total_gastos_mes:,.0f}",
             delta=f"{len(gastos_mes)} transacciones" if len(gastos_mes) > 0 else "Sin gastos",
             delta_color="inverse" if total_gastos_mes > 0 else "off",
@@ -517,11 +462,56 @@ def main():
             (balance_mes / total_ingresos_mes * 100) if total_ingresos_mes > 0 else 0
         )
         st.metric(
-            label="Tasa de Ahorro",
+            label="📈 Tasa Ahorro",
             value=f"{porcentaje_ahorro:.1f}%",
             delta="Positivo" if balance_mes >= 0 else "Negativo",
             delta_color="normal" if balance_mes >= 0 else "inverse",
         )
+
+    with col4:
+        if sin_revisar > 0:
+            st.metric(
+                label="⚠️ Sin Revisar",
+                value=sin_revisar,
+                delta="Requieren revisión",
+                delta_color="inverse",
+            )
+        else:
+            st.metric(
+                label="✅ Transacciones",
+                value="Al día",
+                delta="Todo revisado",
+                delta_color="normal",
+            )
+
+    # Barra de progreso de gastos (visual importante)
+    if total_ingresos_mes > 0:
+        porcentaje_gastado = (total_gastos_mes / total_ingresos_mes) * 100
+
+        st.markdown("---")
+        col1, col2 = st.columns([3, 1])
+
+        with col1:
+            st.markdown(f"**Progreso de Gastos: {porcentaje_gastado:.1f}%**")
+            st.progress(min(porcentaje_gastado / 100, 1.0))
+
+            # Mensaje contextual
+            if porcentaje_gastado > 100:
+                st.caption(f"🚨 Excediste el presupuesto por ₡{abs(balance_mes):,.0f}")
+            elif porcentaje_gastado > 90:
+                st.caption(f"⚠️ Cerca del límite - Te quedan ₡{balance_mes:,.0f}")
+            elif porcentaje_gastado > 75:
+                st.caption(f"📊 Buen ritmo - Disponible: ₡{balance_mes:,.0f}")
+            else:
+                st.caption(f"✅ Excelente control - Ahorro: ₡{balance_mes:,.0f}")
+
+        with col2:
+            st.metric(
+                "Balance Mes",
+                f"₡{balance_mes:,.0f}",
+                delta=f"{100 - porcentaje_gastado:.0f}% disponible" if balance_mes >= 0 else "Déficit",
+                delta_color="normal" if balance_mes >= 0 else "inverse",
+            )
 
     # GRÁFICOS Y ANÁLISIS
     if total_gastos_mes > 0:
