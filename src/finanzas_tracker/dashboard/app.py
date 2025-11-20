@@ -25,26 +25,58 @@ st.set_page_config(
     },
 )
 
-# CSS personalizado - Diseño consistente light mode
+# CSS personalizado - FORZAR LIGHT MODE completamente
 st.markdown(
     """
     <style>
-    /* Forzar fondo claro en main para consistencia */
-    .main {
-        background-color: #fafafa;
+    /* ===== FORZAR LIGHT MODE - Sobrescribir dark mode del sistema ===== */
+
+    /* Root y body - Forzar fondo claro */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stApp"],
+    .main,
+    body {
+        background-color: #fafafa !important;
     }
 
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
         max-width: 1200px;
+        background-color: #fafafa !important;
+    }
+
+    /* Sidebar - Forzar fondo blanco y texto oscuro */
+    section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"] > div,
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarContent"] {
+        background-color: #ffffff !important;
+    }
+
+    /* Sidebar - Texto oscuro */
+    section[data-testid="stSidebar"] * {
+        color: #1f2937 !important;
+    }
+
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] label {
+        color: #1f2937 !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        border-right: 1px solid #e5e7eb;
     }
 
     /* Hero metric - Grande y prominente */
     .hero-metric {
         text-align: center;
         padding: 2.5rem 1rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         border-radius: 16px;
         margin-bottom: 2rem;
         box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25);
@@ -59,7 +91,7 @@ st.markdown(
     }
 
     .hero-metric p {
-        color: rgba(255,255,255,0.9) !important;
+        color: rgba(255,255,255,0.95) !important;
         font-size: 1.1rem;
         margin: 0.5rem 0 0 0;
         font-weight: 400;
@@ -107,11 +139,23 @@ st.markdown(
         border: none;
         transition: all 0.2s ease;
         font-size: 0.9rem;
+        background-color: #f3f4f6 !important;
+        color: #111827 !important;
     }
 
     .stButton>button:hover {
         transform: translateY(-1px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        background-color: #e5e7eb !important;
+    }
+
+    .stButton>button[kind="primary"] {
+        background-color: #667eea !important;
+        color: white !important;
+    }
+
+    .stButton>button[kind="primary"]:hover {
+        background-color: #5568d3 !important;
     }
 
     /* Barras de progreso */
@@ -120,17 +164,7 @@ st.markdown(
         border-radius: 10px;
     }
 
-    /* Sidebar consistente */
-    section[data-testid="stSidebar"] {
-        background-color: #ffffff !important;
-        border-right: 1px solid #e5e7eb;
-    }
-
-    section[data-testid="stSidebar"] > div {
-        background-color: #ffffff !important;
-    }
-
-    /* Headers y títulos */
+    /* Headers y títulos - Texto oscuro */
     .main h1, .main h2, .main h3 {
         color: #111827 !important;
         font-weight: 700 !important;
@@ -153,14 +187,26 @@ st.markdown(
         border-top: 1px solid #e5e7eb;
     }
 
-    /* Charts - bordes redondeados */
+    /* Charts - bordes redondeados y fondo claro */
     .element-container iframe {
         border-radius: 12px;
+        background-color: #ffffff !important;
     }
 
-    /* Info boxes */
+    /* Info boxes con fondo claro */
     .stAlert {
         border-radius: 10px;
+        background-color: #ffffff !important;
+    }
+
+    div[data-baseweb="notification"] {
+        background-color: #ffffff !important;
+    }
+
+    /* Forzar todos los inputs y selectores a fondo claro */
+    input, select, textarea {
+        background-color: #ffffff !important;
+        color: #111827 !important;
     }
     </style>
     """,
