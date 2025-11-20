@@ -31,6 +31,8 @@ import sys
 src_path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(src_path))
 
+from sqlalchemy.orm import joinedload
+
 from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.income import Income
@@ -49,10 +51,14 @@ seed_categories()
 
 
 def get_active_profile() -> Profile | None:
-    """Obtiene el perfil activo."""
+    """Obtiene el perfil activo con todas sus relaciones cargadas."""
     with get_session() as session:
-        return (
+        perfil = (
             session.query(Profile)
+            .options(
+                joinedload(Profile.budgets),
+                joinedload(Profile.cards),
+            )
             .filter(
                 Profile.es_activo == True,  # noqa: E712
                 Profile.activo == True,  # noqa: E712
@@ -60,17 +66,35 @@ def get_active_profile() -> Profile | None:
             .first()
         )
 
+        if perfil:
+            # Forzar la carga de relaciones antes de cerrar la sesión
+            _ = perfil.budgets
+            _ = perfil.cards
+            _ = perfil.bancos_asociados
+
+        return perfil
+
 
 def mostrar_selector_perfiles(perfil_actual: Profile):
     """Muestra selector de perfiles en el sidebar."""
     with get_session() as session:
         perfiles = (
             session.query(Profile)
+            .options(
+                joinedload(Profile.budgets),
+                joinedload(Profile.cards),
+            )
             .filter(
                 Profile.activo == True,  # noqa: E712
             )
             .all()
         )
+
+        # Forzar carga de relaciones
+        for p in perfiles:
+            _ = p.budgets
+            _ = p.cards
+            _ = p.bancos_asociados
 
         st.sidebar.markdown(f"## {perfil_actual.nombre_completo}")
 
