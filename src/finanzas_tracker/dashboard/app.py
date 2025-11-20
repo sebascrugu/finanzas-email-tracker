@@ -25,36 +25,19 @@ st.set_page_config(
     },
 )
 
-# CSS personalizado para mejorar el diseño
+# CSS personalizado - Diseño consistente light mode
 st.markdown(
     """
     <style>
-    /* Mejoras generales */
+    /* Forzar fondo claro en main para consistencia */
+    .main {
+        background-color: #fafafa;
+    }
+
     .main .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
-    }
-
-    /* Cards con sombra y bordes redondeados */
-    div[data-testid="stMetricValue"] {
-        font-size: 2rem;
-        font-weight: 700;
-    }
-
-    div[data-testid="stMetricDelta"] {
-        font-size: 0.9rem;
-    }
-
-    /* Mejorar botones */
-    .stButton>button {
-        border-radius: 8px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-width: 1200px;
     }
 
     /* Hero metric - Grande y prominente */
@@ -68,7 +51,7 @@ st.markdown(
     }
 
     .hero-metric h1 {
-        color: white;
+        color: white !important;
         font-size: 3.5rem;
         font-weight: 700;
         margin: 0;
@@ -76,7 +59,7 @@ st.markdown(
     }
 
     .hero-metric p {
-        color: rgba(255,255,255,0.9);
+        color: rgba(255,255,255,0.9) !important;
         font-size: 1.1rem;
         margin: 0.5rem 0 0 0;
         font-weight: 400;
@@ -84,22 +67,22 @@ st.markdown(
 
     /* Metric cards - Minimalistas */
     div[data-testid="metric-container"] {
-        background-color: #ffffff;
-        border: 1px solid #f0f0f0;
+        background-color: #ffffff !important;
+        border: 1px solid #e5e7eb !important;
         border-radius: 12px;
         padding: 1.25rem 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         transition: all 0.2s ease;
     }
 
     div[data-testid="metric-container"]:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         transform: translateY(-2px);
     }
 
     div[data-testid="stMetricLabel"] {
         font-size: 0.85rem;
-        color: #6b7280;
+        color: #6b7280 !important;
         font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -108,12 +91,27 @@ st.markdown(
     div[data-testid="stMetricValue"] {
         font-size: 1.75rem;
         font-weight: 700;
-        color: #111827;
+        color: #111827 !important;
     }
 
     div[data-testid="stMetricDelta"] {
         font-size: 0.875rem;
         font-weight: 500;
+    }
+
+    /* Botones modernos */
+    .stButton>button {
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 0.6rem 1.2rem;
+        border: none;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+
+    .stButton>button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
 
     /* Barras de progreso */
@@ -122,33 +120,47 @@ st.markdown(
         border-radius: 10px;
     }
 
-    /* Sidebar más bonito */
+    /* Sidebar consistente */
     section[data-testid="stSidebar"] {
-        background-color: #f8f9fa;
+        background-color: #ffffff !important;
+        border-right: 1px solid #e5e7eb;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background-color: #ffffff !important;
     }
 
     /* Headers y títulos */
-    h1, h2, h3 {
+    .main h1, .main h2, .main h3 {
         color: #111827 !important;
         font-weight: 700 !important;
     }
 
-    h3 {
+    .main h3 {
         font-size: 1.25rem !important;
         margin-top: 2rem !important;
         margin-bottom: 1rem !important;
     }
 
+    .main p {
+        color: #374151 !important;
+    }
+
     /* Dividers más sutiles */
-    hr {
+    .main hr {
         margin: 2rem 0;
         border: none;
-        border-top: 1px solid #f0f0f0;
+        border-top: 1px solid #e5e7eb;
     }
 
     /* Charts - bordes redondeados */
     .element-container iframe {
         border-radius: 12px;
+    }
+
+    /* Info boxes */
+    .stAlert {
+        border-radius: 10px;
     }
     </style>
     """,
@@ -376,7 +388,7 @@ def main():
                 {mes_nombre} {hoy.year} • Día {hoy.day}
             </p>
             <h1 style='margin: 0.25rem 0 0 0; color: #111827; font-size: 2rem; font-weight: 700;'>
-                Hola, {perfil_activo.nombre_completo.split()[0]} 👋
+                Hola, {perfil_activo.nombre} 👋
             </h1>
         </div>
         """,
