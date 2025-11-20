@@ -32,7 +32,7 @@ class TransactionCategorizer:
         comercio: str,
         monto_crc: float,
         tipo_transaccion: str,
-        user_email: str | None = None,
+        profile_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Categoriza una transacción.
@@ -41,7 +41,7 @@ class TransactionCategorizer:
             comercio: Nombre del comercio
             monto_crc: Monto en colones
             tipo_transaccion: Tipo de transacción
-            user_email: Email del usuario (para aprendizaje)
+            profile_id: ID del perfil (para aprendizaje del historial)
 
         Returns:
             dict con:
@@ -55,7 +55,7 @@ class TransactionCategorizer:
         logger.info(f"Categorizando: {comercio} - ₡{monto_crc:,.2f}")
 
         # 0. Aprendizaje: buscar transacciones anteriores del mismo comercio
-        learned_match = self._categorize_from_history(comercio, user_email)
+        learned_match = self._categorize_from_history(comercio, profile_id)
         if learned_match:
             logger.debug(
                 f"🧠 Aprendido de historial: {learned_match['categoria_sugerida']} "
@@ -239,7 +239,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
     def _categorize_from_history(
         self,
         comercio: str,
-        user_email: str | None,
+        profile_id: str | None,
     ) -> dict[str, Any] | None:
         """
         Busca en transacciones anteriores para aprender del historial.
@@ -248,12 +248,12 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 
         Args:
             comercio: Nombre del comercio
-            user_email: Email del usuario
+            profile_id: ID del perfil del usuario
 
         Returns:
             dict con categorización o None si no encuentra historial
         """
-        if not user_email:
+        if not profile_id:
             return None
 
         try:
@@ -265,7 +265,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
                 similar_transaction = (
                     session.query(Transaction)
                     .filter(
-                        Transaction.user_email == user_email,
+                        Transaction.profile_id == profile_id,
                         Transaction.comercio == comercio,
                         Transaction.subcategory_id.isnot(None),
                         Transaction.necesita_revision == False,  # noqa: E712

@@ -418,47 +418,55 @@ def main():
                         )
 
                     if guardar_btn:
-                        with get_session() as session:
-                            tx_db = session.query(Transaction).get(tx.id)
-                            tx_db.subcategory_id = categoria_seleccionada.id
-                            tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
-                            tx_db.necesita_revision = False
+                        try:
+                            with get_session() as session:
+                                tx_db = session.query(Transaction).get(tx.id)
+                                tx_db.subcategory_id = categoria_seleccionada.id
+                                tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
+                                tx_db.necesita_revision = False
 
-                            # Guardar contexto y tipo especial
-                            tx_db.contexto = contexto.strip() if contexto and contexto.strip() else None
+                                # Guardar contexto y tipo especial
+                                tx_db.contexto = contexto.strip() if contexto and contexto.strip() else None
 
-                            if tipo_especial != "normal":
-                                tx_db.tipo_especial = tipo_especial
-                            else:
-                                tx_db.tipo_especial = None
+                                if tipo_especial != "normal":
+                                    tx_db.tipo_especial = tipo_especial
+                                else:
+                                    tx_db.tipo_especial = None
 
-                            tx_db.excluir_de_presupuesto = excluir_presupuesto
+                                tx_db.excluir_de_presupuesto = excluir_presupuesto
 
-                            session.commit()
+                                session.commit()
 
-                            if tipo_especial == "normal":
-                                st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
-                            else:
-                                st.success(
-                                    f"✅ Categorizada como: {categoria_seleccionada.nombre_completo} "
-                                    f"(tipo: {tipo_especial})"
-                                )
+                                if tipo_especial == "normal":
+                                    st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
+                                else:
+                                    st.success(
+                                        f"✅ Categorizada como: {categoria_seleccionada.nombre_completo} "
+                                        f"(tipo: {tipo_especial})"
+                                    )
 
-                            if excluir_presupuesto:
-                                st.warning("⚠️ Esta transacción NO contará en tu presupuesto")
+                                if excluir_presupuesto:
+                                    st.warning("⚠️ Esta transacción NO contará en tu presupuesto")
 
-                            st.rerun()
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Error guardando transacción: {e}")
+                            logger.error(f"Error en guardar transacción: {e}")
 
                     if saltar_btn:
-                        with get_session() as session:
-                            tx_db = session.query(Transaction).get(tx.id)
-                            tx_db.subcategory_id = categoria_seleccionada.id
-                            tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
-                            tx_db.necesita_revision = False
-                            session.commit()
+                        try:
+                            with get_session() as session:
+                                tx_db = session.query(Transaction).get(tx.id)
+                                tx_db.subcategory_id = categoria_seleccionada.id
+                                tx_db.categoria_sugerida_por_ia = categoria_seleccionada.nombre_completo
+                                tx_db.necesita_revision = False
+                                session.commit()
 
-                            st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
-                            st.rerun()
+                                st.success(f"✅ Categorizada como: {categoria_seleccionada.nombre_completo}")
+                                st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Error guardando transacción: {e}")
+                            logger.error(f"Error en saltar transacción: {e}")
 
             st.markdown("---")
 

@@ -9,6 +9,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Tex
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+from finanzas_tracker.services.exchange_rate import exchange_rate_service
 
 
 class AccountType(str, Enum):
@@ -125,9 +126,9 @@ class Account(Base):
         """Retorna el saldo en colones."""
         if self.moneda == "CRC":
             return self.saldo_actual
-        # TODO: Convertir USD a CRC usando exchange rate service
-        # Por ahora asumir tasa de 530
-        return self.saldo_actual * Decimal("530.0")
+        # Convertir USD a CRC usando exchange rate service
+        tipo_cambio = exchange_rate_service.get_rate(date.today())
+        return self.saldo_actual * Decimal(str(tipo_cambio))
 
     def calcular_interes_mensual(self) -> Decimal:
         """Calcula el interés mensual generado."""

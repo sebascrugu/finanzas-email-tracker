@@ -382,6 +382,7 @@ def main():
 
         gastos_mes = (
             session.query(Transaction)
+            .options(joinedload(Transaction.subcategory).joinedload("category"))
             .filter(
                 Transaction.profile_id == perfil_activo.id,
                 Transaction.fecha_transaccion >= primer_dia,

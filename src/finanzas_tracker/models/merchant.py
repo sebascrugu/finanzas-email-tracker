@@ -90,8 +90,6 @@ class Merchant(Base):
         Returns:
             Merchant si encuentra match, None si no
         """
-        from finanzas_tracker.models.merchant_variant import MerchantVariant
-
         variante = (
             session.query(MerchantVariant)
             .filter(MerchantVariant.nombre_raw.ilike(f"%{nombre_raw}%"))

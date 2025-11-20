@@ -270,41 +270,45 @@ def main():
                         tipo_especial_value = tipo_especial if tipo_especial != "ninguno" else None
 
                         # Guardar en BD
-                        with get_session() as session:
-                            nuevo_ingreso = Income(
-                                profile_id=perfil_activo.id,
-                                tipo=tipo_income,
-                                descripcion=descripcion.strip(),
-                                monto_original=Decimal(str(monto)),
-                                moneda_original=Currency(moneda),
-                                monto_crc=monto_crc,
-                                tipo_cambio_usado=Decimal(str(tipo_cambio))
-                                if tipo_cambio
-                                else None,
-                                fecha=fecha_ingreso,
-                                es_recurrente=es_recurrente,
-                                frecuencia=frecuencia,
-                                proximo_ingreso_esperado=proximo,
-                                # NUEVOS CAMPOS
-                                contexto=contexto.strip() if contexto and contexto.strip() else None,
-                                tipo_especial=tipo_especial_value,
-                                excluir_de_presupuesto=excluir_presupuesto,
-                                es_dinero_ajeno=es_dinero_ajeno,
-                                requiere_desglose=es_dinero_ajeno,  # Si es dinero ajeno, puede requerir desglose
-                                monto_usado=monto_usado_decimal,
-                                monto_sobrante=monto_sobrante_decimal,
-                            )
-                            session.add(nuevo_ingreso)
-                            session.commit()
-
-                            st.success("✅ ¡Ingreso registrado exitosamente!")
-
-                            # Mostrar resumen si es dinero ajeno
-                            if es_dinero_ajeno and monto_sobrante_decimal:
-                                st.info(
-                                    f"💰 **Desglose:** De ₡{monto_crc:,.0f}, usaste ₡{monto_usado_decimal:,.0f} y "
-                                    f"te quedaste con ₡{monto_sobrante_decimal:,.0f}"
+                        try:
+                            with get_session() as session:
+                                nuevo_ingreso = Income(
+                                    profile_id=perfil_activo.id,
+                                    tipo=tipo_income,
+                                    descripcion=descripcion.strip(),
+                                    monto_original=Decimal(str(monto)),
+                                    moneda_original=Currency(moneda),
+                                    monto_crc=monto_crc,
+                                    tipo_cambio_usado=Decimal(str(tipo_cambio))
+                                    if tipo_cambio
+                                    else None,
+                                    fecha=fecha_ingreso,
+                                    es_recurrente=es_recurrente,
+                                    frecuencia=frecuencia,
+                                    proximo_ingreso_esperado=proximo,
+                                    # NUEVOS CAMPOS
+                                    contexto=contexto.strip() if contexto and contexto.strip() else None,
+                                    tipo_especial=tipo_especial_value,
+                                    excluir_de_presupuesto=excluir_presupuesto,
+                                    es_dinero_ajeno=es_dinero_ajeno,
+                                    requiere_desglose=es_dinero_ajeno,  # Si es dinero ajeno, puede requerir desglose
+                                    monto_usado=monto_usado_decimal,
+                                    monto_sobrante=monto_sobrante_decimal,
                                 )
+                                session.add(nuevo_ingreso)
+                                session.commit()
+
+                                st.success("✅ ¡Ingreso registrado exitosamente!")
+
+                                # Mostrar resumen si es dinero ajeno
+                                if es_dinero_ajeno and monto_sobrante_decimal:
+                                    st.info(
+                                        f"💰 **Desglose:** De ₡{monto_crc:,.0f}, usaste ₡{monto_usado_decimal:,.0f} y "
+                                        f"te quedaste con ₡{monto_sobrante_decimal:,.0f}"
+                                    )
+                        except Exception as e:
+                            st.error(f"❌ Error guardando ingreso: {e}")
+                            logger.error(f"Error en guardar ingreso: {e}")
 
                             if es_recurrente and proximo:
                                 st.info(

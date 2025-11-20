@@ -207,7 +207,7 @@ class TransactionProcessor:
                 comercio=transaction_data["comercio"],
                 monto_crc=float(transaction_data["monto_crc"]),
                 tipo_transaccion=transaction_data["tipo_transaccion"],
-                user_email=transaction_data.get("user_email"),
+                profile_id=transaction_data.get("profile_id"),
             )
 
             # Agregar resultado a transaction_data
