@@ -6,7 +6,6 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
-from finanzas_tracker.core.constants import MIN_TRANSACTION_AMOUNT, SUPPORTED_CURRENCIES
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.parsers.base_parser import BaseParser, ParsedTransaction
 from finanzas_tracker.utils.parser_utils import ParserUtils

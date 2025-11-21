@@ -26,7 +26,6 @@ from finanzas_tracker.models.enums import (
     Currency,
     IncomeType,
     RecurrenceFrequency,
-    SpecialTransactionType,
 )
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.services.exchange_rate import ExchangeRateService

@@ -12,7 +12,7 @@ from sqlalchemy.orm import joinedload
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.category import Category, Subcategory
+from finanzas_tracker.models.category import Subcategory
 from finanzas_tracker.models.transaction import Transaction
 
 

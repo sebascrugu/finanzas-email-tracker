@@ -2,7 +2,7 @@
 
 __all__ = ["FinanceChatService", "finance_chat_service"]
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 

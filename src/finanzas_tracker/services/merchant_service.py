@@ -3,7 +3,6 @@
 import re
 from decimal import Decimal
 
-from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
 
@@ -44,7 +43,6 @@ class MerchantNormalizationService:
 
     def __init__(self):
         """Inicializa el servicio."""
-        pass
 
     def normalize_merchant_name(self, raw_name: str) -> str:
         """

@@ -20,7 +20,7 @@ from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.dashboard.helpers import require_profile
 from finanzas_tracker.models.category import Subcategory
-from finanzas_tracker.models.enums import SpecialTransactionType, TransactionType
+from finanzas_tracker.models.enums import TransactionType
 from finanzas_tracker.models.transaction import Transaction
 
 
