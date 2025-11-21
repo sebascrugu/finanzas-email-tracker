@@ -234,17 +234,32 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 
             return result
 
+        except anthropic.APIConnectionError as e:
+            logger.error(f"Error de conexion con Claude API: {e}")
+            return self._fallback_result("Error de conexion con API")
+        except anthropic.RateLimitError as e:
+            logger.warning(f"Rate limit de Claude API: {e}")
+            return self._fallback_result("Limite de API excedido")
+        except anthropic.APIStatusError as e:
+            logger.error(f"Error de estado de Claude API ({e.status_code}): {e.message}")
+            return self._fallback_result(f"Error API: {e.status_code}")
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            logger.error(f"Error parseando respuesta de Claude: {e}")
+            return self._fallback_result("Error parseando respuesta")
         except Exception as e:
-            logger.error(f"Error usando Claude AI: {e}")
-            # Fallback: marcar para revisión manual
-            return {
-                "subcategory_id": None,
-                "categoria_sugerida": "Sin categorizar",
-                "necesita_revision": True,
-                "confianza": 0,
-                "alternativas": [],
-                "razon": f"Error en categorización automática: {e}",
-            }
+            logger.error(f"Error inesperado en categorizacion: {type(e).__name__}: {e}")
+            return self._fallback_result(f"Error inesperado: {e}")
+
+    def _fallback_result(self, razon: str) -> dict[str, Any]:
+        """Resultado de fallback cuando falla la categorizacion."""
+        return {
+            "subcategory_id": None,
+            "categoria_sugerida": "Sin categorizar",
+            "necesita_revision": True,
+            "confianza": 0,
+            "alternativas": [],
+            "razon": razon,
+        }
 
     def _categorize_from_history(
         self,
@@ -254,14 +269,14 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
         """
         Busca en transacciones anteriores para aprender del historial.
 
-        Si el usuario ya categorizó este comercio antes, usa esa categoría.
+        Si el usuario ya categorizo este comercio antes, usa esa categoria.
 
         Args:
             comercio: Nombre del comercio
             profile_id: ID del perfil del usuario
 
         Returns:
-            dict con categorización o None si no encuentra historial
+            dict con categorizacion o None si no encuentra historial
         """
         if not profile_id:
             return None
