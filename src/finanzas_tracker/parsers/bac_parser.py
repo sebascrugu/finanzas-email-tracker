@@ -7,6 +7,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
+from finanzas_tracker.core.constants import MIN_TRANSACTION_AMOUNT, SUPPORTED_CURRENCIES
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.utils.parser_utils import ParserUtils
 
@@ -57,6 +58,14 @@ class BACParser:
 
             # Detectar moneda y monto
             moneda, monto = ParserUtils.parse_monto(monto_str)
+
+            # Validar monto y moneda
+            if monto < MIN_TRANSACTION_AMOUNT:
+                logger.warning(f"Monto inválido (<{MIN_TRANSACTION_AMOUNT}): {monto} en correo: {subject}")
+                return None
+            if moneda not in SUPPORTED_CURRENCIES:
+                logger.warning(f"Moneda inválida: {moneda} en correo: {subject}")
+                return None
 
             # Parsear ubicación
             ciudad, pais = ParserUtils.parse_ubicacion(ciudad_pais)
@@ -197,6 +206,14 @@ class BACParser:
 
         monto_str = monto_match.group(0)
         moneda, monto = ParserUtils.parse_monto(monto_str)
+
+        # Validar monto y moneda
+        if monto < MIN_TRANSACTION_AMOUNT:
+            logger.warning(f"Monto inválido (<{MIN_TRANSACTION_AMOUNT}) en retiro sin tarjeta: {monto}")
+            return None
+        if moneda not in SUPPORTED_CURRENCIES:
+            logger.warning(f"Moneda inválida en retiro sin tarjeta: {moneda}")
+            return None
 
         # Extraer fecha (formato: "31/10/2025 18:10:02")
         fecha_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2}:\d{2})", text)

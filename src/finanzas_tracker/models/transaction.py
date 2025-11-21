@@ -212,6 +212,7 @@ class Transaction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
+        index=True,
         comment="Fecha de creación del registro",
     )
     updated_at: Mapped[datetime] = mapped_column(
@@ -251,6 +252,7 @@ class Transaction(Base):
         Index("ix_transactions_profile_categoria", "profile_id", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
         Index("ix_transactions_desconocidas", "es_desconocida"),
+        Index("ix_transactions_created_at", "created_at"),
     )
 
     def __repr__(self) -> str:

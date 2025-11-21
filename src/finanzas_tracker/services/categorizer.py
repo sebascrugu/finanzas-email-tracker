@@ -6,6 +6,12 @@ from typing import Any
 import anthropic
 
 from finanzas_tracker.config.settings import settings
+from finanzas_tracker.core.constants import (
+    AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD,
+    HIGH_CONFIDENCE_SCORE,
+    KEYWORD_MIN_LENGTH_FOR_HIGH_CONFIDENCE,
+    MEDIUM_CONFIDENCE_SCORE,
+)
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.category import Subcategory
@@ -107,7 +113,11 @@ class TransactionCategorizer:
                 for keyword in keywords:
                     if keyword in comercio_lower:
                         # Calcular confianza basada en qué tan específico es el match
-                        confianza = 90 if len(keyword) > 5 else 75
+                        confianza = (
+                            HIGH_CONFIDENCE_SCORE
+                            if len(keyword) > KEYWORD_MIN_LENGTH_FOR_HIGH_CONFIDENCE
+                            else MEDIUM_CONFIDENCE_SCORE
+                        )
                         matches.append(
                             {
                                 "subcategory_id": subcat.id,
@@ -121,7 +131,7 @@ class TransactionCategorizer:
                 return None
 
             # Si hay un solo match con buena confianza → asignar automáticamente
-            if len(matches) == 1 and matches[0]["confianza"] >= 80:
+            if len(matches) == 1 and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD:
                 return {
                     "subcategory_id": matches[0]["subcategory_id"],
                     "categoria_sugerida": matches[0]["categoria_sugerida"],

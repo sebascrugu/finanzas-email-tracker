@@ -147,6 +147,11 @@ sys.path.insert(0, str(src_path))
 
 from sqlalchemy.orm import joinedload
 
+from finanzas_tracker.core.constants import (
+    BUDGET_CAUTION_THRESHOLD,
+    BUDGET_EXCEEDED_THRESHOLD,
+    BUDGET_WARNING_THRESHOLD,
+)
 from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.account import Account
@@ -550,11 +555,11 @@ def main():
             st.progress(min(porcentaje_gastado / 100, 1.0))
 
             # Mensaje contextual
-            if porcentaje_gastado > 100:
+            if porcentaje_gastado > BUDGET_EXCEEDED_THRESHOLD:
                 st.caption(f"🚨 Excediste el presupuesto por ₡{abs(balance_mes):,.0f}")
-            elif porcentaje_gastado > 90:
+            elif porcentaje_gastado > BUDGET_WARNING_THRESHOLD:
                 st.caption(f"⚠️ Cerca del límite - Te quedan ₡{balance_mes:,.0f}")
-            elif porcentaje_gastado > 75:
+            elif porcentaje_gastado > BUDGET_CAUTION_THRESHOLD:
                 st.caption(f"📊 Buen ritmo - Disponible: ₡{balance_mes:,.0f}")
             else:
                 st.caption(f"✅ Excelente control - Ahorro: ₡{balance_mes:,.0f}")

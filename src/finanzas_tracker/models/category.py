@@ -39,6 +39,7 @@ class Category(Base):
     )
     nombre: Mapped[str] = mapped_column(
         String(100),
+        index=True,
         comment="Nombre descriptivo de la categoría",
     )
     descripcion: Mapped[str | None] = mapped_column(
