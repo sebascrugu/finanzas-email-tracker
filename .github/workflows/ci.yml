@@ -54,6 +54,14 @@ jobs:
       continue-on-error: true
 
     - name: Run Tests
+      env:
+        AZURE_CLIENT_ID: test-client-id
+        AZURE_TENANT_ID: test-tenant-id
+        AZURE_CLIENT_SECRET: test-secret
+        USER_EMAIL: test@example.com
+        MOM_EMAIL: mom@example.com
+        ANTHROPIC_API_KEY: sk-ant-test123
+        ENVIRONMENT: testing
       run: poetry run pytest --cov=finanzas_tracker --cov-report=xml --cov-report=term-missing
 
     - name: Upload coverage to Codecov
