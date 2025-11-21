@@ -1,5 +1,7 @@
 """Modelo de transacción bancaria."""
 
+__all__ = ["Transaction"]
+
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4

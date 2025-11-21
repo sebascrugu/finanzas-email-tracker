@@ -1,5 +1,7 @@
 """Servicio de chat con finanzas usando Claude AI."""
 
+__all__ = ["FinanceChatService", "finance_chat_service"]
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -7,6 +9,8 @@ from typing import Any
 import anthropic
 
 from finanzas_tracker.config.settings import settings
+from sqlalchemy.orm import joinedload
+
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.category import Category, Subcategory
@@ -80,9 +84,10 @@ class FinanceChatService:
             first_day_month = today.replace(day=1)
             last_month_start = (first_day_month - timedelta(days=1)).replace(day=1)
 
-            # Transacciones del mes actual
+            # Transacciones del mes actual (eager load subcategory->category)
             transactions_this_month = (
                 session.query(Transaction)
+                .options(joinedload(Transaction.subcategory).joinedload(Subcategory.category))
                 .filter(
                     Transaction.profile_id == profile_id,
                     Transaction.fecha_transaccion >= first_day_month,

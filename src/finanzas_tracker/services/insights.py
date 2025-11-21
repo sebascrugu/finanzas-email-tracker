@@ -1,14 +1,18 @@
 """Servicio de insights financieros automaticos."""
 
+__all__ = ["InsightsService", "Insight", "InsightType", "insights_service"]
+
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
 
+from sqlalchemy.orm import joinedload
+
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
-from finanzas_tracker.models.category import Category
+from finanzas_tracker.models.category import Category, Subcategory
 from finanzas_tracker.models.transaction import Transaction
 
 
@@ -93,9 +97,10 @@ class InsightsService:
         last_month_start = (first_day_month - timedelta(days=1)).replace(day=1)
         two_months_ago = (last_month_start - timedelta(days=1)).replace(day=1)
 
-        # Transacciones por periodo
+        # Transacciones por periodo (eager load para evitar N+1)
         current_month = (
             session.query(Transaction)
+            .options(joinedload(Transaction.subcategory).joinedload(Subcategory.category))
             .filter(
                 Transaction.profile_id == profile_id,
                 Transaction.fecha_transaccion >= first_day_month,
@@ -106,6 +111,7 @@ class InsightsService:
 
         last_month = (
             session.query(Transaction)
+            .options(joinedload(Transaction.subcategory).joinedload(Subcategory.category))
             .filter(
                 Transaction.profile_id == profile_id,
                 Transaction.fecha_transaccion >= last_month_start,
