@@ -6,8 +6,8 @@ Sistema automatizado para rastrear y categorizar transacciones bancarias desde c
 [![Poetry](https://img.shields.io/badge/poetry-dependency%20manager-blue.svg)](https://python-poetry.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests](https://img.shields.io/badge/tests-72%20passing-success.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-54%25-yellow.svg)](htmlcov/)
+[![Tests](https://img.shields.io/badge/tests-141%20passing-success.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-55%25-yellow.svg)](htmlcov/)
 [![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy.readthedocs.io/)
 
 ## 📚 Documentación
@@ -42,6 +42,8 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - **Conversión de Divisas**: USD→CRC automática con tipos de cambio históricos reales (API Hacienda CR)
 - **Detección de Patrones**: Identifica transacciones recurrentes y sugiere categorías automáticamente
 - **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
+- **Chat con Finanzas (GenAI)**: Pregunta en lenguaje natural sobre tus gastos ("¿Cuánto gasté en comida?")
+- **Insights Automáticos (GenAI)**: Detecta patrones, gastos inusuales y oportunidades de ahorro
 - **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
 - **Seguridad**: Manejo seguro de credenciales con variables de entorno
 - **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
@@ -50,10 +52,10 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 ## 🎯 Technical Highlights
 
 ### Calidad de Código Empresarial
-- ✅ **54% Test Coverage** (72 tests passing) - Parsers 87-93% coverage
+- ✅ **55% Test Coverage** (141 tests passing) - Parsers 87-93% coverage
 - ✅ **Type Safety**: 100% type hints con mypy strict mode
 - ✅ **Clean Architecture**: Separación en capas (Presentation → Services → Data)
-- ✅ **Design Patterns**: Strategy, Facade, Active Record, Singleton
+- ✅ **Design Patterns**: Strategy, Facade, Active Record, Singleton, Template Method
 - ✅ **SOLID Principles**: Código mantenible y extensible
 
 ### Arquitectura Robusta
@@ -339,7 +341,9 @@ Este es un proyecto personal, pero las sugerencias y mejoras son bienvenidas. Si
 - [x] Detección de patrones en transacciones
 - [x] Manejo de transferencias intermediarias y gastos compartidos
 - [x] Soft deletes y constraints de BD robustos
-- [ ] Dashboard interactivo con Streamlit
+- [x] Chat con finanzas usando lenguaje natural (GenAI)
+- [x] Insights financieros automáticos (GenAI)
+- [x] Dashboard interactivo con Streamlit
 - [ ] Parsing de estados de cuenta (PDF)
 - [ ] Reconciliación de correos vs estados de cuenta
 - [ ] Reportes mensuales y comparativos
