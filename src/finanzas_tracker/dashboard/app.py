@@ -156,6 +156,7 @@ from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.account import Account
 from finanzas_tracker.models.income import Income
+from finanzas_tracker.models.merchant import Merchant
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.utils.seed_categories import seed_categories
@@ -423,6 +424,31 @@ def main():
             if gasto.categoria:
                 gastos_por_categoria[gasto.categoria.nombre] += gasto.monto_crc
 
+        # ========================================================================
+        # ANALYTICS AVANZADO - Datos adicionales
+        # ========================================================================
+
+        # 1. Top Merchants (gastos por comercio normalizado)
+        gastos_por_merchant = defaultdict(float)
+        for gasto in gastos_mes:
+            if gasto.merchant:
+                gastos_por_merchant[gasto.merchant.nombre_normalizado] += gasto.monto_crc
+
+        # 2. Breakdown de cuentas por tipo
+        cuentas_activas = (
+            session.query(Account)
+            .filter(
+                Account.profile_id == perfil_activo.id,
+                Account.activa == True,  # noqa: E712
+                Account.deleted_at.is_(None),
+            )
+            .all()
+        )
+
+        cuentas_por_tipo = defaultdict(float)
+        for cuenta in cuentas_activas:
+            cuentas_por_tipo[cuenta.tipo] += cuenta.saldo_crc
+
     # Mostrar sidebar simple (solo perfil)
     mostrar_sidebar_simple(perfil_activo)
 
@@ -620,6 +646,109 @@ def main():
                 st.bar_chart(df_cats.set_index("Categoría"), height=200)
             else:
                 st.info("Sin categorías")
+
+        # ====================================================================
+        # ANALYTICS AVANZADO
+        # ====================================================================
+        st.markdown("---")
+        st.markdown("### 📊 Analytics Avanzado")
+        st.markdown(
+            "<p style='color: #6b7280; margin-bottom: 1.5rem;'>Insights detallados de tus finanzas</p>",
+            unsafe_allow_html=True,
+        )
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.markdown("**🏪 Top Merchants**")
+            if gastos_por_merchant:
+                top_merchants = sorted(gastos_por_merchant.items(), key=lambda x: x[1], reverse=True)[:5]
+
+                for merchant, monto in top_merchants:
+                    porcentaje = (monto / total_gastos_mes * 100) if total_gastos_mes > 0 else 0
+                    st.markdown(
+                        f"<div style='padding: 0.25rem 0;'>"
+                        f"<span style='font-size: 0.85rem;'>{merchant}</span><br>"
+                        f"<span style='font-weight: 600; color: #dc2626;'>₡{monto:,.0f}</span> "
+                        f"<span style='color: #6b7280; font-size: 0.8rem;'>({porcentaje:.1f}%)</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption("Sin datos de merchants")
+
+        with col2:
+            st.markdown("**💰 Patrimonio Real**")
+            st.metric(
+                "Total",
+                f"₡{patrimonio_total:,.0f}",
+                delta=f"₡{movimientos_netos:,.0f} movimientos",
+                help="Cuentas + Movimientos históricos",
+            )
+
+            # Breakdown
+            st.caption("**Breakdown:**")
+            if patrimonio_cuentas > 0:
+                st.markdown(
+                    f"<div style='font-size: 0.85rem;'>"
+                    f"🏦 Cuentas: <span style='font-weight: 600;'>₡{patrimonio_cuentas:,.0f}</span><br>"
+                    f"📊 Movimientos: <span style='font-weight: 600;'>₡{movimientos_netos:,.0f}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.caption("Agrega cuentas en Setup")
+
+        with col3:
+            st.markdown("**📈 Proyección Intereses**")
+            if intereses_mensuales > 0:
+                intereses_anuales = intereses_mensuales * 12
+                st.metric(
+                    "Por Mes",
+                    f"₡{intereses_mensuales:,.0f}",
+                    delta=f"₡{intereses_anuales:,.0f}/año",
+                    help="Intereses generados por tus ahorros y CDPs",
+                )
+
+                # Mostrar en cuánto tiempo duplicas tu dinero (regla del 72)
+                if patrimonio_cuentas > 0 and intereses_mensuales > 0:
+                    tasa_mensual = (intereses_mensuales / patrimonio_cuentas) * 100
+                    tasa_anual = tasa_mensual * 12
+                    if tasa_anual > 0:
+                        anos_duplicar = 72 / tasa_anual
+                        st.caption(f"Duplicas tu dinero en ~{anos_duplicar:.1f} años")
+            else:
+                st.caption("Sin intereses configurados")
+                st.caption("Agrega CDPs o savings en Setup")
+
+        with col4:
+            st.markdown("**🏦 Breakdown Cuentas**")
+            if cuentas_por_tipo:
+                # Mostrar tipos de cuenta
+                tipo_emoji = {
+                    "checking": "💳",
+                    "savings": "🏦",
+                    "investment": "📈",
+                    "cdp": "💰",
+                    "cash": "💵",
+                }
+
+                for tipo, saldo in sorted(cuentas_por_tipo.items(), key=lambda x: x[1], reverse=True):
+                    emoji = tipo_emoji.get(tipo, "💼")
+                    porcentaje = (saldo / patrimonio_cuentas * 100) if patrimonio_cuentas > 0 else 0
+                    tipo_display = tipo.replace("_", " ").title()
+
+                    st.markdown(
+                        f"<div style='padding: 0.25rem 0;'>"
+                        f"<span style='font-size: 0.85rem;'>{emoji} {tipo_display}</span><br>"
+                        f"<span style='font-weight: 600; color: #059669;'>₡{saldo:,.0f}</span> "
+                        f"<span style='color: #6b7280; font-size: 0.8rem;'>({porcentaje:.1f}%)</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+            else:
+                st.caption("Sin cuentas configuradas")
+                st.caption("Agrega cuentas en Setup")
 
         # Alerta contextual si hay pendientes
         if sin_revisar > 0:
