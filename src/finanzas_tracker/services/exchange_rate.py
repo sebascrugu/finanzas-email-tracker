@@ -171,8 +171,10 @@ class ExchangeRateService:
                         logger.debug(f"Tipo de cambio de Hacienda CR: ₡{rate:.2f}")
                         return rate
 
-        except Exception as e:
-            logger.debug(f"Error obteniendo de Hacienda CR: {e}")
+        except requests.RequestException as e:
+            logger.debug(f"Error de red obteniendo de Hacienda CR: {e}")
+        except (KeyError, ValueError, TypeError) as e:
+            logger.debug(f"Error parseando respuesta de Hacienda CR: {e}")
 
         return None
 
@@ -206,8 +208,10 @@ class ExchangeRateService:
                     logger.debug(f"Tipo de cambio de exchangerate.host: ₡{rate:.2f}")
                     return rate
 
-        except Exception as e:
-            logger.debug(f"Error obteniendo de exchangerate.host: {e}")
+        except requests.RequestException as e:
+            logger.debug(f"Error de red obteniendo de exchangerate.host: {e}")
+        except (KeyError, ValueError, TypeError) as e:
+            logger.debug(f"Error parseando respuesta de exchangerate.host: {e}")
 
         return None
 

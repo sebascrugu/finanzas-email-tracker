@@ -313,8 +313,11 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 
                 return None
 
+        except (AttributeError, TypeError) as e:
+            logger.debug(f"Error de datos buscando en historial: {e}")
+            return None
         except Exception as e:
-            logger.debug(f"Error buscando en historial: {e}")
+            logger.debug(f"Error DB buscando en historial: {type(e).__name__}: {e}")
             return None
 
     def get_subcategory_by_name(self, nombre_completo: str) -> str | None:
