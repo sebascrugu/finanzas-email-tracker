@@ -1,7 +1,6 @@
 """Parser de correos de BAC Credomatic."""
 
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
 import re
 from typing import Any
 
@@ -9,88 +8,34 @@ from bs4 import BeautifulSoup
 
 from finanzas_tracker.core.constants import MIN_TRANSACTION_AMOUNT, SUPPORTED_CURRENCIES
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.parsers.base_parser import BaseParser, ParsedTransaction
 from finanzas_tracker.utils.parser_utils import ParserUtils
 
 
 logger = get_logger(__name__)
 
 
-class BACParser:
+class BACParser(BaseParser):
     """
     Parser para correos de BAC Credomatic.
 
     Extrae información de transacciones desde correos HTML de BAC.
     """
 
-    @staticmethod
-    def parse(email_data: dict[str, Any]) -> dict[str, Any] | None:
-        """
-        Parsea un correo de BAC Credomatic.
+    @property
+    def bank_name(self) -> str:
+        return "bac"
 
-        Args:
-            email_data: Datos del correo de Microsoft Graph
+    def _handle_special_format(
+        self, soup: BeautifulSoup, email_data: dict[str, Any]
+    ) -> ParsedTransaction | None:
+        """Maneja formato especial de retiro sin tarjeta."""
+        subject = email_data.get("subject", "")
+        if "retiro sin tarjeta" in subject.lower():
+            return self._parse_retiro_sin_tarjeta(soup, email_data)
+        return None
 
-        Returns:
-            dict | None: Datos parseados de la transacción o None si falla
-        """
-        try:
-            subject = email_data.get("subject", "")
-            body_html = email_data.get("body", {}).get("content", "")
-
-            # Parsear HTML
-            soup = BeautifulSoup(body_html, "lxml")
-
-            # Detectar si es retiro sin tarjeta (formato diferente)
-            if "retiro sin tarjeta" in subject.lower():
-                return BACParser._parse_retiro_sin_tarjeta(soup, email_data)
-
-            # Formato normal de notificaciones de transacción
-            # Extraer información de la tabla
-            comercio = BACParser._extract_comercio(soup, subject)
-            ciudad_pais = BACParser._extract_ciudad_pais(soup)
-            fecha = BACParser._extract_fecha(soup, email_data)
-            tipo_transaccion = BACParser._extract_tipo_transaccion(soup)
-            monto_str = BACParser._extract_monto(soup)
-
-            if not monto_str:
-                logger.warning(f"No se pudo extraer el monto del correo: {subject}")
-                return None
-
-            # Detectar moneda y monto
-            moneda, monto = ParserUtils.parse_monto(monto_str)
-
-            # Validar monto y moneda
-            if monto < MIN_TRANSACTION_AMOUNT:
-                logger.warning(f"Monto inválido (<{MIN_TRANSACTION_AMOUNT}): {monto} en correo: {subject}")
-                return None
-            if moneda not in SUPPORTED_CURRENCIES:
-                logger.warning(f"Moneda inválida: {moneda} en correo: {subject}")
-                return None
-
-            # Parsear ubicación
-            ciudad, pais = ParserUtils.parse_ubicacion(ciudad_pais)
-
-            transaction_data = {
-                "email_id": email_data.get("id"),
-                "banco": "bac",
-                "comercio": comercio,
-                "monto_original": monto,
-                "moneda_original": moneda,
-                "tipo_transaccion": tipo_transaccion.lower(),
-                "fecha_transaccion": fecha,
-                "ciudad": ciudad,
-                "pais": pais,
-            }
-
-            logger.debug(f" Transacción parseada: {comercio} - {moneda} {monto}")
-            return transaction_data
-
-        except Exception as e:
-            logger.error(f"Error parseando correo de BAC: {e}")
-            return None
-
-    @staticmethod
-    def _extract_comercio(soup: BeautifulSoup, subject: str) -> str:
+    def _extract_comercio(self, soup: BeautifulSoup, subject: str) -> str:
         """Extrae el nombre del comercio del correo."""
         # Intentar desde la tabla HTML
         rows = soup.find_all("tr")
@@ -102,15 +47,13 @@ class BACParser:
                     return cells[1].get_text(strip=True)
 
         # Fallback: extraer del asunto
-        # Ejemplo: "Notificación de transacción WEB CHECKOUT JPS LOT N 09-11-2025 - 10:18"
         match = re.search(r"Notificación de transacción\s+(.+?)\s+\d{2}-\d{2}-\d{4}", subject)
         if match:
             return match.group(1).strip()
 
         return "Desconocido"
 
-    @staticmethod
-    def _extract_ciudad_pais(soup: BeautifulSoup) -> str:
+    def _extract_ubicacion(self, soup: BeautifulSoup) -> str:
         """Extrae ciudad y país del correo."""
         rows = soup.find_all("tr")
         for row in rows:
@@ -121,15 +64,14 @@ class BACParser:
                     return cells[1].get_text(strip=True)
         return ""
 
-    @staticmethod
-    def _extract_fecha(soup: BeautifulSoup, email_data: dict[str, Any]) -> datetime:
+    def _extract_fecha(
+        self, soup: BeautifulSoup, email_data: dict[str, Any]
+    ) -> datetime:
         """
         Extrae la fecha de la transacción.
 
-        Intenta primero desde el HTML, luego del asunto, y finalmente
-        usa la fecha del correo.
+        Intenta primero desde el HTML, luego usa la fecha del correo.
         """
-        # Intentar desde la tabla HTML
         rows = soup.find_all("tr")
         for row in rows:
             cells = row.find_all("td")
@@ -137,21 +79,14 @@ class BACParser:
                 label = cells[0].get_text(strip=True)
                 if "Fecha:" in label:
                     fecha_str = cells[1].get_text(strip=True)
-                    # Ejemplo: "Nov 9, 2025, 10:18"
                     try:
                         return datetime.strptime(fecha_str, "%b %d, %Y, %H:%M")
                     except ValueError:
                         pass
 
-        # Fallback: usar fecha del correo
-        received_str = email_data.get("receivedDateTime", "")
-        if received_str:
-            return datetime.fromisoformat(received_str.replace("Z", "+00:00"))
+        return self._get_email_date_fallback(email_data)
 
-        return datetime.now()
-
-    @staticmethod
-    def _extract_tipo_transaccion(soup: BeautifulSoup) -> str:
+    def _extract_tipo_transaccion(self, soup: BeautifulSoup, subject: str) -> str:
         """Extrae el tipo de transacción."""
         rows = soup.find_all("tr")
         for row in rows:
@@ -162,30 +97,24 @@ class BACParser:
                     return cells[1].get_text(strip=True)
         return "compra"
 
-    @staticmethod
-    def _extract_monto(soup: BeautifulSoup) -> str | None:
+    def _extract_monto(self, soup: BeautifulSoup) -> str | None:
         """Extrae el monto de la transacción."""
-        # Buscar todas las filas de tabla
         rows = soup.find_all("tr")
         for row in rows:
             cells = row.find_all("td")
             if len(cells) >= 2:
-                # Obtener texto de la primera celda (etiqueta)
                 label_text = cells[0].get_text(strip=True)
-
-                # Si encontramos "Monto", extraer valor de la segunda celda
                 if "Monto" in label_text or "monto" in label_text:
                     monto_text = cells[1].get_text(strip=True)
-                    if monto_text:  # Verificar que no esté vacío
+                    if monto_text:
                         return monto_text
-
         return None
 
-    @staticmethod
     def _parse_retiro_sin_tarjeta(
+        self,
         soup: BeautifulSoup,
         email_data: dict[str, Any],
-    ) -> dict[str, Any] | None:
+    ) -> ParsedTransaction | None:
         """
         Parsea correos de retiro sin tarjeta (formato diferente).
 
@@ -194,7 +123,7 @@ class BACParser:
             email_data: Datos del correo
 
         Returns:
-            dict | None: Datos de la transacción o None
+            ParsedTransaction | None: Datos de la transacción o None
         """
         text = soup.get_text()
 
@@ -207,52 +136,23 @@ class BACParser:
         monto_str = monto_match.group(0)
         moneda, monto = ParserUtils.parse_monto(monto_str)
 
-        # Validar monto y moneda
-        if monto < MIN_TRANSACTION_AMOUNT:
-            logger.warning(f"Monto inválido (<{MIN_TRANSACTION_AMOUNT}) en retiro sin tarjeta: {monto}")
+        # Validar
+        validation_error = self._validate_transaction(
+            monto, moneda, "retiro sin tarjeta"
+        )
+        if validation_error:
+            logger.warning(validation_error)
             return None
-        if moneda not in SUPPORTED_CURRENCIES:
-            logger.warning(f"Moneda inválida en retiro sin tarjeta: {moneda}")
-            return None
 
-        # Extraer fecha (formato: "31/10/2025 18:10:02")
-        fecha_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2}:\d{2})", text)
-        if fecha_match:
-            fecha_str = f"{fecha_match.group(1)} {fecha_match.group(2)}"
-            try:
-                fecha = datetime.strptime(fecha_str, "%d/%m/%Y %H:%M:%S")
-            except ValueError:
-                # Fallback a fecha del correo
-                fecha_str = email_data.get("receivedDateTime", "")
-                if fecha_str:
-                    fecha = datetime.fromisoformat(fecha_str.replace("Z", "+00:00"))
-                else:
-                    fecha = datetime.now()
-        else:
-            # Usar fecha del correo
-            fecha_str = email_data.get("receivedDateTime", "")
-            if fecha_str:
-                fecha = datetime.fromisoformat(fecha_str.replace("Z", "+00:00"))
-            else:
-                fecha = datetime.now()
+        # Extraer fecha
+        fecha = self._extract_fecha_retiro(text, email_data)
 
-        # Extraer lugar (formato: "Lugar donde se retiró el dinero: CAR-AUTOM TRES RIOS")
-        lugar_match = re.search(r"Lugar donde se retir[oó] el dinero:\s*([^\n]+)", text)
-        comercio = "RETIRO SIN TARJETA"
-        ciudad = None
+        # Extraer lugar
+        comercio, ciudad = self._extract_lugar_retiro(text)
 
-        if lugar_match:
-            lugar = lugar_match.group(1).strip()
-            comercio = f"RETIRO SIN TARJETA - {lugar}"
-            # Intentar extraer ciudad del lugar
-            if "TRES RIOS" in lugar.upper():
-                ciudad = "Tres Ríos"
-            elif "SAN JOSE" in lugar.upper():
-                ciudad = "San José"
-
-        transaction_data = {
-            "email_id": email_data.get("id"),
-            "banco": "bac",
+        return {
+            "email_id": email_data.get("id", ""),
+            "banco": self.bank_name,
             "comercio": comercio,
             "monto_original": monto,
             "moneda_original": moneda,
@@ -262,5 +162,46 @@ class BACParser:
             "pais": "Costa Rica",
         }
 
-        logger.debug(f" Retiro sin tarjeta parseado: {comercio} - {moneda} {monto}")
-        return transaction_data
+    def _extract_fecha_retiro(
+        self, text: str, email_data: dict[str, Any]
+    ) -> datetime:
+        """Extrae fecha de un correo de retiro sin tarjeta."""
+        fecha_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2}:\d{2})", text)
+        if fecha_match:
+            fecha_str = f"{fecha_match.group(1)} {fecha_match.group(2)}"
+            try:
+                return datetime.strptime(fecha_str, "%d/%m/%Y %H:%M:%S")
+            except ValueError:
+                pass
+        return self._get_email_date_fallback(email_data)
+
+    def _extract_lugar_retiro(self, text: str) -> tuple[str, str | None]:
+        """
+        Extrae lugar de retiro sin tarjeta.
+
+        Returns:
+            Tuple de (comercio, ciudad)
+        """
+        lugar_match = re.search(r"Lugar donde se retir[oó] el dinero:\s*([^\n]+)", text)
+        comercio = "RETIRO SIN TARJETA"
+        ciudad = None
+
+        if lugar_match:
+            lugar = lugar_match.group(1).strip()
+            comercio = f"RETIRO SIN TARJETA - {lugar}"
+
+            # Mapeo de lugares conocidos a ciudades
+            city_mappings = {
+                "TRES RIOS": "Tres Rios",
+                "SAN JOSE": "San Jose",
+                "HEREDIA": "Heredia",
+                "CARTAGO": "Cartago",
+                "ALAJUELA": "Alajuela",
+            }
+            lugar_upper = lugar.upper()
+            for key, city in city_mappings.items():
+                if key in lugar_upper:
+                    ciudad = city
+                    break
+
+        return comercio, ciudad

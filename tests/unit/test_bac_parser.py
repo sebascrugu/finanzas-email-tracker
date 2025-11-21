@@ -48,7 +48,7 @@ class TestBACParserComprasCRC:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["email_id"] == "email-123"
@@ -83,7 +83,7 @@ class TestBACParserComprasCRC:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("25991.33")
@@ -112,7 +112,7 @@ class TestBACParserComprasCRC:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["ciudad"] is None
@@ -145,7 +145,7 @@ class TestBACParserComprasUSD:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("49.99")
@@ -175,7 +175,7 @@ class TestBACParserComprasUSD:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("15")
@@ -205,7 +205,7 @@ class TestBACParserRetiroSinTarjeta:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["banco"] == "bac"
@@ -235,7 +235,7 @@ class TestBACParserRetiroSinTarjeta:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["comercio"] == "RETIRO SIN TARJETA"
@@ -267,7 +267,7 @@ class TestBACParserFechas:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         fecha = result["fecha_transaccion"]
@@ -297,7 +297,7 @@ class TestBACParserFechas:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         fecha = result["fecha_transaccion"]
@@ -326,7 +326,7 @@ class TestBACParserTiposTransaccion:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "compra"
 
@@ -347,7 +347,7 @@ class TestBACParserTiposTransaccion:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "transferencia"
 
@@ -364,7 +364,7 @@ class TestBACParserEdgeCases:
             "body": {"content": "<html><body></body></html>"},
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
         assert result is None
 
     def test_parse_sin_monto(self) -> None:
@@ -383,11 +383,11 @@ class TestBACParserEdgeCases:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
         assert result is None
 
     def test_parse_monto_invalido(self) -> None:
-        """Test parseando monto en formato inválido."""
+        """Test parseando monto en formato inválido retorna None."""
         email_data = {
             "id": "email-edge-3",
             "subject": "Notificación de transacción",
@@ -402,10 +402,9 @@ class TestBACParserEdgeCases:
             },
         }
 
-        result = BACParser.parse(email_data)
-        # Debería parsear pero monto será 0
-        assert result is not None
-        assert result["monto_original"] == Decimal("0")
+        result = BACParser().parse(email_data)
+        # Monto inválido debe retornar None
+        assert result is None
 
     def test_parse_html_malformado(self) -> None:
         """Test parseando HTML malformado."""
@@ -424,7 +423,7 @@ class TestBACParserEdgeCases:
         }
 
         # Debería intentar extraer del subject como fallback
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
         # Este caso puede fallar o parsear parcialmente
         # Lo importante es que no explote
         assert result is None or isinstance(result, dict)
@@ -477,7 +476,7 @@ class TestBACParserMetodosPrivados:
         </table></body></html>
         """
         soup = BeautifulSoup(html, "lxml")
-        comercio = BACParser._extract_comercio(soup, "Notificación de transacción")
+        comercio = BACParser()._extract_comercio(soup, "Notificación de transacción")
         assert comercio == "DUNKIN TRES RIOS"
 
     def test_extract_comercio_desde_subject_fallback(self) -> None:
@@ -485,7 +484,7 @@ class TestBACParserMetodosPrivados:
         html = "<html><body></body></html>"
         soup = BeautifulSoup(html, "lxml")
         subject = "Notificación de transacción WEB CHECKOUT JPS 09-11-2025 - 10:18"
-        comercio = BACParser._extract_comercio(soup, subject)
+        comercio = BACParser()._extract_comercio(soup, subject)
         assert comercio == "WEB CHECKOUT JPS"
 
 
@@ -521,7 +520,7 @@ class TestBACParserIntegracion:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         # Validar todos los campos
         assert result is not None
@@ -565,7 +564,7 @@ class TestBACParserIntegracion:
             },
         }
 
-        result = BACParser.parse(email_data)
+        result = BACParser().parse(email_data)
 
         assert result is not None
         assert result["comercio"] == "STEAM GAMES"
