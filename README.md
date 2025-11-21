@@ -6,6 +6,16 @@ Sistema automatizado para rastrear y categorizar transacciones bancarias desde c
 [![Poetry](https://img.shields.io/badge/poetry-dependency%20manager-blue.svg)](https://python-poetry.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Tests](https://img.shields.io/badge/tests-72%20passing-success.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-54%25-yellow.svg)](htmlcov/)
+[![Type Checked](https://img.shields.io/badge/type%20checked-mypy-blue.svg)](https://mypy.readthedocs.io/)
+
+## 📚 Documentación
+
+- 📖 **[Guía Rápida](QUICKSTART.md)** - Setup en 5 minutos
+- 🏗️ **[Arquitectura](docs/ARCHITECTURE.md)** - Diseño del sistema, diagramas, decisiones técnicas
+- 🔒 **[Seguridad](SECURITY.md)** - Prácticas de seguridad y reporte de vulnerabilidades
+- 🤝 **[Contribuir](CONTRIBUTING.md)** - Guía para contribuidores
 
 ## Descripción
 
@@ -36,6 +46,35 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - **Seguridad**: Manejo seguro de credenciales con variables de entorno
 - **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
 - **Multi-Usuario**: Soporte para múltiples cuentas y presupuestos separados
+
+## 🎯 Technical Highlights
+
+### Calidad de Código Empresarial
+- ✅ **54% Test Coverage** (72 tests passing) - Parsers 87-93% coverage
+- ✅ **Type Safety**: 100% type hints con mypy strict mode
+- ✅ **Clean Architecture**: Separación en capas (Presentation → Services → Data)
+- ✅ **Design Patterns**: Strategy, Facade, Active Record, Singleton
+- ✅ **SOLID Principles**: Código mantenible y extensible
+
+### Arquitectura Robusta
+- ✅ **3-Tier Categorization**: Keywords → Historical Learning → AI (Claude)
+- ✅ **Error Handling**: Manejo robusto de edge cases y HTML malformado
+- ✅ **Currency Precision**: Uso de `Decimal` para cálculos financieros exactos
+- ✅ **Database Design**: Índices optimizados, soft deletes, foreign keys con cascade
+- ✅ **Security**: OAuth2 PKCE flow, keyring para tokens, validación con Pydantic
+
+### Optimizaciones
+- ✅ **Cost Optimization**: Claude Haiku 4.5 ($1/M tokens - 5x más barato)
+- ✅ **Performance**: Cache de exchange rates, batch processing, índices DB
+- ✅ **Reliability**: Retry con exponential backoff, fallback APIs, validation
+
+### DevOps & Testing
+- ✅ **CI/CD**: GitHub Actions con linting, type checking, tests
+- ✅ **Comprehensive Tests**: Unit + integration tests con mocks
+- ✅ **Code Quality**: Ruff para linting/formatting, mypy para type checking
+- ✅ **Documentation**: Architecture diagrams (Mermaid), ADRs, API docs
+
+👉 **Ver más detalles técnicos en [ARCHITECTURE.md](docs/ARCHITECTURE.md)**
 
 ## Stack Tecnológico
 

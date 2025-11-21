@@ -7,7 +7,9 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 
+from finanzas_tracker.core.constants import MIN_TRANSACTION_AMOUNT, SUPPORTED_CURRENCIES
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.utils.parser_utils import ParserUtils
 
 
 logger = get_logger(__name__)
@@ -52,10 +54,18 @@ class PopularParser:
                 return None
 
             # Detectar moneda y monto
-            moneda, monto = PopularParser._parse_monto(monto_str)
+            moneda, monto = ParserUtils.parse_monto(monto_str)
+
+            # Validar monto y moneda
+            if monto < MIN_TRANSACTION_AMOUNT:
+                logger.warning(f"Monto inválido (<{MIN_TRANSACTION_AMOUNT}): {monto} en correo: {subject}")
+                return None
+            if moneda not in SUPPORTED_CURRENCIES:
+                logger.warning(f"Moneda inválida: {moneda} en correo: {subject}")
+                return None
 
             # Parsear ubicación
-            ciudad, pais = PopularParser._parse_ubicacion(ubicacion)
+            ciudad, pais = ParserUtils.parse_ubicacion(ubicacion)
 
             transaction_data = {
                 "email_id": email_data.get("id"),
@@ -214,59 +224,3 @@ class PopularParser:
                 return match.group(1).strip()
 
         return None
-
-    @staticmethod
-    def _parse_monto(monto_str: str) -> tuple[str, Decimal]:
-        """
-        Parsea el string del monto y detecta la moneda.
-
-        Args:
-            monto_str: String como "CRC 4,000.00" o "USD 25.00"
-
-        Returns:
-            tuple[str, Decimal]: (moneda, monto)
-        """
-        # Limpiar el string
-        monto_str = monto_str.strip()
-
-        # Detectar moneda
-        moneda = "CRC"
-        if "USD" in monto_str.upper() or "$" in monto_str:
-            moneda = "USD"
-        elif "CRC" in monto_str.upper() or "₡" in monto_str:
-            moneda = "CRC"
-
-        # Extraer números
-        monto_clean = re.sub(r"[^\d,.]", "", monto_str)
-        monto_clean = monto_clean.replace(",", "")
-
-        # Convertir a Decimal
-        try:
-            monto = Decimal(monto_clean)
-        except (ValueError, InvalidOperation):
-            monto = Decimal("0")
-
-        return moneda, monto
-
-    @staticmethod
-    def _parse_ubicacion(ubicacion_str: str) -> tuple[str | None, str | None]:
-        """
-        Parsea la string de ubicación.
-
-        Args:
-            ubicacion_str: String como "SAN JOSE, Costa Rica"
-
-        Returns:
-            tuple[str | None, str | None]: (ciudad, pais)
-        """
-        if not ubicacion_str:
-            return None, None
-
-        parts = [p.strip() for p in ubicacion_str.split(",")]
-
-        if len(parts) >= 2:
-            return parts[0], parts[1]
-        if len(parts) == 1:
-            return parts[0], None
-
-        return None, None

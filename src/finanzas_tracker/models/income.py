@@ -126,6 +126,47 @@ class Income(Base):
         comment="Notas adicionales",
     )
 
+    # NUEVOS CAMPOS - Contexto y desglose
+    contexto: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Contexto del ingreso en lenguaje natural (ej: 'Mamá me pasó para comprar carne')",
+    )
+    tipo_especial: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+        index=True,
+        comment="Tipo especial de movimiento (dinero_ajeno, intermediaria, ajuste_inicial, etc.)",
+    )
+    excluir_de_presupuesto: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="Si se debe excluir del cálculo de presupuesto mensual 50/30/20",
+    )
+
+    # Desglose de ingresos (para dinero de otra persona)
+    es_dinero_ajeno: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Si el dinero es de otra persona (no es ingreso real tuyo)",
+    )
+    requiere_desglose: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Si este ingreso se desglosó en múltiples gastos",
+    )
+    monto_usado: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=15, scale=2),
+        nullable=True,
+        comment="Monto que realmente usaste/gastaste de este ingreso",
+    )
+    monto_sobrante: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=15, scale=2),
+        nullable=True,
+        comment="Monto que te sobraste/quedaste de este ingreso (va a tu patrimonio)",
+    )
+
     # Soft delete
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -149,6 +190,9 @@ class Income(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="incomes")
+    splits: Mapped[list["IncomeSplit"]] = relationship(
+        "IncomeSplit", back_populates="income", cascade="all, delete-orphan"
+    )
 
     # Constraints
     __table_args__ = (
@@ -186,3 +230,22 @@ class Income(Base):
     def restore(self) -> None:
         """Restaura un ingreso eliminado."""
         self.deleted_at = None
+
+    def calcular_monto_patrimonio(self) -> Decimal:
+        """
+        Calcula el monto real que cuenta para el patrimonio.
+
+        Si es dinero ajeno y hay un monto_sobrante definido, usa ese.
+        Si está excluido de presupuesto y no es dinero ajeno, no cuenta (₡0).
+        De lo contrario, usa monto_crc completo.
+        """
+        if self.es_dinero_ajeno and self.monto_sobrante is not None:
+            # Solo cuenta lo que te quedaste
+            return self.monto_sobrante
+
+        if self.excluir_de_presupuesto and not self.es_dinero_ajeno:
+            # Excluido completamente (ej: ajuste inicial, transferencia propia)
+            return Decimal("0")
+
+        # Ingreso normal, cuenta todo
+        return self.monto_crc

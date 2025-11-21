@@ -12,6 +12,7 @@ from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
+from finanzas_tracker.services.merchant_service import MerchantNormalizationService
 
 
 logger = get_logger(__name__)
@@ -50,6 +51,7 @@ class TransactionProcessor:
         self.popular_parser = PopularParser()
         self.auto_categorize = auto_categorize
         self.categorizer = TransactionCategorizer() if auto_categorize else None
+        self.merchant_service = MerchantNormalizationService()
         logger.info(f"TransactionProcessor inicializado (auto_categorize={auto_categorize})")
 
     def process_emails(
@@ -205,7 +207,7 @@ class TransactionProcessor:
                 comercio=transaction_data["comercio"],
                 monto_crc=float(transaction_data["monto_crc"]),
                 tipo_transaccion=transaction_data["tipo_transaccion"],
-                user_email=transaction_data.get("user_email"),
+                profile_id=transaction_data.get("profile_id"),
             )
 
             # Agregar resultado a transaction_data
@@ -249,6 +251,24 @@ class TransactionProcessor:
         """
         try:
             with get_session() as session:
+                # Normalizar el merchant antes de crear la transacción
+                comercio_raw = transaction_data.get("comercio", "")
+                ciudad = transaction_data.get("ciudad")
+                pais = transaction_data.get("pais", "Costa Rica")
+
+                if comercio_raw:
+                    merchant = self.merchant_service.find_or_create_merchant(
+                        session=session,
+                        raw_name=comercio_raw,
+                        ciudad=ciudad,
+                        pais=pais,
+                    )
+                    transaction_data["merchant_id"] = merchant.id
+
+                    logger.debug(
+                        f"  Merchant normalizado: '{comercio_raw}' → '{merchant.nombre_normalizado}'"
+                    )
+
                 transaction = Transaction(**transaction_data)
                 session.add(transaction)
                 session.commit()

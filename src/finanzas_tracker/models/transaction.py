@@ -64,6 +64,15 @@ class Transaction(Base):
         comment="ID de la tarjeta usada en la transacción",
     )
 
+    # Comercio normalizado
+    merchant_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("merchants.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID del comercio normalizado (ej: todas las variantes de Subway apuntan al mismo merchant)",
+    )
+
     # Información de la transacción
     tipo_transaccion: Mapped[TransactionType] = mapped_column(
         String(50),
@@ -184,6 +193,13 @@ class Transaction(Base):
         comment="Notas adicionales del usuario",
     )
 
+    # NUEVO CAMPO - Contexto para desgl ose
+    contexto: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Contexto del gasto en lenguaje natural (ej: 'Compré carne con plata de mamá')",
+    )
+
     # Soft delete
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -196,6 +212,7 @@ class Transaction(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
+        index=True,
         comment="Fecha de creación del registro",
     )
     updated_at: Mapped[datetime] = mapped_column(
@@ -208,6 +225,7 @@ class Transaction(Base):
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="transactions")
     card: Mapped["Card | None"] = relationship("Card", back_populates="transactions")
+    merchant: Mapped["Merchant | None"] = relationship("Merchant", back_populates="transacciones")
     subcategory: Mapped["Subcategory | None"] = relationship(
         "Subcategory",
         back_populates="transactions",
@@ -216,6 +234,9 @@ class Transaction(Base):
         "Transaction",
         remote_side="Transaction.id",
         foreign_keys=[refund_transaction_id],
+    )
+    income_splits: Mapped[list["IncomeSplit"]] = relationship(
+        "IncomeSplit", back_populates="transaction", cascade="all, delete-orphan"
     )
 
     # Constraints e índices
@@ -231,6 +252,7 @@ class Transaction(Base):
         Index("ix_transactions_profile_categoria", "profile_id", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
         Index("ix_transactions_desconocidas", "es_desconocida"),
+        Index("ix_transactions_created_at", "created_at"),
     )
 
     def __repr__(self) -> str:
@@ -305,3 +327,17 @@ class Transaction(Base):
         self.refund_transaction_id = transaction_id
         self.tipo_especial = SpecialTransactionType.REIMBURSEMENT
         self.relacionada_con = f"Refund de transacción {transaction_id[:8]}"
+
+    def calcular_monto_patrimonio(self) -> Decimal:
+        """
+        Calcula el monto real que cuenta para el patrimonio.
+
+        Si está excluido de presupuesto (gasto ajeno, intermediaria, etc.), no cuenta.
+        De lo contrario, es un gasto normal que reduce el patrimonio.
+        """
+        if self.excluir_de_presupuesto:
+            # No cuenta en patrimonio (ej: gasto con plata de mamá)
+            return Decimal("0")
+
+        # Gasto normal, reduce patrimonio
+        return self.monto_crc
