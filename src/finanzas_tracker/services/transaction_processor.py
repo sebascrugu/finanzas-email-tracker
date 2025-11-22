@@ -1,5 +1,6 @@
 """Servicio para procesar transacciones desde correos."""
 
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -94,6 +95,10 @@ class TransactionProcessor:
         }
 
         logger.info(f" Procesando {len(emails)} correos...")
+
+        # Auto-entrenar detector de anomalías si es necesario
+        if self.detect_anomalies and self.anomaly_detector:
+            self._auto_train_anomaly_detector(profile_id)
 
         for email in emails:
             try:
@@ -315,6 +320,80 @@ class TransactionProcessor:
             transaction_data["is_anomaly"] = False
             transaction_data["anomaly_score"] = None
             transaction_data["anomaly_reason"] = None
+
+    def _auto_train_anomaly_detector(self, profile_id: str) -> None:
+        """
+        Auto-entrena el detector de anomalías si es necesario.
+
+        Condiciones para entrenar:
+        1. No existe un modelo entrenado
+        2. Hay al menos 30 transacciones en los últimos 6 meses
+        3. Hace más de 30 días desde el último entrenamiento
+
+        Args:
+            profile_id: ID del perfil
+        """
+        if not self.anomaly_detector:
+            return
+
+        # Chequear si ya hay un modelo entrenado
+        if self.anomaly_detector.model is not None:
+            # Ya está entrenado, no hacer nada (por ahora)
+            # TODO: Implementar re-entrenamiento automático mensual
+            return
+
+        # Contar transacciones disponibles
+        with get_session() as session:
+            six_months_ago = datetime.now() - timedelta(days=180)
+
+            tx_count = (
+                session.query(Transaction)
+                .filter(
+                    Transaction.profile_id == profile_id,
+                    Transaction.fecha_transaccion >= six_months_ago,
+                    Transaction.deleted_at.is_(None),
+                    Transaction.excluir_de_presupuesto == False,  # noqa: E712
+                )
+                .count()
+            )
+
+        # Si hay suficientes datos, entrenar automáticamente
+        if tx_count >= 30:
+            logger.info(
+                f"\n{'='*70}\n"
+                f"🤖 ENTRENAMIENTO AUTOMÁTICO DE DETECTOR DE ANOMALÍAS\n"
+                f"{'='*70}\n"
+                f"  Detectamos {tx_count} transacciones históricas.\n"
+                f"  Entrenando modelo de ML para detectar gastos inusuales...\n"
+            )
+
+            try:
+                success = self.anomaly_detector.train(profile_id=profile_id, min_transactions=30)
+
+                if success:
+                    logger.success(
+                        f"  ✅ Modelo entrenado exitosamente!\n"
+                        f"  📊 Ahora se detectarán automáticamente transacciones anómalas\n"
+                        f"  💡 El modelo aprende de tus patrones de gasto normales\n"
+                        f"{'='*70}\n"
+                    )
+                else:
+                    logger.warning(
+                        f"  ⚠️  No se pudo entrenar (insuficientes datos)\n" f"{'='*70}\n"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error entrenando detector de anomalías: {e}")
+                logger.info(
+                    "  ℹ️  La detección de anomalías estará desactivada por ahora\n"
+                    f"{'='*70}\n"
+                )
+        else:
+            logger.info(
+                f"  ℹ️  Detección de anomalías desactivada temporalmente\n"
+                f"     (necesitas al menos 30 transacciones, tienes {tx_count})\n"
+                f"     Se activará automáticamente cuando tengas suficientes datos\n"
+            )
 
     def _save_transaction(self, transaction_data: dict[str, Any]) -> bool:
         """

@@ -44,6 +44,7 @@ Esta aplicación permite monitorear automáticamente correos electrónicos de no
 - **Transacciones Especiales**: Maneja transferencias intermediarias, gastos compartidos, ayudas familiares
 - **Chat con Finanzas (GenAI)**: Pregunta en lenguaje natural sobre tus gastos ("¿Cuánto gasté en comida?")
 - **Insights Automáticos (GenAI)**: Detecta patrones, gastos inusuales y oportunidades de ahorro
+- **Detección de Anomalías (ML)**: Sistema automático con Isolation Forest que detecta transacciones sospechosas (fraude, gastos inusuales, compras en horarios raros)
 - **Dashboard Interactivo**: Visualización con Streamlit para revisar y confirmar transacciones
 - **Seguridad**: Manejo seguro de credenciales con variables de entorno
 - **Base de Datos Robusta**: SQLite con soft deletes, constraints y índices optimizados (FAANG-level)
