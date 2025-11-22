@@ -202,6 +202,24 @@ class Transaction(Base):
         comment="Contexto del gasto en lenguaje natural (ej: 'Compré carne con plata de mamá')",
     )
 
+    # Anomaly Detection (ML)
+    is_anomaly: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="Si la transacción fue detectada como anómala por ML",
+    )
+    anomaly_score: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=5, scale=4),
+        nullable=True,
+        comment="Score de anomalía (-1 a 1, donde < 0 es anómalo). Isolation Forest output.",
+    )
+    anomaly_reason: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="Razón de por qué se marcó como anómala (ej: 'Monto inusualmente alto')",
+    )
+
     # Soft delete
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
@@ -298,8 +316,8 @@ class Transaction(Base):
 
     @property
     def necesita_atencion(self) -> bool:
-        """Retorna True si la transacción necesita atención (desconocida o baja confianza)."""
-        return self.es_desconocida or self.confianza_categoria < 70
+        """Retorna True si la transacción necesita atención (desconocida, baja confianza o anómala)."""
+        return self.es_desconocida or self.confianza_categoria < 70 or self.is_anomaly
 
     @property
     def debe_contar_en_presupuesto(self) -> bool:

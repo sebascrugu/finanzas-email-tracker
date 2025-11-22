@@ -10,6 +10,7 @@ from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
+from finanzas_tracker.services.anomaly_detector import AnomalyDetectionService
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
@@ -40,19 +41,29 @@ class TransactionProcessor:
         "cajero@bancopopular.fi.cr": "popular",
     }
 
-    def __init__(self, auto_categorize: bool = True) -> None:
+    def __init__(
+        self,
+        auto_categorize: bool = True,
+        detect_anomalies: bool = True,
+    ) -> None:
         """
         Inicializa el processor.
 
         Args:
             auto_categorize: Si debe categorizar automáticamente con IA
+            detect_anomalies: Si debe detectar anomalías con ML
         """
         self.bac_parser = BACParser()
         self.popular_parser = PopularParser()
         self.auto_categorize = auto_categorize
+        self.detect_anomalies = detect_anomalies
         self.categorizer = TransactionCategorizer() if auto_categorize else None
+        self.anomaly_detector = AnomalyDetectionService() if detect_anomalies else None
         self.merchant_service = MerchantNormalizationService()
-        logger.info(f"TransactionProcessor inicializado (auto_categorize={auto_categorize})")
+        logger.info(
+            f"TransactionProcessor inicializado "
+            f"(auto_categorize={auto_categorize}, detect_anomalies={detect_anomalies})"
+        )
 
     def process_emails(
         self,
@@ -79,6 +90,7 @@ class TransactionProcessor:
             "usd_convertidos": 0,
             "categorizadas_automaticamente": 0,
             "necesitan_revision": 0,
+            "anomalias_detectadas": 0,
         }
 
         logger.info(f" Procesando {len(emails)} correos...")
@@ -120,6 +132,10 @@ class TransactionProcessor:
                 # Categorización automática con IA
                 if self.auto_categorize and self.categorizer:
                     self._categorize_transaction(parsed_data, stats)
+
+                # Detección de anomalías con ML (después de categorizar)
+                if self.detect_anomalies and self.anomaly_detector:
+                    self._detect_anomaly(parsed_data, stats)
 
                 # Guardar en base de datos
                 success = self._save_transaction(parsed_data)
@@ -248,6 +264,57 @@ class TransactionProcessor:
             transaction_data["categoria_sugerida_por_ia"] = None
             transaction_data["necesita_revision"] = True
             stats["necesitan_revision"] += 1
+
+    def _detect_anomaly(
+        self,
+        transaction_data: dict[str, Any],
+        stats: dict[str, Any],
+    ) -> None:
+        """
+        Detecta si una transacción es anómala usando ML.
+
+        Args:
+            transaction_data: Datos de la transacción (se modifica in-place)
+            stats: Diccionario de estadísticas (se actualiza)
+        """
+        try:
+            # Crear transacción temporal para detección (no guardar aún)
+            temp_transaction = Transaction(**transaction_data)
+
+            # Detectar anomalía
+            result = self.anomaly_detector.detect(temp_transaction)
+
+            # Agregar resultado a transaction_data
+            transaction_data["is_anomaly"] = result.is_anomaly
+            transaction_data["anomaly_score"] = Decimal(str(result.score))
+            transaction_data["anomaly_reason"] = result.reason if result.is_anomaly else None
+
+            # Actualizar estadísticas
+            if result.is_anomaly:
+                stats["anomalias_detectadas"] += 1
+                logger.warning(
+                    f"⚠️  ANOMALÍA DETECTADA: {transaction_data['comercio']} - "
+                    f"₡{transaction_data['monto_crc']:,.0f} | "
+                    f"Razón: {result.reason} (confianza: {result.confidence:.1f}%)"
+                )
+            else:
+                logger.debug(
+                    f"✓ Normal: {transaction_data['comercio']} "
+                    f"(score: {result.score:.4f})"
+                )
+
+        except (KeyError, ValueError, TypeError) as e:
+            logger.debug(f"Error de datos detectando anomalía: {type(e).__name__}: {e}")
+            # No fallar el procesamiento, solo skip detección
+            transaction_data["is_anomaly"] = False
+            transaction_data["anomaly_score"] = None
+            transaction_data["anomaly_reason"] = None
+        except Exception as e:
+            logger.debug(f"Error inesperado detectando anomalía: {type(e).__name__}: {e}")
+            # No fallar el procesamiento
+            transaction_data["is_anomaly"] = False
+            transaction_data["anomaly_score"] = None
+            transaction_data["anomaly_reason"] = None
 
     def _save_transaction(self, transaction_data: dict[str, Any]) -> bool:
         """
