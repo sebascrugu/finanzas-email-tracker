@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_anthropic_error
 from finanzas_tracker.models.category import Category, Subcategory
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.transaction import Transaction
@@ -37,6 +38,28 @@ class FinanceChatService:
         self.model = settings.claude_model
         logger.info("FinanceChatService inicializado")
 
+    @retry_on_anthropic_error(max_attempts=3, max_wait=16)
+    def _call_claude_api(self, prompt: str) -> str:
+        """
+        Llama a Claude API con retry logic.
+
+        Args:
+            prompt: Prompt para Claude
+
+        Returns:
+            str: Respuesta de Claude
+
+        Raises:
+            anthropic.APIError: Si la llamada falla después de todos los intentos
+        """
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            temperature=0.3,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text
+
     def chat(self, question: str, profile_id: str) -> str:
         """
         Responde una pregunta sobre finanzas.
@@ -55,15 +78,8 @@ class FinanceChatService:
             # 2. Construir prompt
             prompt = self._build_prompt(question, context)
 
-            # 3. Llamar a Claude
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                temperature=0.3,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            answer = response.content[0].text
+            # 3. Llamar a Claude con retry logic
+            answer = self._call_claude_api(prompt)
             logger.info(f"Chat respondido: {question[:50]}...")
             return answer
 

@@ -8,6 +8,7 @@ import requests
 from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_network_error
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
 
 
@@ -136,6 +137,7 @@ class ExchangeRateService:
 
         return None, ""
 
+    @retry_on_network_error(max_attempts=3, max_wait=10)
     def _get_from_hacienda_cr(self, date_str: str) -> float | None:
         """
         Obtiene el tipo de cambio de la API del Ministerio de Hacienda de Costa Rica.
@@ -160,24 +162,27 @@ class ExchangeRateService:
                 "h": date_str,  # Fecha fin (mismo día)
             }
             response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
 
-            if response.status_code == 200:
-                data = response.json()
-                # La respuesta es un array con los datos del día
-                if data and len(data) > 0:
-                    # Usar el tipo de cambio de venta (más común para compras)
-                    rate = float(data[0].get("venta", 0))
-                    if rate > 0:
-                        logger.debug(f"Tipo de cambio de Hacienda CR: ₡{rate:.2f}")
-                        return rate
+            data = response.json()
+            # La respuesta es un array con los datos del día
+            if data and len(data) > 0:
+                # Usar el tipo de cambio de venta (más común para compras)
+                rate = float(data[0].get("venta", 0))
+                if rate > 0:
+                    logger.debug(f"Tipo de cambio de Hacienda CR: ₡{rate:.2f}")
+                    return rate
 
-        except requests.RequestException as e:
-            logger.debug(f"Error de red obteniendo de Hacienda CR: {e}")
+        except requests.RequestException:
+            # Re-raise para que tenacity lo reintente
+            raise
         except (KeyError, ValueError, TypeError) as e:
+            # Errores de parsing no deben reintentar
             logger.debug(f"Error parseando respuesta de Hacienda CR: {e}")
 
         return None
 
+    @retry_on_network_error(max_attempts=3, max_wait=10)
     def _get_from_exchangerate_api(self, date_str: str) -> float | None:
         """
         Obtiene el tipo de cambio de exchangerate.host.
@@ -199,18 +204,20 @@ class ExchangeRateService:
                 "symbols": "CRC",
             }
             response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
 
-            if response.status_code == 200:
-                data = response.json()
-                # Verificar si la respuesta es exitosa
-                if data.get("success", False) and "rates" in data and "CRC" in data["rates"]:
-                    rate = float(data["rates"]["CRC"])
-                    logger.debug(f"Tipo de cambio de exchangerate.host: ₡{rate:.2f}")
-                    return rate
+            data = response.json()
+            # Verificar si la respuesta es exitosa
+            if data.get("success", False) and "rates" in data and "CRC" in data["rates"]:
+                rate = float(data["rates"]["CRC"])
+                logger.debug(f"Tipo de cambio de exchangerate.host: ₡{rate:.2f}")
+                return rate
 
-        except requests.RequestException as e:
-            logger.debug(f"Error de red obteniendo de exchangerate.host: {e}")
+        except requests.RequestException:
+            # Re-raise para que tenacity lo reintente
+            raise
         except (KeyError, ValueError, TypeError) as e:
+            # Errores de parsing no deben reintentar
             logger.debug(f"Error parseando respuesta de exchangerate.host: {e}")
 
         return None

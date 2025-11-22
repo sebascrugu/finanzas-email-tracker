@@ -14,6 +14,7 @@ from finanzas_tracker.core.constants import (
 )
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_anthropic_error
 from finanzas_tracker.models.category import Subcategory
 
 
@@ -156,6 +157,28 @@ class TransactionCategorizer:
 
             return None
 
+    @retry_on_anthropic_error(max_attempts=3, max_wait=16)
+    def _call_claude_api(self, prompt: str) -> str:
+        """
+        Llama a Claude API con retry logic.
+
+        Args:
+            prompt: Prompt para Claude
+
+        Returns:
+            str: Respuesta de Claude (texto)
+
+        Raises:
+            anthropic.APIError: Si la llamada falla después de todos los intentos
+        """
+        response = self.client.messages.create(
+            model=settings.claude_model,
+            max_tokens=1000,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text.strip()
+
     def _categorize_with_claude(
         self,
         comercio: str,
@@ -209,15 +232,8 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 }}"""
 
         try:
-            response = self.client.messages.create(
-                model=settings.claude_model,
-                max_tokens=1000,
-                temperature=0,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            # Extraer el JSON de la respuesta
-            response_text = response.content[0].text.strip()
+            # Llamar a Claude con retry logic
+            response_text = self._call_claude_api(prompt)
 
             # Limpiar si viene con markdown
             if response_text.startswith("```"):

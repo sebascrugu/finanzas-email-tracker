@@ -12,6 +12,7 @@ import requests
 
 from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_network_error
 from finanzas_tracker.services.auth_manager import auth_manager
 
 
@@ -164,6 +165,30 @@ class EmailFetcher:
 
         return date_filter
 
+    @retry_on_network_error(max_attempts=3, max_wait=10)
+    def _make_graph_request(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Hace una request a Microsoft Graph API con retry logic.
+
+        Args:
+            url: URL del endpoint de Graph API
+            params: Parámetros de query (opcional)
+
+        Returns:
+            dict: Respuesta JSON de la API
+
+        Raises:
+            requests.HTTPError: Si la request falla después de todos los intentos
+        """
+        headers = self._get_headers()
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+
     def fetch_emails_for_current_user(
         self,
         days_back: int | None = None,
@@ -224,11 +249,7 @@ class EmailFetcher:
         }
 
         try:
-            headers = self._get_headers()
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-            response.raise_for_status()
-
-            data = response.json()
+            data = self._make_graph_request(url, params)
             all_emails = data.get("value", [])
 
             # Filtrar solo correos de transacciones y alertas (excluir marketing)
@@ -312,11 +333,7 @@ class EmailFetcher:
         url = f"{self.GRAPH_API_BASE}/me/messages/{email_id}"
 
         try:
-            headers = self._get_headers()
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
-
-            data = response.json()
+            data = self._make_graph_request(url)
             body = data.get("body", {})
             return body.get("content", "")
 
@@ -335,13 +352,9 @@ class EmailFetcher:
 
         try:
             # Intentar obtener el perfil del usuario autenticado
-            headers = self._get_headers()
             url = f"{self.GRAPH_API_BASE}/me"
+            user_data = self._make_graph_request(url)
 
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
-
-            user_data = response.json()
             display_name = user_data.get("displayName", "Unknown")
             email = user_data.get("mail") or user_data.get("userPrincipalName", "Unknown")
 
