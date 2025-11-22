@@ -13,7 +13,6 @@ from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import (
     BankName,
     Currency,
-    SpecialTransactionType,
     TransactionType,
 )
 
@@ -86,12 +85,13 @@ class Transaction(Base):
         comment="Nombre del comercio o destino de la transacción",
     )
 
-    # Tipo especial (para casos como alquiler, reembolsos, etc.)
-    tipo_especial: Mapped[SpecialTransactionType | None] = mapped_column(
-        String(20),
+    # Tipo especial (para casos como dinero ajeno, intermediaria, etc.)
+    # Campo de texto libre - el usuario puede poner lo que quiera
+    tipo_especial: Mapped[str | None] = mapped_column(
+        String(50),
         nullable=True,
         index=True,
-        comment="Tipo especial: intermediaria, reembolso, compartida, etc.",
+        comment="Tipo especial: dinero_ajeno, intermediaria, transferencia_propia, etc.",
     )
     excluir_de_presupuesto: Mapped[bool] = mapped_column(
         Boolean,
@@ -327,7 +327,7 @@ class Transaction(Base):
             transaction_id: ID de la transacción original
         """
         self.refund_transaction_id = transaction_id
-        self.tipo_especial = SpecialTransactionType.REIMBURSEMENT
+        self.tipo_especial = "reembolso"
         self.relacionada_con = f"Refund de transacción {transaction_id[:8]}"
 
     def calcular_monto_patrimonio(self) -> Decimal:

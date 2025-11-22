@@ -6,7 +6,6 @@ from finanzas_tracker.models.enums import (
     BankName,
     Currency,
     TransactionType,
-    SpecialTransactionType,
     IncomeType,
     RecurrenceFrequency,
     CardType,
@@ -51,19 +50,6 @@ class TestTransactionType:
 
     def test_withdrawal(self) -> None:
         assert TransactionType.WITHDRAWAL.value == "retiro"
-
-
-class TestSpecialTransactionType:
-    """Tests for SpecialTransactionType enum."""
-
-    def test_intermediate(self) -> None:
-        assert SpecialTransactionType.INTERMEDIATE.value == "intermediaria"
-
-    def test_reimbursement(self) -> None:
-        assert SpecialTransactionType.REIMBURSEMENT.value == "reembolso"
-
-    def test_shared(self) -> None:
-        assert SpecialTransactionType.SHARED.value == "compartida"
 
 
 class TestIncomeType:

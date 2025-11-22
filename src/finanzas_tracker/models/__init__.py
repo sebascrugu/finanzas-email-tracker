@@ -11,7 +11,6 @@ from finanzas_tracker.models.enums import (
     Currency,
     IncomeType,
     RecurrenceFrequency,
-    SpecialTransactionType,
     TransactionType,
 )
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
@@ -44,6 +43,5 @@ __all__ = [
     "Currency",
     "IncomeType",
     "RecurrenceFrequency",
-    "SpecialTransactionType",
     "TransactionType",
 ]

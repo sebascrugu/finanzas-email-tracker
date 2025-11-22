@@ -94,5 +94,6 @@ class TestConstants:
         """TIPOS_ESPECIALES should have expected keys."""
         assert "ninguno" in TIPOS_ESPECIALES
         assert "dinero_ajeno" in TIPOS_ESPECIALES
-        assert "intermediaria" in TIPOS_ESPECIALES
         assert "transferencia_propia" in TIPOS_ESPECIALES
+        assert "ajuste_inicial" in TIPOS_ESPECIALES
+        assert "otro" in TIPOS_ESPECIALES

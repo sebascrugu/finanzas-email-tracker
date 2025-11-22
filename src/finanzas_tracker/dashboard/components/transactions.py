@@ -19,14 +19,16 @@ from finanzas_tracker.models.transaction import Transaction
 
 logger = get_logger(__name__)
 
-TIPOS_GASTO = [
-    ("normal", "Normal (gasto regular - SI cuenta en presupuesto)"),
-    ("gasto_ajeno", "Gasto ajeno (con dinero de otra persona - NO cuenta)"),
-    ("intermediaria", "Intermediaria (solo paso dinero - NO cuenta)"),
-    ("reembolso", "Reembolso (me devolvieron plata)"),
-    ("compartida", "Compartida (dividi con alguien - cuenta mi parte)"),
-    ("transferencia_propia", "Transferencia entre mis cuentas - NO cuenta"),
-]
+# Tipos comunes para simplificar el UI
+# El usuario puede escribir lo que quiera en el campo tipo_especial,
+# pero estos son los más comunes para facilitar la selección
+TIPOS_GASTO_COMUNES = {
+    "normal": "Normal",
+    "dinero_ajeno": "Dinero ajeno (no cuenta en presupuesto)",
+    "intermediaria": "Intermediaria (no cuenta en presupuesto)",
+    "transferencia_propia": "Transferencia propia (no cuenta en presupuesto)",
+    "otro": "Otro (describir en contexto)",
+}
 
 
 def _es_transferencia_o_sinpe(transaction: Transaction) -> bool:
@@ -294,24 +296,27 @@ def _mostrar_formulario_contexto(tx: Transaction, categoria: Subcategory, perfil
             key=f"contexto_{tx.id}",
         )
 
-        st.markdown("**Tipo de Gasto**")
+        st.markdown("**Tipo de Gasto (opcional)**")
 
         patron = _buscar_patron_historico(tx.comercio, perfil.id)
         if patron:
             st.info(f"Patron detectado: Ultimas {patron['frecuencia']} veces marcaste '{tx.comercio}' de forma especial")
 
-        tipo_especial = st.radio(
-            "Selecciona el tipo:",
-            options=[o[0] for o in TIPOS_GASTO],
-            format_func=lambda x: next(o[1] for o in TIPOS_GASTO if o[0] == x),
+        tipo_especial = st.selectbox(
+            "Tipo:",
+            options=list(TIPOS_GASTO_COMUNES.keys()),
+            format_func=lambda x: TIPOS_GASTO_COMUNES[x],
             index=0,
             key=f"tipo_{tx.id}",
+            help="Si es 'Otro', describe en el campo Contexto arriba",
         )
 
+        # Auto-marcar "excluir" si es dinero ajeno, intermediaria o transferencia
         excluir_presupuesto = st.checkbox(
             "Excluir de presupuesto mensual",
-            value=tipo_especial in ["gasto_ajeno", "intermediaria", "transferencia_propia"],
+            value=tipo_especial in ["dinero_ajeno", "intermediaria", "transferencia_propia"],
             key=f"excluir_{tx.id}",
+            help="Marca esto si NO quieres que cuente para tu presupuesto mensual",
         )
 
         col1, col2 = st.columns(2)

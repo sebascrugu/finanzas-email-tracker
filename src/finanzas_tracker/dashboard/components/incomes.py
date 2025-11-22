@@ -34,12 +34,14 @@ OPCIONES_TIPO_INGRESO = [
     (IncomeType.OTHER, "Otro"),
 ]
 
+# Tipos especiales simplificados para ingresos
+# El usuario puede escribir lo que quiera, estos son solo los más comunes
 TIPOS_ESPECIALES = {
     "ninguno": "Ninguno (ingreso normal)",
-    "dinero_ajeno": "Dinero de otra persona",
-    "intermediaria": "Intermediaria (paso plata)",
-    "transferencia_propia": "Transferencia entre mis cuentas",
+    "dinero_ajeno": "Dinero de otra persona (no cuenta en presupuesto)",
+    "transferencia_propia": "Transferencia propia (no cuenta en presupuesto)",
     "ajuste_inicial": "Ajuste de saldo inicial",
+    "otro": "Otro (describir en notas)",
 }
 
 

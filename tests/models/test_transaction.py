@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from finanzas_tracker.models.enums import Currency, SpecialTransactionType, TransactionType, BankName
+from finanzas_tracker.models.enums import Currency, TransactionType, BankName
 from finanzas_tracker.models.transaction import Transaction
 
 
@@ -66,7 +66,7 @@ class TestTransactionProperties:
 
     def test_es_especial_true(self, base_transaction: Transaction) -> None:
         """Should return True when tipo_especial is set."""
-        base_transaction.tipo_especial = SpecialTransactionType.INTERMEDIATE
+        base_transaction.tipo_especial = "intermediaria"
         assert base_transaction.es_especial is True
 
     def test_es_especial_false(self, base_transaction: Transaction) -> None:

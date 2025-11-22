@@ -135,7 +135,7 @@ class Income(Base):
         comment="Contexto del ingreso en lenguaje natural (ej: 'Mamá me pasó para comprar carne')",
     )
     tipo_especial: Mapped[str | None] = mapped_column(
-        String(30),
+        String(50),
         nullable=True,
         index=True,
         comment="Tipo especial de movimiento (dinero_ajeno, intermediaria, ajuste_inicial, etc.)",
