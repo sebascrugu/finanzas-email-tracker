@@ -97,6 +97,74 @@ class TestAccountProperties:
         assert "Ahorro BAC" in repr_str
         assert "CRC" in repr_str
 
+    def test_saldo_crc_when_crc(self, savings_account: Account) -> None:
+        """Should return saldo_actual when currency is CRC."""
+        assert savings_account.saldo_crc == Decimal("500000.00")
+
+    def test_saldo_crc_when_usd(self) -> None:
+        """Should convert USD to CRC using exchange rate."""
+        from unittest.mock import patch
+
+        usd_account = Account(
+            profile_id="profile-123",
+            nombre="USD Account",
+            tipo=AccountType.SAVINGS,
+            moneda="USD",
+            saldo_actual=Decimal("1000.00"),
+            activa=True,
+        )
+
+        with patch('finanzas_tracker.models.account.exchange_rate_service.get_rate') as mock_rate:
+            mock_rate.return_value = 530.0
+            result = usd_account.saldo_crc
+            assert result == Decimal("530000.00")  # 1000 * 530
+
+    def test_proyectar_saldo_compuesto(self, investment_account: Account) -> None:
+        """Should project balance with compound interest."""
+        # 12 months with 6% annual rate compounded monthly
+        result = investment_account.proyectar_saldo(12)
+        # Should be close to 1061683.62 (compound interest formula)
+        assert result > Decimal("1060000")
+        assert result < Decimal("1065000")
+
+
+class TestAccountValidations:
+    """Tests for Account model validations."""
+
+    def test_validate_nombre_empty(self) -> None:
+        """Should reject empty nombre."""
+        with pytest.raises(ValueError, match="El nombre de la cuenta no puede estar vacío"):
+            Account(
+                profile_id="profile-123",
+                nombre="   ",  # Whitespace only
+                tipo=AccountType.SAVINGS,
+                moneda="CRC",
+                saldo_actual=Decimal("1000"),
+            )
+
+    def test_validate_saldo_actual_negative(self) -> None:
+        """Should reject negative saldo_actual."""
+        with pytest.raises(ValueError, match="El saldo actual no puede ser negativo"):
+            Account(
+                profile_id="profile-123",
+                nombre="Test Account",
+                tipo=AccountType.SAVINGS,
+                moneda="CRC",
+                saldo_actual=Decimal("-1000"),  # Negative
+            )
+
+    def test_validate_tasa_interes_over_100(self) -> None:
+        """Should reject interest rate over 100%."""
+        with pytest.raises(ValueError, match="no puede ser mayor a 100%"):
+            Account(
+                profile_id="profile-123",
+                nombre="Test Account",
+                tipo=AccountType.SAVINGS,
+                moneda="CRC",
+                saldo_actual=Decimal("1000"),
+                tasa_interes=Decimal("150"),  # Over 100%
+            )
+
 
 class TestAccountType:
     """Tests for AccountType enum."""
