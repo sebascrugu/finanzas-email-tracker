@@ -5,7 +5,6 @@ Permite ver, editar y gestionar los comercios normalizados y sus variantes.
 """
 
 import streamlit as st
-from decimal import Decimal
 
 # Configurar página
 st.set_page_config(

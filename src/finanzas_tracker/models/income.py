@@ -1,5 +1,7 @@
 """Modelo de ingresos."""
 
+__all__ = ["Income"]
+
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4

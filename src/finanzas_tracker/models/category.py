@@ -1,5 +1,7 @@
 """Modelos de categorías y subcategorías."""
 
+__all__ = ["Category", "Subcategory"]
+
 from datetime import UTC, datetime
 from uuid import uuid4
 

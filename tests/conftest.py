@@ -9,6 +9,19 @@ import os
 import sys
 from unittest.mock import MagicMock
 
+# Setup de variables de entorno ANTES de cualquier import
+# Esto es necesario porque Pydantic Settings se carga al importar módulos
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("GMAIL_CREDENTIALS_FILE", "credentials.json")
+os.environ.setdefault("GMAIL_TOKEN_FILE", "token.json")
+os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
+os.environ.setdefault("AZURE_TENANT_ID", "test-tenant-id")
+os.environ.setdefault("AZURE_CLIENT_SECRET", "test-secret")
+os.environ.setdefault("USER_EMAIL", "test@example.com")
+os.environ.setdefault("MOM_EMAIL", "mom@example.com")
+os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
+os.environ.setdefault("ENVIRONMENT", "testing")
+
 import pytest
 
 # Mock keyring ANTES de que cualquier módulo lo importe
@@ -16,24 +29,6 @@ keyring_mock = MagicMock()
 keyring_mock.get_password.return_value = None
 keyring_mock.set_password.return_value = None
 sys.modules["keyring"] = keyring_mock
-
-
-# Setup de variables de entorno para tests (ejecuta antes de importar cualquier módulo)
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_env() -> None:
-    """
-    Configura variables de entorno para tests.
-
-    Se ejecuta automáticamente antes de todos los tests para asegurar
-    que Pydantic Settings no falle al intentar cargar configuración.
-    """
-    os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
-    os.environ.setdefault("AZURE_TENANT_ID", "test-tenant-id")
-    os.environ.setdefault("AZURE_CLIENT_SECRET", "test-secret")
-    os.environ.setdefault("USER_EMAIL", "test@example.com")
-    os.environ.setdefault("MOM_EMAIL", "mom@example.com")
-    os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
-    os.environ.setdefault("ENVIRONMENT", "testing")
 
 
 @pytest.fixture

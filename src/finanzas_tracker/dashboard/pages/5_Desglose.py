@@ -7,7 +7,7 @@ donde se usó ese dinero. Resuelve el caso de uso "mamá me dio ₡20K para comp
 
 import streamlit as st
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import timedelta
 
 # Configurar página
 st.set_page_config(

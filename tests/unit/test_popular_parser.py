@@ -47,7 +47,7 @@ class TestPopularParserComprasCRC:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["email_id"] == "email-popular-1"
@@ -77,7 +77,7 @@ class TestPopularParserComprasCRC:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("8450.75")
@@ -101,7 +101,7 @@ class TestPopularParserComprasCRC:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["ciudad"] is None
@@ -130,7 +130,7 @@ class TestPopularParserComprasUSD:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("9.99")
@@ -156,7 +156,7 @@ class TestPopularParserComprasUSD:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["monto_original"] == Decimal("10")
@@ -183,7 +183,7 @@ class TestPopularParserTiposTransaccion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "compra"
 
@@ -203,7 +203,7 @@ class TestPopularParserTiposTransaccion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "retiro"
 
@@ -223,7 +223,7 @@ class TestPopularParserTiposTransaccion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "transferencia"
 
@@ -243,7 +243,7 @@ class TestPopularParserTiposTransaccion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is not None
         assert result["tipo_transaccion"] == "pago_servicio"
 
@@ -269,7 +269,7 @@ class TestPopularParserFechas:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         fecha = result["fecha_transaccion"]
@@ -295,7 +295,7 @@ class TestPopularParserFechas:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         fecha = result["fecha_transaccion"]
@@ -316,7 +316,7 @@ class TestPopularParserEdgeCases:
             "body": {"content": "<html><body></body></html>"},
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is None
 
     def test_parse_sin_monto(self) -> None:
@@ -335,7 +335,7 @@ class TestPopularParserEdgeCases:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is None
 
     def test_parse_monto_invalido(self) -> None:
@@ -354,7 +354,7 @@ class TestPopularParserEdgeCases:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         # Puede retornar None o con monto 0
         assert result is None or result["monto_original"] == Decimal("0")
 
@@ -377,7 +377,7 @@ class TestPopularParserEdgeCases:
         }
 
         # Debería intentar parsear o retornar None sin explotar
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
         assert result is None or isinstance(result, dict)
 
 
@@ -428,14 +428,14 @@ class TestPopularParserMetodosPrivados:
         </body></html>
         """
         soup = BeautifulSoup(html, "lxml")
-        comercio = PopularParser._extract_comercio(soup, "Notificación")
+        comercio = PopularParser()._extract_comercio(soup, "Notificación")
         assert comercio == "FARMACIA CHAVARRIA"
 
     def test_extract_comercio_fallback_desconocido(self) -> None:
         """Test de _extract_comercio cuando no encuentra comercio."""
         html = "<html><body></body></html>"
         soup = BeautifulSoup(html, "lxml")
-        comercio = PopularParser._extract_comercio(soup, "Notificación")
+        comercio = PopularParser()._extract_comercio(soup, "Notificación")
         assert comercio == "Desconocido"
 
 
@@ -468,7 +468,7 @@ class TestPopularParserIntegracion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         # Validar todos los campos
         assert result is not None
@@ -508,7 +508,7 @@ class TestPopularParserIntegracion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert "UBER TECHNOLOGIES" in result["comercio"]
@@ -536,7 +536,7 @@ class TestPopularParserIntegracion:
             },
         }
 
-        result = PopularParser.parse(email_data)
+        result = PopularParser().parse(email_data)
 
         assert result is not None
         assert result["tipo_transaccion"] == "transferencia"

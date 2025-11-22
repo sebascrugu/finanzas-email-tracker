@@ -1,5 +1,7 @@
 """Modelo de Perfil para sistema multi-perfil simplificado."""
 
+__all__ = ["Profile"]
+
 from datetime import UTC, datetime
 from uuid import uuid4
 

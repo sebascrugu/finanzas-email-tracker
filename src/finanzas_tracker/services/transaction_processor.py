@@ -128,8 +128,11 @@ class TransactionProcessor:
                 else:
                     stats["duplicados"] += 1
 
+            except (KeyError, ValueError) as e:
+                logger.error(f"Error de datos en correo '{email.get('subject', 'unknown')}': {e}")
+                stats["errores"] += 1
             except Exception as e:
-                logger.error(f"Error procesando correo: {e}")
+                logger.error(f"Error inesperado procesando correo '{email.get('subject', 'unknown')}': {type(e).__name__}: {e}")
                 stats["errores"] += 1
 
         logger.success(
@@ -231,9 +234,14 @@ class TransactionProcessor:
                     f"(confianza: {result.get('confianza')}%)"
                 )
 
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"Error de datos categorizando transacción: {type(e).__name__}: {e}")
+            transaction_data["subcategory_id"] = None
+            transaction_data["categoria_sugerida_por_ia"] = None
+            transaction_data["necesita_revision"] = True
+            stats["necesitan_revision"] += 1
         except Exception as e:
-            logger.error(f"Error categorizando transacción: {e}")
-            # En caso de error, marcar para revisión
+            logger.error(f"Error inesperado categorizando transacción: {type(e).__name__}: {e}")
             transaction_data["subcategory_id"] = None
             transaction_data["categoria_sugerida_por_ia"] = None
             transaction_data["necesita_revision"] = True
@@ -284,8 +292,11 @@ class TransactionProcessor:
             logger.debug(f"  Transacción duplicada (ya existe): {transaction_data['email_id']}")
             return False
 
+        except (ValueError, TypeError) as e:
+            logger.error(f"Error de datos guardando transacción: {type(e).__name__}: {e}")
+            raise
         except Exception as e:
-            logger.error(f"Error guardando transacción: {e}")
+            logger.error(f"Error DB guardando transacción: {type(e).__name__}: {e}")
             raise
 
 

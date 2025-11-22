@@ -5,7 +5,7 @@ Esta es la página principal que se muestra al usuario.
 """
 
 import calendar
-from datetime import date, timedelta
+from datetime import date
 from collections import defaultdict
 
 import streamlit as st
@@ -156,7 +156,6 @@ from finanzas_tracker.core.database import get_session, init_db
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.account import Account
 from finanzas_tracker.models.income import Income
-from finanzas_tracker.models.merchant import Merchant
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.utils.seed_categories import seed_categories
