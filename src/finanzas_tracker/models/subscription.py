@@ -52,7 +52,6 @@ class Subscription(Base):
     )
     comercio: Mapped[str] = mapped_column(
         String(255),
-        index=True,
         comment="Nombre del comercio (para display)",
     )
 
