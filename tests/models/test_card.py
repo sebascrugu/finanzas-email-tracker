@@ -131,3 +131,112 @@ class TestCardMethods:
         repr_str = repr(card)
         assert "Card" in repr_str
         assert "0000" in repr_str
+
+    def test_calcular_gasto_mensual_with_transactions(self, card: Card) -> None:
+        """Should calculate total monthly expenses."""
+        from datetime import UTC, datetime
+
+        from finanzas_tracker.models.enums import BankName, TransactionType
+        from finanzas_tracker.models.transaction import Transaction
+
+        # Create test transactions
+        tx1 = Transaction(
+            email_id="email-1",
+            profile_id=card.profile_id,
+            card_id=card.id,
+            banco=BankName.BAC,
+            tipo_transaccion=TransactionType.PURCHASE,
+            comercio="Store 1",
+            monto_crc=Decimal("5000"),
+            monto_original=Decimal("5000"),
+            moneda_original="CRC",
+            fecha_transaccion=datetime(2025, 11, 15, tzinfo=UTC),
+            excluir_de_presupuesto=False,
+        )
+        tx2 = Transaction(
+            email_id="email-2",
+            profile_id=card.profile_id,
+            card_id=card.id,
+            banco=BankName.BAC,
+            tipo_transaccion=TransactionType.PURCHASE,
+            comercio="Store 2",
+            monto_crc=Decimal("3000"),
+            monto_original=Decimal("3000"),
+            moneda_original="CRC",
+            fecha_transaccion=datetime(2025, 11, 20, tzinfo=UTC),
+            excluir_de_presupuesto=False,
+        )
+        card.transactions = [tx1, tx2]
+
+        result = card.calcular_gasto_mensual(11, 2025)
+        assert result == Decimal("8000")
+
+    def test_calcular_disponible_credito_with_limit(self, card: Card) -> None:
+        """Should calculate available credit correctly."""
+        from datetime import UTC, datetime
+
+        from finanzas_tracker.models.enums import BankName, TransactionType
+        from finanzas_tracker.models.transaction import Transaction
+
+        card.tipo = CardType.CREDIT
+        card.limite_credito = Decimal("100000")
+
+        # Add transaction
+        tx = Transaction(
+            email_id="email-1",
+            profile_id=card.profile_id,
+            card_id=card.id,
+            banco=BankName.BAC,
+            tipo_transaccion=TransactionType.PURCHASE,
+            comercio="Store",
+            monto_crc=Decimal("25000"),
+            monto_original=Decimal("25000"),
+            moneda_original="CRC",
+            fecha_transaccion=datetime(2025, 11, 15, tzinfo=UTC),
+            excluir_de_presupuesto=False,
+        )
+        card.transactions = [tx]
+
+        result = card.calcular_disponible_credito(11, 2025)
+        assert result == Decimal("75000")  # 100000 - 25000
+
+
+class TestCardValidations:
+    """Tests for Card model validations."""
+
+    def test_validate_ultimos_4_digitos_empty(self) -> None:
+        """Should reject empty ultimos_4_digitos."""
+        with pytest.raises(ValueError, match="Los últimos 4 dígitos son obligatorios"):
+            Card(
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                ultimos_4_digitos="",  # Empty
+            )
+
+    def test_validate_ultimos_4_digitos_wrong_length(self) -> None:
+        """Should reject wrong length."""
+        with pytest.raises(ValueError, match="Deben ser exactamente 4 dígitos"):
+            Card(
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                ultimos_4_digitos="123",  # Only 3 digits
+            )
+
+    def test_validate_ultimos_4_digitos_non_numeric(self) -> None:
+        """Should reject non-numeric values."""
+        with pytest.raises(ValueError, match="deben ser solo números"):
+            Card(
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                ultimos_4_digitos="12AB",  # Contains letters
+            )
+
+    def test_validate_limite_credito_negative(self) -> None:
+        """Should reject negative credit limit."""
+        with pytest.raises(ValueError, match="El límite de crédito debe ser positivo"):
+            Card(
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                ultimos_4_digitos="1234",
+                limite_credito=Decimal("-10000"),  # Negative
+            )

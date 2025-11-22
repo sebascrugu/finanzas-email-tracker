@@ -63,9 +63,7 @@ class BACParser(BaseParser):
                     return cells[1].get_text(strip=True)
         return ""
 
-    def _extract_fecha(
-        self, soup: BeautifulSoup, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha(self, soup: BeautifulSoup, email_data: dict[str, Any]) -> datetime:
         """
         Extrae la fecha de la transacción.
 
@@ -136,9 +134,7 @@ class BACParser(BaseParser):
         moneda, monto = ParserUtils.parse_monto(monto_str)
 
         # Validar
-        validation_error = self._validate_transaction(
-            monto, moneda, "retiro sin tarjeta"
-        )
+        validation_error = self._validate_transaction(monto, moneda, "retiro sin tarjeta")
         if validation_error:
             logger.warning(validation_error)
             return None
@@ -161,9 +157,7 @@ class BACParser(BaseParser):
             "pais": "Costa Rica",
         }
 
-    def _extract_fecha_retiro(
-        self, text: str, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha_retiro(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de un correo de retiro sin tarjeta."""
         fecha_match = re.search(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2}:\d{2})", text)
         if fecha_match:

@@ -74,7 +74,9 @@ class TestNormalizeMerchantName:
 
         for raw_name, expected in test_cases:
             result = merchant_service.normalize_merchant_name(raw_name)
-            assert expected in result or result == expected, f"Failed for {raw_name}: got {result}, expected {expected}"
+            assert (
+                expected in result or result == expected
+            ), f"Failed for {raw_name}: got {result}, expected {expected}"
 
     def test_normalize_handles_special_characters(self, merchant_service):
         """Test con caracteres especiales."""
@@ -109,4 +111,3 @@ class TestNormalizeMerchantName:
         # Debería procesar sin error
         assert isinstance(result, str)
         assert len(result) > 0
-

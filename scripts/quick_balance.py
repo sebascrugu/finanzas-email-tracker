@@ -70,11 +70,9 @@ def main() -> None:
             balance = total_ingresos - total_gastos
 
             # Mostrar resultados
-            print()
             logger.info("=" * 80)
             logger.info(f" BALANCE DE {hoy.strftime('%B %Y').upper()}")
             logger.info("=" * 80)
-            print()
 
             logger.info(f" Ingresos:  ₡{total_ingresos:>15,.2f}")
             logger.info(f" Gastos:    ₡{total_gastos:>15,.2f}")
@@ -84,8 +82,6 @@ def main() -> None:
                 logger.success(f" Balance:   ₡{balance:>15,.2f} (POSITIVO)")
             else:
                 logger.warning(f"  Balance:   ₡{balance:>15,.2f} (NEGATIVO)")
-
-            print()
 
             # Calcular porcentaje gastado
             if total_ingresos > 0:
@@ -105,8 +101,6 @@ def main() -> None:
                 logger.info(" Ejecuta 'make income' para registrar tus ingresos")
             elif total_ingresos == 0 and total_gastos == 0:
                 logger.info(" No hay transacciones para este mes todavía")
-
-            print()
 
     except Exception as e:
         logger.error(f" Error: {e}")

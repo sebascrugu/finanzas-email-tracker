@@ -14,7 +14,6 @@ Tests comprehensivos que cubren todos los casos de parseo de correos de BAC Cred
 from datetime import datetime
 from decimal import Decimal
 
-import pytest
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.parsers.bac_parser import BACParser

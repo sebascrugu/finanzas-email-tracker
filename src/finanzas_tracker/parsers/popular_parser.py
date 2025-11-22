@@ -47,9 +47,8 @@ class PopularParser(BaseParser):
         if "transacción" in subject.lower() or "compra" in subject.lower():
             words = subject.split()
             for i, word in enumerate(words):
-                if word.lower() in ["en", "de", "comercio"]:
-                    if i + 1 < len(words):
-                        return " ".join(words[i + 1 :]).strip()
+                if word.lower() in ["en", "de", "comercio"] and i + 1 < len(words):
+                    return " ".join(words[i + 1 :]).strip()
 
         return "Desconocido"
 
@@ -70,9 +69,7 @@ class PopularParser(BaseParser):
 
         return ""
 
-    def _extract_fecha(
-        self, soup: BeautifulSoup, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha(self, soup: BeautifulSoup, email_data: dict[str, Any]) -> datetime:
         """Extrae la fecha de la transacción."""
         text = soup.get_text()
 

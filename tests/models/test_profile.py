@@ -79,3 +79,67 @@ class TestProfileMethods:
         profile.es_activo = True
         profile.activar()
         assert profile.es_activo is True
+
+
+class TestProfileValidations:
+    """Tests for Profile model validations."""
+
+    def test_validate_nombre_not_empty(self) -> None:
+        """Should reject empty or whitespace-only nombre."""
+        with pytest.raises(ValueError, match="El nombre del perfil no puede estar vacío"):
+            Profile(
+                email_outlook="test@example.com",
+                nombre="   ",  # Whitespace only
+                es_activo=True,
+                activo=True,
+            )
+
+    def test_validate_email_outlook_not_empty(self) -> None:
+        """Should reject empty email_outlook."""
+        with pytest.raises(ValueError, match="El email de Outlook no puede estar vacío"):
+            Profile(
+                email_outlook="   ",  # Whitespace only
+                nombre="Test",
+                es_activo=True,
+                activo=True,
+            )
+
+    def test_validate_email_outlook_invalid_format(self) -> None:
+        """Should reject invalid email format."""
+        with pytest.raises(ValueError, match="Formato de email inválido"):
+            Profile(
+                email_outlook="notanemail",  # No @ symbol
+                nombre="Test",
+                es_activo=True,
+                activo=True,
+            )
+
+    def test_bancos_asociados_with_cards(self) -> None:
+        """Should return banco from active cards."""
+        from finanzas_tracker.models.card import Card
+        from finanzas_tracker.models.enums import BankName
+
+        card1 = Card(
+            profile_id="profile-123",
+            banco=BankName.BAC,
+            ultimos_4_digitos="1234",
+            activa=True,
+        )
+        card2 = Card(
+            profile_id="profile-123",
+            banco=BankName.POPULAR,
+            ultimos_4_digitos="5678",
+            activa=True,
+        )
+
+        profile = Profile(
+            email_outlook="test@example.com",
+            nombre="Test",
+            es_activo=True,
+            activo=True,
+        )
+        profile.cards = [card1, card2]
+
+        bancos = profile.bancos_asociados
+        assert len(bancos) == 2
+        assert "bac" in bancos or "popular" in bancos

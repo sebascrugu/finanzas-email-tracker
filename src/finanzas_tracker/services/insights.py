@@ -95,7 +95,7 @@ class InsightsService:
         today = date.today()
         first_day_month = today.replace(day=1)
         last_month_start = (first_day_month - timedelta(days=1)).replace(day=1)
-        two_months_ago = (last_month_start - timedelta(days=1)).replace(day=1)
+        (last_month_start - timedelta(days=1)).replace(day=1)
 
         # Transacciones por periodo (eager load para evitar N+1)
         current_month = (

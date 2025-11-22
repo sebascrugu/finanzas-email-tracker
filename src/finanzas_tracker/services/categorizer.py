@@ -14,6 +14,7 @@ from finanzas_tracker.core.constants import (
 )
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_anthropic_error
 from finanzas_tracker.models.category import Subcategory
 
 
@@ -80,13 +81,11 @@ class TransactionCategorizer:
 
         # 2. Usar Claude AI para casos ambiguos
         logger.debug(f" Usando Claude AI para: {comercio}")
-        claude_result = self._categorize_with_claude(
+        return self._categorize_with_claude(
             comercio=comercio,
             monto_crc=monto_crc,
             tipo_transaccion=tipo_transaccion,
         )
-
-        return claude_result
 
     def _categorize_by_keywords(self, comercio: str) -> dict[str, Any] | None:
         """
@@ -131,7 +130,10 @@ class TransactionCategorizer:
                 return None
 
             # Si hay un solo match con buena confianza → asignar automáticamente
-            if len(matches) == 1 and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD:
+            if (
+                len(matches) == 1
+                and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD
+            ):
                 return {
                     "subcategory_id": matches[0]["subcategory_id"],
                     "categoria_sugerida": matches[0]["categoria_sugerida"],
@@ -155,6 +157,28 @@ class TransactionCategorizer:
                 }
 
             return None
+
+    @retry_on_anthropic_error(max_attempts=3, max_wait=16)
+    def _call_claude_api(self, prompt: str) -> str:
+        """
+        Llama a Claude API con retry logic.
+
+        Args:
+            prompt: Prompt para Claude
+
+        Returns:
+            str: Respuesta de Claude (texto)
+
+        Raises:
+            anthropic.APIError: Si la llamada falla después de todos los intentos
+        """
+        response = self.client.messages.create(
+            model=settings.claude_model,
+            max_tokens=1000,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.content[0].text.strip()
 
     def _categorize_with_claude(
         self,
@@ -209,15 +233,8 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
 }}"""
 
         try:
-            response = self.client.messages.create(
-                model=settings.claude_model,
-                max_tokens=1000,
-                temperature=0,
-                messages=[{"role": "user", "content": prompt}],
-            )
-
-            # Extraer el JSON de la respuesta
-            response_text = response.content[0].text.strip()
+            # Llamar a Claude con retry logic
+            response_text = self._call_claude_api(prompt)
 
             # Limpiar si viene con markdown
             if response_text.startswith("```"):

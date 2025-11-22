@@ -2,20 +2,24 @@
 
 import streamlit as st
 
+from finanzas_tracker.core.cache import cached_query
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.models.profile import Profile
 
 
+@cached_query(ttl_seconds=300, profile_aware=False)
 def get_active_profile() -> Profile | None:
     """
-    Obtiene el perfil activo.
+    Obtiene el perfil activo con caching.
+
+    Cache TTL: 5 minutos
 
     Returns:
         Profile | None: Perfil activo, o None si no existe
     """
     with get_session() as session:
         # Obtener perfil activo
-        perfil_activo = (
+        return (
             session.query(Profile)
             .filter(
                 Profile.es_activo == True,  # noqa: E712
@@ -23,8 +27,6 @@ def get_active_profile() -> Profile | None:
             )
             .first()
         )
-
-        return perfil_activo
 
 
 def require_profile() -> Profile:

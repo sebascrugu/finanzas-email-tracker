@@ -3,8 +3,8 @@
 from datetime import date
 from decimal import Decimal
 
-import streamlit as st
 from sqlalchemy.orm import Session
+import streamlit as st
 
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.account import Account, AccountType
@@ -39,7 +39,9 @@ def gestionar_cuentas(session: Session, perfil: Profile) -> None:
     with col2:
         st.metric("Patrimonio Total", f"₡{patrimonio_total:,.0f}")
     with col3:
-        st.metric("Intereses/Mes", f"₡{intereses_mensuales:,.0f}" if intereses_mensuales > 0 else "₡0")
+        st.metric(
+            "Intereses/Mes", f"₡{intereses_mensuales:,.0f}" if intereses_mensuales > 0 else "₡0"
+        )
 
     st.markdown("---")
 
@@ -75,7 +77,9 @@ def _mostrar_lista_cuentas(session: Session, cuentas: list[Account]) -> None:
                 st.markdown(f"**En colones:** ₡{cuenta.saldo_crc:,.0f}")
 
                 if cuenta.tasa_interes and cuenta.tasa_interes > 0:
-                    st.markdown(f"**Tasa de interes:** {cuenta.tasa_interes}% anual ({cuenta.tipo_interes})")
+                    st.markdown(
+                        f"**Tasa de interes:** {cuenta.tasa_interes}% anual ({cuenta.tipo_interes})"
+                    )
                     interes_mensual = cuenta.calcular_interes_mensual()
                     st.markdown(f"**Interes mensual:** ₡{interes_mensual:,.0f}")
                     if cuenta.fecha_vencimiento:
@@ -85,7 +89,9 @@ def _mostrar_lista_cuentas(session: Session, cuentas: list[Account]) -> None:
                     st.markdown(f"**Descripcion:** {cuenta.descripcion}")
 
                 estado_patrimonio = "Incluida" if cuenta.incluir_en_patrimonio else "Excluida"
-                st.markdown(f"**Estado:** {'Activa' if cuenta.activa else 'Inactiva'} | {estado_patrimonio} del patrimonio")
+                st.markdown(
+                    f"**Estado:** {'Activa' if cuenta.activa else 'Inactiva'} | {estado_patrimonio} del patrimonio"
+                )
 
             with col2:
                 if st.button("Editar", key=f"edit_acc_{cuenta.id}", use_container_width=True):
@@ -93,17 +99,18 @@ def _mostrar_lista_cuentas(session: Session, cuentas: list[Account]) -> None:
                     st.rerun()
 
                 if cuenta.activa:
-                    if st.button("Desactivar", key=f"deact_acc_{cuenta.id}", use_container_width=True):
+                    if st.button(
+                        "Desactivar", key=f"deact_acc_{cuenta.id}", use_container_width=True
+                    ):
                         cuenta.activa = False
                         session.commit()
                         st.success("Cuenta desactivada")
                         st.rerun()
-                else:
-                    if st.button("Activar", key=f"act_acc_{cuenta.id}", use_container_width=True):
-                        cuenta.activa = True
-                        session.commit()
-                        st.success("Cuenta activada")
-                        st.rerun()
+                elif st.button("Activar", key=f"act_acc_{cuenta.id}", use_container_width=True):
+                    cuenta.activa = True
+                    session.commit()
+                    st.success("Cuenta activada")
+                    st.rerun()
 
             if st.session_state.get(f"editing_account_{cuenta.id}", False):
                 st.markdown("---")
@@ -179,7 +186,9 @@ def editar_cuenta(session: Session, cuenta: Account) -> None:
                     )
 
         descripcion = st.text_area("Descripcion:", value=cuenta.descripcion or "")
-        incluir_patrimonio = st.checkbox("Incluir en patrimonio total", value=cuenta.incluir_en_patrimonio)
+        incluir_patrimonio = st.checkbox(
+            "Incluir en patrimonio total", value=cuenta.incluir_en_patrimonio
+        )
 
         col1, col2 = st.columns(2)
         with col1:
@@ -189,9 +198,19 @@ def editar_cuenta(session: Session, cuenta: Account) -> None:
 
         if guardar:
             _guardar_cuenta_editada(
-                session, cuenta, nombre, tipo, banco, saldo, moneda,
-                descripcion, incluir_patrimonio, tasa, tipo_interes,
-                fecha_vencimiento, plazo_meses
+                session,
+                cuenta,
+                nombre,
+                tipo,
+                banco,
+                saldo,
+                moneda,
+                descripcion,
+                incluir_patrimonio,
+                tasa,
+                tipo_interes,
+                fecha_vencimiento,
+                plazo_meses,
             )
 
         if cancelar:
@@ -315,9 +334,19 @@ def crear_cuenta_form(session: Session, perfil: Profile) -> None:
 
         if crear:
             _crear_cuenta(
-                session, perfil, nombre, tipo, banco, saldo, moneda,
-                descripcion, incluir_patrimonio, tasa, tipo_interes,
-                fecha_vencimiento, plazo_meses
+                session,
+                perfil,
+                nombre,
+                tipo,
+                banco,
+                saldo,
+                moneda,
+                descripcion,
+                incluir_patrimonio,
+                tasa,
+                tipo_interes,
+                fecha_vencimiento,
+                plazo_meses,
             )
 
 

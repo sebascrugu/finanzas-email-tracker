@@ -27,33 +27,22 @@ def display_transaction(transaction: Transaction, index: int, total: int) -> Non
         index: Índice actual
         total: Total de transacciones
     """
-    print("\n" + "=" * 80)
-    print(f" TRANSACCIÓN {index}/{total} - ID: {transaction.id[:8]}")
-    print("=" * 80)
-    print(f"🏪 Comercio:  {transaction.comercio}")
-    print(f" Monto:     {transaction.monto_display}")
-    print(f" Fecha:     {transaction.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
-    print(f" Banco:     {transaction.banco.value.upper()}")
-    print(f"🔖 Tipo:      {transaction.tipo_transaccion.value}")
 
     if transaction.card:
-        print(f" Tarjeta:   {transaction.card.nombre_display}")
+        pass
 
     if transaction.ciudad or transaction.pais:
-        print(f"📍 Ubicación: {transaction.ciudad or 'N/A'}, {transaction.pais or 'N/A'}")
-
-    print()
+        pass
 
     # Mostrar sugerencia de IA
     if transaction.categoria_sugerida_por_ia:
-        confianza = (
+        (
             f"({transaction.confianza_categoria}%)"
             if hasattr(transaction, "confianza_categoria")
             else ""
         )
-        print(f" IA sugiere: {transaction.categoria_sugerida_por_ia} {confianza}")
     else:
-        print(" IA sugiere: Sin sugerencia")
+        pass
 
 
 def get_all_subcategories() -> list[Subcategory]:
@@ -81,25 +70,15 @@ def display_categories_menu(subcategories: list[Subcategory]) -> None:
     Args:
         subcategories: Lista de subcategorías
     """
-    print("\n CATEGORÍAS DISPONIBLES:")
-    print()
 
     current_category = None
-    for i, subcat in enumerate(subcategories, 1):
+    for _i, subcat in enumerate(subcategories, 1):
         # Si cambiamos de categoría principal, mostrar header
         if current_category != subcat.category.tipo:
             current_category = subcat.category.tipo
-            icon = subcat.category.icono
-            name = subcat.category.nombre.upper()
-            print(f"\n{icon} {name}:")
+            subcat.category.nombre.upper()
 
         # Mostrar subcategoría
-        print(f"  {i:2d}. {subcat.icono} {subcat.nombre}")
-
-    print()
-    print("  a.  Aceptar sugerencia IA")
-    print("  0.   Omitir / Revisar después")
-    print()
 
 
 def es_transferencia_o_sinpe(transaction: Transaction) -> bool:
@@ -173,39 +152,10 @@ def preguntar_tipo_especial(
     Returns:
         tuple: (tipo_especial, excluir_de_presupuesto, relacionada_con)
     """
-    print("\n" + "─" * 80)
-    print("  DETECTADA TRANSFERENCIA/SINPE")
-    print("─" * 80)
 
     # Mostrar patrón si existe
-    if patron:
-        print(
-            f" Patrón detectado: Últimas {patron['frecuencia']} veces "
-            f"marcaste '{transaction.comercio}' como:"
-        )
-        tipo_nombre = {
-            SpecialTransactionType.INTERMEDIATE: "Intermediaria (dinero que solo pasas)",
-            SpecialTransactionType.SHARED: "Compartida (tu parte de algo grupal)",
-            SpecialTransactionType.FAMILY_SUPPORT: "Ayuda familiar",
-            SpecialTransactionType.LOAN_GIVEN: "Préstamo dado",
-            SpecialTransactionType.REIMBURSEMENT: "Reembolso",
-        }
-        print(f"   → {tipo_nombre.get(patron['tipo_especial'], 'Otro')}")
-        if patron["relacionada_con"]:
-            print(f"   → {patron['relacionada_con']}")
-        print()
-
-    print("¿Qué tipo de transferencia es?")
-    print()
-    print("  1.  Normal (tu gasto regular - SÍ cuenta en presupuesto)")
-    print("  2.  Intermediaria (dinero que solo pasas - NO cuenta en presupuesto)")
-    print("     Ej: Alquiler que pasas, compras para otros")
-    print("  3.  Compartida (tu parte de algo grupal - SÍ cuenta en presupuesto)")
-    print("     Ej: Fútbol semanal, pizza con amigos")
-    print("  4.  Ayuda familiar (das dinero a familiar - SÍ cuenta en presupuesto)")
-    print("     Ej: Ayuda a abuela, mesada a hermano")
-    print("  5.  Préstamo dado (le prestas a alguien - SÍ cuenta en presupuesto)")
-    print()
+    if patron and patron["relacionada_con"]:
+        pass
 
     # Sugerir el patrón si existe
     if patron:
@@ -215,8 +165,7 @@ def preguntar_tipo_especial(
             SpecialTransactionType.FAMILY_SUPPORT: "4",
             SpecialTransactionType.LOAN_GIVEN: "5",
         }
-        sugerencia = tipo_map.get(patron["tipo_especial"], "1")
-        print(f" Sugerencia: {sugerencia} (basado en patrón detectado)")
+        tipo_map.get(patron["tipo_especial"], "1")
 
     while True:
         choice = input("\nElige una opción (1-5) o Enter para aceptar sugerencia: ").strip()
@@ -245,7 +194,6 @@ def preguntar_tipo_especial(
         if choice == "5":
             desc = input("A quién prestaste: ").strip()
             return SpecialTransactionType.LOAN_GIVEN, False, desc or None
-        print(" Opción inválida. Intenta de nuevo.")
 
 
 def review_transaction(
@@ -309,9 +257,8 @@ def review_transaction(
                 transaction.necesita_revision = False
                 logger.success(f" Categoría: {selected.nombre_completo}")
                 break
-            print(" Número fuera de rango. Intenta de nuevo.")
         else:
-            print(" Opción inválida. Usa número, 'a' o '0'.")
+            pass
 
     # PASO 2: Solo para transferencias/SINPEs, preguntar tipo especial
     if es_transferencia_o_sinpe(transaction):
@@ -325,10 +272,8 @@ def review_transaction(
         transaction.relacionada_con = relacionada
 
         # Mensaje de confirmación
-        if excluir:
-            print("\n  Esta transacción NO contará en tu presupuesto (dinero intermediario)")
-        elif tipo_especial:
-            print("\n Esta transacción SÍ contará en tu presupuesto (tu gasto)")
+        if excluir or tipo_especial:
+            pass
 
     return True
 
@@ -382,7 +327,6 @@ def main() -> None:
 
                 # Preguntar si continuar
                 if i < len(transactions):
-                    print()
                     continue_review = input("¿Continuar con la siguiente? (S/n): ").strip().lower()
                     if continue_review == "n":
                         logger.info(f"\n⏸️  Revisión pausada. Progreso: {i}/{len(transactions)}")

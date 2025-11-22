@@ -4,8 +4,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from email_validator import EmailNotValidError, validate_email
-import streamlit as st
 from sqlalchemy.orm import Session
+import streamlit as st
 
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.budget import Budget
@@ -40,8 +40,16 @@ def mostrar_perfiles(session: Session, perfiles: list[Profile]) -> None:
                 if tarjetas:
                     st.markdown(f"**Tarjetas ({len(tarjetas)}):**")
                     for card in tarjetas:
-                        banco = card.banco.value.upper() if hasattr(card.banco, "value") else card.banco.upper()
-                        tipo = card.tipo.value.capitalize() if hasattr(card.tipo, "value") else card.tipo.capitalize()
+                        banco = (
+                            card.banco.value.upper()
+                            if hasattr(card.banco, "value")
+                            else card.banco.upper()
+                        )
+                        tipo = (
+                            card.tipo.value.capitalize()
+                            if hasattr(card.tipo, "value")
+                            else card.tipo.capitalize()
+                        )
                         alias_text = f" ({card.alias})" if card.alias else ""
                         st.markdown(f"- ****{card.ultimos_4_digitos} - {banco} {tipo}{alias_text}")
 
@@ -138,7 +146,9 @@ def crear_perfil_nuevo(session: Session, es_primero: bool = False) -> None:
             nombre = st.text_input("Nombre del perfil:", placeholder="Personal")
         with col2:
             icono = st.text_input("Icono (emoji):", value=":person:")
-            descripcion = st.text_area("Descripcion (opcional):", placeholder="Mis finanzas personales")
+            descripcion = st.text_area(
+                "Descripcion (opcional):", placeholder="Mis finanzas personales"
+            )
 
         # Sección 2: Presupuesto
         st.markdown("#### 2. Presupuesto Mensual")

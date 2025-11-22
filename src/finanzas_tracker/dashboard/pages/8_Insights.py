@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+
 st.set_page_config(
     page_title="Insights - Finanzas Tracker",
     page_icon=":bulb:",
@@ -11,13 +12,15 @@ st.set_page_config(
 from pathlib import Path
 import sys
 
+
 src_path = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.profile import Profile
-from finanzas_tracker.services.insights import insights_service, InsightType
+from finanzas_tracker.services.insights import InsightType, insights_service
+
 
 logger = get_logger(__name__)
 
@@ -89,7 +92,10 @@ def _render_insight_card(insight, status: str) -> None:
             if insight.value:
                 if insight.type in [InsightType.SPENDING_INCREASE, InsightType.SPENDING_DECREASE]:
                     st.metric("Cambio", f"{insight.value:.0f}%")
-                elif insight.type in [InsightType.UNUSUAL_TRANSACTION, InsightType.RECURRING_EXPENSE]:
+                elif insight.type in [
+                    InsightType.UNUSUAL_TRANSACTION,
+                    InsightType.RECURRING_EXPENSE,
+                ]:
                     st.metric("Monto", f"₡{insight.value:,.0f}")
 
 

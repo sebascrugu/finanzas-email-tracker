@@ -1,6 +1,6 @@
 """Tests for Income model."""
 
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -116,3 +116,91 @@ class TestIncomeMethods:
         assert "Income" in repr_str
         assert "freelance" in repr_str
         assert "200,000.00" in repr_str
+
+
+class TestIncomeValidations:
+    """Tests for Income model validations."""
+
+    def test_validate_monto_original_positive(self) -> None:
+        """Should reject zero or negative monto_original."""
+        with pytest.raises(ValueError, match="El monto original debe ser positivo"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="Test",
+                monto_crc=Decimal("100000"),
+                monto_original=Decimal("-100"),  # Negative
+                moneda_original=Currency.CRC,
+                fecha=date(2025, 11, 15),
+            )
+
+    def test_validate_monto_crc_positive(self) -> None:
+        """Should reject zero or negative monto_crc."""
+        with pytest.raises(ValueError, match="El monto en CRC debe ser positivo"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="Test",
+                monto_crc=Decimal("0"),  # Zero
+                monto_original=Decimal("100"),
+                moneda_original=Currency.CRC,
+                fecha=date(2025, 11, 15),
+            )
+
+    def test_validate_tipo_cambio_positive(self) -> None:
+        """Should reject negative tipo_cambio."""
+        with pytest.raises(ValueError, match="El tipo de cambio debe ser positivo"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="Test",
+                monto_crc=Decimal("52000"),
+                monto_original=Decimal("100"),
+                moneda_original=Currency.USD,
+                tipo_cambio_usado=Decimal("-520"),  # Negative
+                fecha=date(2025, 11, 15),
+            )
+
+    def test_validate_fecha_not_future(self) -> None:
+        """Should reject dates too far in the future."""
+        from datetime import timedelta
+
+        future_date = date.today() + timedelta(days=10)
+        with pytest.raises(ValueError, match="La fecha del ingreso no puede ser futura"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="Test",
+                monto_crc=Decimal("100000"),
+                monto_original=Decimal("100000"),
+                moneda_original=Currency.CRC,
+                fecha=future_date,  # Too far in future
+            )
+
+    def test_validate_descripcion_not_empty(self) -> None:
+        """Should reject empty or whitespace-only descripcion."""
+        with pytest.raises(ValueError, match="La descripción no puede estar vacía"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="   ",  # Whitespace only
+                monto_crc=Decimal("100000"),
+                monto_original=Decimal("100000"),
+                moneda_original=Currency.CRC,
+                fecha=date(2025, 11, 15),
+            )
+
+    def test_validate_monto_sobrante_positive(self) -> None:
+        """Should reject negative monto_sobrante."""
+        with pytest.raises(ValueError, match="El monto sobrante no puede ser negativo"):
+            Income(
+                profile_id="profile-123",
+                tipo=IncomeType.SALARY,
+                descripcion="Test",
+                monto_crc=Decimal("100000"),
+                monto_original=Decimal("100000"),
+                moneda_original=Currency.CRC,
+                fecha=date(2025, 11, 15),
+                es_dinero_ajeno=True,
+                monto_sobrante=Decimal("-5000"),  # Negative
+            )

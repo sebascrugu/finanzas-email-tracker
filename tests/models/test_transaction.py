@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from finanzas_tracker.models.enums import Currency, SpecialTransactionType, TransactionType, BankName
+from finanzas_tracker.models.enums import BankName, Currency, TransactionType
 from finanzas_tracker.models.transaction import Transaction
 
 
@@ -66,7 +66,7 @@ class TestTransactionProperties:
 
     def test_es_especial_true(self, base_transaction: Transaction) -> None:
         """Should return True when tipo_especial is set."""
-        base_transaction.tipo_especial = SpecialTransactionType.INTERMEDIATE
+        base_transaction.tipo_especial = "intermediaria"
         assert base_transaction.es_especial is True
 
     def test_es_especial_false(self, base_transaction: Transaction) -> None:
@@ -180,3 +180,83 @@ class TestTransactionMethods:
         assert "Transaction" in repr_str
         assert "TEST MERCHANT" in repr_str
         assert "10,000.00" in repr_str
+
+
+class TestTransactionValidations:
+    """Tests for Transaction model validations."""
+
+    def test_validate_comercio_not_empty(self) -> None:
+        """Should reject empty or whitespace-only comercio."""
+        with pytest.raises(ValueError, match="El nombre del comercio no puede estar vacío"):
+            Transaction(
+                email_id="email-123",
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                tipo_transaccion=TransactionType.PURCHASE,
+                comercio="   ",  # Whitespace only
+                monto_crc=Decimal("5000"),
+                monto_original=Decimal("5000"),
+                moneda_original=Currency.CRC,
+                fecha_transaccion=datetime(2025, 11, 6, 10, 30, tzinfo=UTC),
+            )
+
+    def test_validate_email_id_not_empty(self) -> None:
+        """Should reject empty or whitespace-only email_id."""
+        with pytest.raises(ValueError, match="El email_id es obligatorio"):
+            Transaction(
+                email_id="   ",  # Whitespace only
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                tipo_transaccion=TransactionType.PURCHASE,
+                comercio="Test Store",
+                monto_crc=Decimal("5000"),
+                monto_original=Decimal("5000"),
+                moneda_original=Currency.CRC,
+                fecha_transaccion=datetime(2025, 11, 6, 10, 30, tzinfo=UTC),
+            )
+
+    def test_validate_monto_crc_positive(self) -> None:
+        """Should reject zero or negative monto_crc."""
+        with pytest.raises(ValueError, match="El monto en CRC debe ser positivo"):
+            Transaction(
+                email_id="email-123",
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                tipo_transaccion=TransactionType.PURCHASE,
+                comercio="Test Store",
+                monto_crc=Decimal("0"),  # Zero
+                monto_original=Decimal("100"),
+                moneda_original=Currency.CRC,
+                fecha_transaccion=datetime(2025, 11, 6, 10, 30, tzinfo=UTC),
+            )
+
+    def test_validate_monto_original_positive(self) -> None:
+        """Should reject zero or negative monto_original."""
+        with pytest.raises(ValueError, match="El monto original debe ser positivo"):
+            Transaction(
+                email_id="email-123",
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                tipo_transaccion=TransactionType.PURCHASE,
+                comercio="Test Store",
+                monto_crc=Decimal("5000"),
+                monto_original=Decimal("-100"),  # Negative
+                moneda_original=Currency.USD,
+                fecha_transaccion=datetime(2025, 11, 6, 10, 30, tzinfo=UTC),
+            )
+
+    def test_validate_tipo_cambio_positive(self) -> None:
+        """Should reject zero or negative tipo_cambio."""
+        with pytest.raises(ValueError, match="El tipo de cambio debe ser positivo"):
+            Transaction(
+                email_id="email-123",
+                profile_id="profile-123",
+                banco=BankName.BAC,
+                tipo_transaccion=TransactionType.PURCHASE,
+                comercio="Test Store",
+                monto_crc=Decimal("5000"),
+                monto_original=Decimal("10"),
+                moneda_original=Currency.USD,
+                tipo_cambio_usado=Decimal("-500"),  # Negative
+                fecha_transaccion=datetime(2025, 11, 6, 10, 30, tzinfo=UTC),
+            )

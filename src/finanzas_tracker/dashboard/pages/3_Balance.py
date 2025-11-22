@@ -28,7 +28,7 @@ from finanzas_tracker.models.transaction import Transaction
 logger = get_logger(__name__)
 
 
-def main():
+def main() -> None:
     st.title(" Balance Mensual")
 
     perfil_activo = require_profile()

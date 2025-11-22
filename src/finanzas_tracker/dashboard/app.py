@@ -5,11 +5,11 @@ Esta es la página principal que se muestra al usuario.
 """
 
 import calendar
-from datetime import date
 from collections import defaultdict
+from datetime import date
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 
 # Configurar página
@@ -145,6 +145,8 @@ import sys
 src_path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(src_path))
 
+import contextlib
+
 from sqlalchemy.orm import joinedload
 
 from finanzas_tracker.core.constants import (
@@ -199,7 +201,7 @@ def get_active_profile() -> Profile | None:
         return perfil
 
 
-def mostrar_sidebar_simple(perfil_actual: Profile):
+def mostrar_sidebar_simple(perfil_actual: Profile) -> None:
     """Muestra sidebar minimalista - solo selector si hay múltiples perfiles."""
     with get_session() as session:
         perfiles = (
@@ -216,10 +218,8 @@ def mostrar_sidebar_simple(perfil_actual: Profile):
             perfil_ids = [p.id for p in perfiles]
 
             idx_actual = 0
-            try:
+            with contextlib.suppress(ValueError):
                 idx_actual = perfil_ids.index(perfil_actual.id)
-            except ValueError:
-                pass
 
             seleccion = st.sidebar.selectbox(
                 "Perfil:",
@@ -243,7 +243,7 @@ def mostrar_sidebar_simple(perfil_actual: Profile):
                     st.rerun()
 
 
-def main():
+def main() -> None:
     """Función principal del dashboard."""
 
     # Verificar perfil activo
@@ -593,7 +593,9 @@ def main():
             st.metric(
                 "Balance Mes",
                 f"₡{balance_mes:,.0f}",
-                delta=f"{100 - porcentaje_gastado:.0f}% disponible" if balance_mes >= 0 else "Déficit",
+                delta=f"{100 - porcentaje_gastado:.0f}% disponible"
+                if balance_mes >= 0
+                else "Déficit",
                 delta_color="normal" if balance_mes >= 0 else "inverse",
             )
 
@@ -623,9 +625,7 @@ def main():
                 acumulado += gastos_por_dia.get(dia, 0)
                 gastos_acumulados.append(acumulado)
 
-            df_acumulado = pd.DataFrame(
-                {"Día": dias_del_mes, "Acumulado": gastos_acumulados}
-            )
+            df_acumulado = pd.DataFrame({"Día": dias_del_mes, "Acumulado": gastos_acumulados})
             st.area_chart(df_acumulado.set_index("Día"), height=200)
 
         with col3:
@@ -661,7 +661,9 @@ def main():
         with col1:
             st.markdown("**🏪 Top Merchants**")
             if gastos_por_merchant:
-                top_merchants = sorted(gastos_por_merchant.items(), key=lambda x: x[1], reverse=True)[:5]
+                top_merchants = sorted(
+                    gastos_por_merchant.items(), key=lambda x: x[1], reverse=True
+                )[:5]
 
                 for merchant, monto in top_merchants:
                     porcentaje = (monto / total_gastos_mes * 100) if total_gastos_mes > 0 else 0
@@ -732,7 +734,9 @@ def main():
                     "cash": "💵",
                 }
 
-                for tipo, saldo in sorted(cuentas_por_tipo.items(), key=lambda x: x[1], reverse=True):
+                for tipo, saldo in sorted(
+                    cuentas_por_tipo.items(), key=lambda x: x[1], reverse=True
+                ):
                     emoji = tipo_emoji.get(tipo, "💼")
                     porcentaje = (saldo / patrimonio_cuentas * 100) if patrimonio_cuentas > 0 else 0
                     tipo_display = tipo.replace("_", " ").title()

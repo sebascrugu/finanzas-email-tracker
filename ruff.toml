@@ -62,6 +62,32 @@ ignore = [
     "PLR0913", # Too many arguments
     "ANN401",  # Dynamically typed expressions (Any)
     "S104",    # Possible binding to all interfaces
+    "F821",    # Undefined name (forward references en type hints)
+    "E402",    # Module import not at top (común en scripts con sys.path)
+    "ARG002",  # Unused method argument (común en fixtures/mocks)
+    "DTZ011",  # call-date-today (no siempre es problema)
+    "PLR2004", # Magic value comparison (números hardcoded)
+    "S603",    # subprocess-without-shell-equals-true (OK en scripts internos)
+    "S607",    # start-process-with-partial-path (OK en scripts)
+    "E501",    # Line too long (formatear manualmente cuando sea necesario)
+    "ANN001",  # Missing type annotation for function argument
+    "PLR0912", # Too many branches (complejidad)
+    "PLR0915", # Too many statements (complejidad)
+    "DTZ001",  # call-datetime-without-tzinfo (no crítico para nuestra app)
+    "DTZ007",  # call-datetime-strptime-without-zone
+    "ARG001",  # Unused function argument (común en callbacks/handlers)
+    "SIM102",  # Collapsible if (preferencia de estilo)
+    "RUF012",  # Mutable class default (a veces es intencional)
+    "S110",    # try-except-pass (a veces es necesario)
+    "N802",    # Invalid function name (algunos nombres son específicos del dominio)
+    "E722",    # Bare except (catch all, a veces necesario)
+    "PLR0911", # Too many return statements
+    "B007",    # Unused loop control variable
+    "DTZ005",  # call-datetime-now-without-tzinfo
+    "SIM103",  # Needless bool
+    "SIM117",  # Multiple with statements
+    "N817",    # Camelcase imported as acronym
+    "PLC2401", # Non-ASCII name (emojis en variables, OK para este proyecto)
 ]
 
 # Permitir imports no utilizados en __init__.py

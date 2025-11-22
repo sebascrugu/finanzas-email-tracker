@@ -6,7 +6,7 @@ from enum import Enum
 from uuid import uuid4
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
@@ -88,9 +88,7 @@ class Account(Base):
     )
 
     # Estado
-    activa: Mapped[bool] = mapped_column(
-        Boolean, default=True, comment="Si la cuenta está activa"
-    )
+    activa: Mapped[bool] = mapped_column(Boolean, default=True, comment="Si la cuenta está activa")
     incluir_en_patrimonio: Mapped[bool] = mapped_column(
         Boolean, default=True, comment="Si se incluye en el cálculo de patrimonio total"
     )
@@ -206,3 +204,48 @@ class Account(Base):
 
         total = sum(cuenta.calcular_interes_mensual() for cuenta in cuentas)
         return total.quantize(Decimal("0.01"))
+
+    # Validators
+    @validates("nombre")
+    def validate_nombre(self, key: str, value: str) -> str:
+        """Valida que el nombre no esté vacío."""
+        if not value or not value.strip():
+            raise ValueError("El nombre de la cuenta no puede estar vacío")
+        return value.strip()
+
+    @validates("saldo_actual")
+    def validate_saldo_actual(self, key: str, value: Decimal) -> Decimal:
+        """Valida que el saldo actual no sea negativo."""
+        if value < 0:
+            raise ValueError(f"El saldo actual no puede ser negativo, recibido: ₡{value:,.2f}")
+        return value
+
+    @validates("tasa_interes")
+    def validate_tasa_interes(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que la tasa de interés esté entre 0 y 100."""
+        if value is not None:
+            if value < 0:
+                raise ValueError(f"La tasa de interés no puede ser negativa, recibido: {value}%")
+            if value > 100:
+                raise ValueError(
+                    f"La tasa de interés no puede ser mayor a 100%, recibido: {value}%"
+                )
+        return value
+
+    @validates("plazo_meses")
+    def validate_plazo_meses(self, key: str, value: int | None) -> int | None:
+        """Valida que el plazo en meses sea positivo."""
+        if value is not None and value <= 0:
+            raise ValueError(f"El plazo debe ser mayor a 0 meses, recibido: {value}")
+        return value
+
+    @validates("fecha_vencimiento")
+    def validate_fecha_vencimiento(self, key: str, value: date | None) -> date | None:
+        """Valida que la fecha de vencimiento sea posterior a la fecha de apertura."""
+        if value is not None and hasattr(self, "fecha_apertura") and self.fecha_apertura:
+            if value < self.fecha_apertura:
+                raise ValueError(
+                    f"La fecha de vencimiento ({value}) no puede ser anterior "
+                    f"a la fecha de apertura ({self.fecha_apertura})"
+                )
+        return value

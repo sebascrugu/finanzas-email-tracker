@@ -9,6 +9,7 @@ import os
 import sys
 from unittest.mock import MagicMock
 
+
 # Setup de variables de entorno ANTES de cualquier import
 # Esto es necesario porque Pydantic Settings se carga al importar módulos
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -23,6 +24,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 os.environ.setdefault("ENVIRONMENT", "testing")
 
 import pytest
+
 
 # Mock keyring ANTES de que cualquier módulo lo importe
 keyring_mock = MagicMock()

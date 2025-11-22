@@ -2,6 +2,7 @@
 
 import streamlit as st
 
+
 st.set_page_config(
     page_title="Chat - Finanzas Tracker",
     page_icon=":speech_balloon:",
@@ -10,6 +11,7 @@ st.set_page_config(
 
 from pathlib import Path
 import sys
+
 
 src_path = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(src_path))

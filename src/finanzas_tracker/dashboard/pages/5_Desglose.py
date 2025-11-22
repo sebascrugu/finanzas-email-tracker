@@ -5,9 +5,11 @@ Permite vincular ingresos (especialmente "dinero ajeno") con los gastos específ
 donde se usó ese dinero. Resuelve el caso de uso "mamá me dio ₡20K para comprar carne".
 """
 
-import streamlit as st
-from decimal import Decimal
 from datetime import timedelta
+from decimal import Decimal
+
+import streamlit as st
+
 
 # Configurar página
 st.set_page_config(
@@ -17,8 +19,9 @@ st.set_page_config(
 )
 
 # Imports después de configuración
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar src al path
 src_path = Path(__file__).parent.parent.parent
@@ -26,16 +29,17 @@ sys.path.insert(0, str(src_path))
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.dashboard.helpers import mostrar_sidebar_simple
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.income_split import IncomeSplit
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.dashboard.helpers import mostrar_sidebar_simple
+
 
 logger = get_logger(__name__)
 
 
-def main():
+def main() -> None:
     """Página principal de desglose de ingresos."""
 
     # Obtener perfil activo
@@ -92,14 +96,18 @@ def main():
                     "Los ingresos marcados como 'dinero ajeno' aparecerán aquí automáticamente."
                 )
             else:
-                st.markdown(f"**Encontramos {len(ingresos_pendientes)} ingresos que necesitan desglose:**")
+                st.markdown(
+                    f"**Encontramos {len(ingresos_pendientes)} ingresos que necesitan desglose:**"
+                )
                 st.markdown("---")
 
                 for ingreso in ingresos_pendientes:
                     # Obtener splits existentes
                     splits_existentes = (
                         session.query(IncomeSplit)
-                        .filter(IncomeSplit.income_id == ingreso.id, IncomeSplit.deleted_at.is_(None))
+                        .filter(
+                            IncomeSplit.income_id == ingreso.id, IncomeSplit.deleted_at.is_(None)
+                        )
                         .all()
                     )
 
@@ -119,7 +127,9 @@ def main():
                         with col2:
                             st.metric("Monto Usado", f"₡{ingreso.monto_usado or 0:,.0f}")
                         with col3:
-                            st.metric("Te Quedaste", f"₡{ingreso.monto_sobrante or 0:,.0f}", delta="✅")
+                            st.metric(
+                                "Te Quedaste", f"₡{ingreso.monto_sobrante or 0:,.0f}", delta="✅"
+                            )
 
                         if ingreso.contexto:
                             st.info(f"💬 **Contexto:** {ingreso.contexto}")
@@ -184,7 +194,11 @@ def main():
                                     tx_seleccionada_id = opciones_tx[tx_seleccionada_display]
 
                                     # Obtener transacción para mostrar monto sugerido
-                                    tx_obj = next(tx for tx in transacciones_disponibles if tx.id == tx_seleccionada_id)
+                                    tx_obj = next(
+                                        tx
+                                        for tx in transacciones_disponibles
+                                        if tx.id == tx_seleccionada_id
+                                    )
 
                                     # Input de monto (con sugerencia del monto de la transacción)
                                     monto_asignar = st.number_input(
@@ -205,7 +219,9 @@ def main():
 
                                     col1, col2 = st.columns([1, 3])
                                     with col1:
-                                        vincular_btn = st.form_submit_button("🔗 Vincular", type="primary")
+                                        vincular_btn = st.form_submit_button(
+                                            "🔗 Vincular", type="primary"
+                                        )
 
                                     if vincular_btn:
                                         try:
@@ -235,73 +251,72 @@ def main():
     # ========================================================================
     # TAB 2: COMPLETADOS
     # ========================================================================
-    with tab_completados:
-        with get_session() as session:
-            # Buscar todos los splits
-            todos_splits = (
-                session.query(IncomeSplit)
-                .join(Income)
-                .filter(Income.profile_id == perfil_activo.id, IncomeSplit.deleted_at.is_(None))
-                .order_by(Income.fecha.desc())
-                .all()
-            )
+    with tab_completados, get_session() as session:
+        # Buscar todos los splits
+        todos_splits = (
+            session.query(IncomeSplit)
+            .join(Income)
+            .filter(Income.profile_id == perfil_activo.id, IncomeSplit.deleted_at.is_(None))
+            .order_by(Income.fecha.desc())
+            .all()
+        )
 
-            if not todos_splits:
-                st.info("Aún no tienes desgloses completados.")
-            else:
-                # Agrupar por ingreso
-                splits_por_ingreso = {}
-                for split in todos_splits:
-                    ingreso_id = split.income_id
-                    if ingreso_id not in splits_por_ingreso:
-                        splits_por_ingreso[ingreso_id] = []
-                    splits_por_ingreso[ingreso_id].append(split)
+        if not todos_splits:
+            st.info("Aún no tienes desgloses completados.")
+        else:
+            # Agrupar por ingreso
+            splits_por_ingreso = {}
+            for split in todos_splits:
+                ingreso_id = split.income_id
+                if ingreso_id not in splits_por_ingreso:
+                    splits_por_ingreso[ingreso_id] = []
+                splits_por_ingreso[ingreso_id].append(split)
 
-                st.markdown(f"**Mostrando {len(splits_por_ingreso)} ingresos desglosados:**")
-                st.markdown("---")
+            st.markdown(f"**Mostrando {len(splits_por_ingreso)} ingresos desglosados:**")
+            st.markdown("---")
 
-                for ingreso_id, splits in splits_por_ingreso.items():
-                    ingreso = splits[0].income  # Todos los splits tienen el mismo income
+            for ingreso_id, splits in splits_por_ingreso.items():
+                ingreso = splits[0].income  # Todos los splits tienen el mismo income
 
-                    with st.expander(
-                        f"💰 **{ingreso.descripcion}** - ₡{ingreso.monto_crc:,.0f} "
-                        f"({ingreso.fecha.strftime('%d/%m/%Y')})"
-                    ):
-                        total_asignado = sum(split.monto_asignado for split in splits)
+                with st.expander(
+                    f"💰 **{ingreso.descripcion}** - ₡{ingreso.monto_crc:,.0f} "
+                    f"({ingreso.fecha.strftime('%d/%m/%Y')})"
+                ):
+                    total_asignado = sum(split.monto_asignado for split in splits)
 
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Monto Total", f"₡{ingreso.monto_crc:,.0f}")
-                        with col2:
-                            st.metric("Total Asignado", f"₡{total_asignado:,.0f}")
-                        with col3:
-                            diferencia = ingreso.monto_crc - total_asignado
-                            st.metric("Sin Asignar", f"₡{diferencia:,.0f}")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Monto Total", f"₡{ingreso.monto_crc:,.0f}")
+                    with col2:
+                        st.metric("Total Asignado", f"₡{total_asignado:,.0f}")
+                    with col3:
+                        diferencia = ingreso.monto_crc - total_asignado
+                        st.metric("Sin Asignar", f"₡{diferencia:,.0f}")
 
-                        st.markdown("**Desglose:**")
-                        for split in splits:
-                            tx = split.transaction
-                            col_a, col_b, col_c = st.columns([2, 2, 1])
+                    st.markdown("**Desglose:**")
+                    for split in splits:
+                        tx = split.transaction
+                        col_a, col_b, col_c = st.columns([2, 2, 1])
 
-                            with col_a:
-                                st.markdown(f"**{tx.comercio}**")
-                                if split.proposito:
-                                    st.caption(split.proposito)
+                        with col_a:
+                            st.markdown(f"**{tx.comercio}**")
+                            if split.proposito:
+                                st.caption(split.proposito)
 
-                            with col_b:
-                                st.markdown(f"₡{split.monto_asignado:,.0f}")
-                                st.caption(tx.fecha_transaccion.strftime("%d/%m/%Y"))
+                        with col_b:
+                            st.markdown(f"₡{split.monto_asignado:,.0f}")
+                            st.caption(tx.fecha_transaccion.strftime("%d/%m/%Y"))
 
-                            with col_c:
-                                # Botón para eliminar split
-                                if st.button("🗑️", key=f"delete_{split.id}", help="Desvincular"):
-                                    try:
-                                        session.delete(split)
-                                        session.commit()
-                                        st.success("Desvinculado")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Error: {e}")
+                        with col_c:
+                            # Botón para eliminar split
+                            if st.button("🗑️", key=f"delete_{split.id}", help="Desvincular"):
+                                try:
+                                    session.delete(split)
+                                    session.commit()
+                                    st.success("Desvinculado")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error: {e}")
 
 
 if __name__ == "__main__":

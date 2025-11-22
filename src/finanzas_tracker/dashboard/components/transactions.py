@@ -19,14 +19,16 @@ from finanzas_tracker.models.transaction import Transaction
 
 logger = get_logger(__name__)
 
-TIPOS_GASTO = [
-    ("normal", "Normal (gasto regular - SI cuenta en presupuesto)"),
-    ("gasto_ajeno", "Gasto ajeno (con dinero de otra persona - NO cuenta)"),
-    ("intermediaria", "Intermediaria (solo paso dinero - NO cuenta)"),
-    ("reembolso", "Reembolso (me devolvieron plata)"),
-    ("compartida", "Compartida (dividi con alguien - cuenta mi parte)"),
-    ("transferencia_propia", "Transferencia entre mis cuentas - NO cuenta"),
-]
+# Tipos comunes para simplificar el UI
+# El usuario puede escribir lo que quiera en el campo tipo_especial,
+# pero estos son los más comunes para facilitar la selección
+TIPOS_GASTO_COMUNES = {
+    "normal": "Normal",
+    "dinero_ajeno": "Dinero ajeno (no cuenta en presupuesto)",
+    "intermediaria": "Intermediaria (no cuenta en presupuesto)",
+    "transferencia_propia": "Transferencia propia (no cuenta en presupuesto)",
+    "otro": "Otro (describir en contexto)",
+}
 
 
 def _es_transferencia_o_sinpe(transaction: Transaction) -> bool:
@@ -97,18 +99,19 @@ def procesar_correos_bancarios(perfil: Profile) -> None:
                     st.info("Ve a la pagina de Setup para agregar tus tarjetas")
                     return
 
-                user_banks = list(set(card.banco for card in user_cards))
+                user_banks = list({card.banco for card in user_cards})
                 bank_names = [bank.value if hasattr(bank, "value") else bank for bank in user_banks]
 
-            st.info(f"Conectando con Outlook... (bancos: {', '.join([b.upper() for b in bank_names])})")
+            st.info(
+                f"Conectando con Outlook... (bancos: {', '.join([b.upper() for b in bank_names])})"
+            )
 
             fetcher = EmailFetcher()
             emails = fetcher.fetch_all_emails(days_back=30)
 
             processor = TransactionProcessor()
             filtered_emails = [
-                email for email in emails
-                if processor._identify_bank(email) in bank_names
+                email for email in emails if processor._identify_bank(email) in bank_names
             ]
 
             if not filtered_emails:
@@ -204,18 +207,28 @@ def _renderizar_transaccion(
 
         with col2:
             st.markdown(f"**Fecha:** {tx.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}")
-            banco_display = tx.banco.value.upper() if hasattr(tx.banco, "value") else str(tx.banco).upper()
+            banco_display = (
+                tx.banco.value.upper() if hasattr(tx.banco, "value") else str(tx.banco).upper()
+            )
             st.markdown(f"**Banco:** {banco_display}")
 
         with col3:
-            tipo_display = tx.tipo_transaccion.value if hasattr(tx.tipo_transaccion, "value") else tx.tipo_transaccion
+            tipo_display = (
+                tx.tipo_transaccion.value
+                if hasattr(tx.tipo_transaccion, "value")
+                else tx.tipo_transaccion
+            )
             st.markdown(f"**Tipo:** {tipo_display}")
             if tx.card:
                 st.markdown(f"**Tarjeta:** {tx.card.nombre_display}")
 
         # Sugerencia IA
         if tx.categoria_sugerida_por_ia:
-            confianza = f" ({tx.confianza_categoria}%)" if hasattr(tx, "confianza_categoria") and tx.confianza_categoria else ""
+            confianza = (
+                f" ({tx.confianza_categoria}%)"
+                if hasattr(tx, "confianza_categoria") and tx.confianza_categoria
+                else ""
+            )
             st.info(f"**IA sugiere:** {tx.categoria_sugerida_por_ia}{confianza}")
 
         # Botones de categoria
@@ -224,7 +237,12 @@ def _renderizar_transaccion(
 
         # Boton aceptar sugerencia IA
         if tx.categoria_sugerida_por_ia:
-            if st.button("Aceptar Sugerencia IA", key=f"tx_{tx.id}_accept_ia", use_container_width=True, type="primary"):
+            if st.button(
+                "Aceptar Sugerencia IA",
+                key=f"tx_{tx.id}_accept_ia",
+                use_container_width=True,
+                type="primary",
+            ):
                 _aceptar_sugerencia_ia(tx)
 
         # Formulario contexto si selecciono categoria
@@ -234,7 +252,9 @@ def _renderizar_transaccion(
         st.markdown("---")
 
 
-def _mostrar_botones_categoria(tx: Transaction, por_categoria: dict[str, list[Subcategory]]) -> Subcategory | None:
+def _mostrar_botones_categoria(
+    tx: Transaction, por_categoria: dict[str, list[Subcategory]]
+) -> Subcategory | None:
     """Muestra botones de categoria y retorna la seleccionada."""
     col1, col2, col3 = st.columns(3)
     categoria_seleccionada = None
@@ -243,21 +263,33 @@ def _mostrar_botones_categoria(tx: Transaction, por_categoria: dict[str, list[Su
         st.markdown("**Necesidades**")
         if "Necesidades" in por_categoria:
             for subcat in por_categoria["Necesidades"]:
-                if st.button(f"{subcat.icono} {subcat.nombre}", key=f"tx_{tx.id}_cat_{subcat.id}", use_container_width=True):
+                if st.button(
+                    f"{subcat.icono} {subcat.nombre}",
+                    key=f"tx_{tx.id}_cat_{subcat.id}",
+                    use_container_width=True,
+                ):
                     categoria_seleccionada = subcat
 
     with col2:
         st.markdown("**Gustos**")
         if "Gustos" in por_categoria:
             for subcat in por_categoria["Gustos"]:
-                if st.button(f"{subcat.icono} {subcat.nombre}", key=f"tx_{tx.id}_cat_{subcat.id}", use_container_width=True):
+                if st.button(
+                    f"{subcat.icono} {subcat.nombre}",
+                    key=f"tx_{tx.id}_cat_{subcat.id}",
+                    use_container_width=True,
+                ):
                     categoria_seleccionada = subcat
 
     with col3:
         st.markdown("**Ahorros**")
         if "Ahorros" in por_categoria:
             for subcat in por_categoria["Ahorros"]:
-                if st.button(f"{subcat.icono} {subcat.nombre}", key=f"tx_{tx.id}_cat_{subcat.id}", use_container_width=True):
+                if st.button(
+                    f"{subcat.icono} {subcat.nombre}",
+                    key=f"tx_{tx.id}_cat_{subcat.id}",
+                    use_container_width=True,
+                ):
                     categoria_seleccionada = subcat
 
     return categoria_seleccionada
@@ -271,7 +303,9 @@ def _aceptar_sugerencia_ia(tx: Transaction) -> None:
         subcat_name = tx.categoria_sugerida_por_ia
 
     with get_session() as session:
-        subcat = session.query(Subcategory).filter(Subcategory.nombre == subcat_name.strip()).first()
+        subcat = (
+            session.query(Subcategory).filter(Subcategory.nombre == subcat_name.strip()).first()
+        )
         if subcat:
             tx_db = session.query(Transaction).get(tx.id)
             tx_db.subcategory_id = subcat.id
@@ -294,24 +328,29 @@ def _mostrar_formulario_contexto(tx: Transaction, categoria: Subcategory, perfil
             key=f"contexto_{tx.id}",
         )
 
-        st.markdown("**Tipo de Gasto**")
+        st.markdown("**Tipo de Gasto (opcional)**")
 
         patron = _buscar_patron_historico(tx.comercio, perfil.id)
         if patron:
-            st.info(f"Patron detectado: Ultimas {patron['frecuencia']} veces marcaste '{tx.comercio}' de forma especial")
+            st.info(
+                f"Patron detectado: Ultimas {patron['frecuencia']} veces marcaste '{tx.comercio}' de forma especial"
+            )
 
-        tipo_especial = st.radio(
-            "Selecciona el tipo:",
-            options=[o[0] for o in TIPOS_GASTO],
-            format_func=lambda x: next(o[1] for o in TIPOS_GASTO if o[0] == x),
+        tipo_especial = st.selectbox(
+            "Tipo:",
+            options=list(TIPOS_GASTO_COMUNES.keys()),
+            format_func=lambda x: TIPOS_GASTO_COMUNES[x],
             index=0,
             key=f"tipo_{tx.id}",
+            help="Si es 'Otro', describe en el campo Contexto arriba",
         )
 
+        # Auto-marcar "excluir" si es dinero ajeno, intermediaria o transferencia
         excluir_presupuesto = st.checkbox(
             "Excluir de presupuesto mensual",
-            value=tipo_especial in ["gasto_ajeno", "intermediaria", "transferencia_propia"],
+            value=tipo_especial in ["dinero_ajeno", "intermediaria", "transferencia_propia"],
             key=f"excluir_{tx.id}",
+            help="Marca esto si NO quieres que cuente para tu presupuesto mensual",
         )
 
         col1, col2 = st.columns(2)
@@ -321,7 +360,9 @@ def _mostrar_formulario_contexto(tx: Transaction, categoria: Subcategory, perfil
             saltar_btn = st.form_submit_button("Saltar (sin contexto)", use_container_width=True)
 
         if guardar_btn:
-            _guardar_transaccion_con_contexto(tx, categoria, contexto, tipo_especial, excluir_presupuesto)
+            _guardar_transaccion_con_contexto(
+                tx, categoria, contexto, tipo_especial, excluir_presupuesto
+            )
 
         if saltar_btn:
             _guardar_transaccion_simple(tx, categoria)

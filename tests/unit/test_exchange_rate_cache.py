@@ -8,10 +8,7 @@ Tests que cubren:
 """
 
 from datetime import date, datetime
-from decimal import Decimal
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
 
@@ -29,12 +26,12 @@ class TestExchangeRateCacheModel:
     def test_save_rate_method_exists(self) -> None:
         """Test que el metodo save_rate existe."""
         assert hasattr(ExchangeRateCache, "save_rate")
-        assert callable(getattr(ExchangeRateCache, "save_rate"))
+        assert callable(ExchangeRateCache.save_rate)
 
     def test_get_by_date_method_exists(self) -> None:
         """Test que el metodo get_by_date existe."""
         assert hasattr(ExchangeRateCache, "get_by_date")
-        assert callable(getattr(ExchangeRateCache, "get_by_date"))
+        assert callable(ExchangeRateCache.get_by_date)
 
 
 class TestExchangeRateServiceCache:

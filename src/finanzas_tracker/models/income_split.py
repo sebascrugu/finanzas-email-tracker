@@ -38,9 +38,7 @@ class IncomeSplit(Base):
     __tablename__ = "income_splits"
 
     # Identificadores
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
 
     # Relaciones
     income_id: Mapped[str] = mapped_column(
@@ -94,14 +92,10 @@ class IncomeSplit(Base):
 
     # Relaciones
     income: Mapped["Income"] = relationship("Income", back_populates="splits")
-    transaction: Mapped["Transaction"] = relationship(
-        "Transaction", back_populates="income_splits"
-    )
+    transaction: Mapped["Transaction"] = relationship("Transaction", back_populates="income_splits")
 
     # Índices
-    __table_args__ = (
-        Index("ix_income_splits_income_transaction", "income_id", "transaction_id"),
-    )
+    __table_args__ = (Index("ix_income_splits_income_transaction", "income_id", "transaction_id"),)
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

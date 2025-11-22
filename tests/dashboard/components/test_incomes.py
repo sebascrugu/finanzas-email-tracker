@@ -2,14 +2,12 @@
 
 from datetime import date
 
-import pytest
-
 from finanzas_tracker.dashboard.components.incomes import (
-    calcular_proximo_ingreso,
-    es_tipo_recurrente,
-    TIPOS_RECURRENTES,
     OPCIONES_TIPO_INGRESO,
     TIPOS_ESPECIALES,
+    TIPOS_RECURRENTES,
+    calcular_proximo_ingreso,
+    es_tipo_recurrente,
 )
 from finanzas_tracker.models.enums import IncomeType
 
@@ -94,5 +92,6 @@ class TestConstants:
         """TIPOS_ESPECIALES should have expected keys."""
         assert "ninguno" in TIPOS_ESPECIALES
         assert "dinero_ajeno" in TIPOS_ESPECIALES
-        assert "intermediaria" in TIPOS_ESPECIALES
         assert "transferencia_propia" in TIPOS_ESPECIALES
+        assert "ajuste_inicial" in TIPOS_ESPECIALES
+        assert "otro" in TIPOS_ESPECIALES

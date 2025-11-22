@@ -2,6 +2,7 @@
 
 import os
 
+
 # Set env vars BEFORE any imports
 os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
 os.environ.setdefault("AZURE_TENANT_ID", "test-tenant-id")
@@ -12,8 +13,6 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from finanzas_tracker.services.insights import Insight, InsightsService, InsightType
 
