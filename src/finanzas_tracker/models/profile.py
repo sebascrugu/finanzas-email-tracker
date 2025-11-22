@@ -92,6 +92,9 @@ class Profile(Base):
     accounts: Mapped[list["Account"]] = relationship(
         "Account", back_populates="profile", cascade="all, delete-orphan"
     )
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        "Subscription", back_populates="profile", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

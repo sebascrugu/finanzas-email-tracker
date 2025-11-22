@@ -18,6 +18,7 @@ from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.income_split import IncomeSplit
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
 from finanzas_tracker.models.profile import Profile
+from finanzas_tracker.models.subscription import Subscription
 from finanzas_tracker.models.transaction import Transaction
 
 
@@ -34,6 +35,7 @@ __all__ = [
     "MerchantVariant",
     "Profile",
     "Subcategory",
+    "Subscription",
     "Transaction",
     # Enums
     "AccountType",
