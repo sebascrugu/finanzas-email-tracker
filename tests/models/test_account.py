@@ -1,6 +1,5 @@
 """Tests for Account model."""
 
-from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -114,7 +113,7 @@ class TestAccountProperties:
             activa=True,
         )
 
-        with patch('finanzas_tracker.models.account.exchange_rate_service.get_rate') as mock_rate:
+        with patch("finanzas_tracker.models.account.exchange_rate_service.get_rate") as mock_rate:
             mock_rate.return_value = 530.0
             result = usd_account.saldo_crc
             assert result == Decimal("530000.00")  # 1000 * 530

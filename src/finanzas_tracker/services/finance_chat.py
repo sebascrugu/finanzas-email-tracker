@@ -7,10 +7,9 @@ from decimal import Decimal
 from typing import Any
 
 import anthropic
-
-from finanzas_tracker.config.settings import settings
 from sqlalchemy.orm import joinedload
 
+from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.core.retry import retry_on_anthropic_error
@@ -137,7 +136,7 @@ class FinanceChatService:
 
             # Categorias
             categories = session.query(Category).all()
-            subcategories = session.query(Subcategory).all()
+            session.query(Subcategory).all()
 
             # Calcular metricas
             total_gastos_mes = sum(t.monto_crc for t in transactions_this_month)
@@ -249,8 +248,7 @@ Responde en español y usa colones (₡) para montos."""
         if not comercios:
             return "- Sin datos de comercios"
         return "\n".join(
-            f"- {c['nombre']}: {c['visitas']} visitas, ₡{c['total']:,.0f} total"
-            for c in comercios
+            f"- {c['nombre']}: {c['visitas']} visitas, ₡{c['total']:,.0f} total" for c in comercios
         )
 
 

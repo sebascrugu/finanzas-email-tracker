@@ -8,7 +8,8 @@ Este módulo proporciona decoradores y estrategias de retry para:
 Usa tenacity para implementar exponential backoff con jitter.
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import anthropic
 import requests

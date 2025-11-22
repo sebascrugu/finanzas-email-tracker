@@ -19,7 +19,7 @@ def get_active_profile() -> Profile | None:
     """
     with get_session() as session:
         # Obtener perfil activo
-        perfil_activo = (
+        return (
             session.query(Profile)
             .filter(
                 Profile.es_activo == True,  # noqa: E712
@@ -27,8 +27,6 @@ def get_active_profile() -> Profile | None:
             )
             .first()
         )
-
-        return perfil_activo
 
 
 def require_profile() -> Profile:

@@ -14,7 +14,6 @@ Tests comprehensivos que cubren todos los casos de parseo de correos de Banco Po
 from datetime import datetime
 from decimal import Decimal
 
-import pytest
 from bs4 import BeautifulSoup
 
 from finanzas_tracker.parsers.popular_parser import PopularParser

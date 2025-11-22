@@ -81,13 +81,11 @@ class TransactionCategorizer:
 
         # 2. Usar Claude AI para casos ambiguos
         logger.debug(f" Usando Claude AI para: {comercio}")
-        claude_result = self._categorize_with_claude(
+        return self._categorize_with_claude(
             comercio=comercio,
             monto_crc=monto_crc,
             tipo_transaccion=tipo_transaccion,
         )
-
-        return claude_result
 
     def _categorize_by_keywords(self, comercio: str) -> dict[str, Any] | None:
         """
@@ -132,7 +130,10 @@ class TransactionCategorizer:
                 return None
 
             # Si hay un solo match con buena confianza → asignar automáticamente
-            if len(matches) == 1 and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD:
+            if (
+                len(matches) == 1
+                and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD
+            ):
                 return {
                     "subcategory_id": matches[0]["subcategory_id"],
                     "categoria_sugerida": matches[0]["categoria_sugerida"],

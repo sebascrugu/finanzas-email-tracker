@@ -1,7 +1,5 @@
 """Tests for dashboard transactions component."""
 
-import pytest
-
 from finanzas_tracker.dashboard.components.transactions import (
     TIPOS_GASTO_COMUNES,
     _es_transferencia_o_sinpe,

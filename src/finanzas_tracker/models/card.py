@@ -240,9 +240,7 @@ class Card(Base):
     def validate_limite_credito(self, key: str, value: Decimal | None) -> Decimal | None:
         """Valida que el límite de crédito sea positivo."""
         if value is not None and value <= 0:
-            raise ValueError(
-                f"El límite de crédito debe ser positivo, recibido: ₡{value:,.2f}"
-            )
+            raise ValueError(f"El límite de crédito debe ser positivo, recibido: ₡{value:,.2f}")
         return value
 
     @validates("alias")

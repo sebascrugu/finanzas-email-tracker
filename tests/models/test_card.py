@@ -134,9 +134,10 @@ class TestCardMethods:
 
     def test_calcular_gasto_mensual_with_transactions(self, card: Card) -> None:
         """Should calculate total monthly expenses."""
-        from finanzas_tracker.models.transaction import Transaction
+        from datetime import UTC, datetime
+
         from finanzas_tracker.models.enums import BankName, TransactionType
-        from datetime import datetime, UTC
+        from finanzas_tracker.models.transaction import Transaction
 
         # Create test transactions
         tx1 = Transaction(
@@ -172,9 +173,10 @@ class TestCardMethods:
 
     def test_calcular_disponible_credito_with_limit(self, card: Card) -> None:
         """Should calculate available credit correctly."""
-        from finanzas_tracker.models.transaction import Transaction
+        from datetime import UTC, datetime
+
         from finanzas_tracker.models.enums import BankName, TransactionType
-        from datetime import datetime, UTC
+        from finanzas_tracker.models.transaction import Transaction
 
         card.tipo = CardType.CREDIT
         card.limite_credito = Decimal("100000")

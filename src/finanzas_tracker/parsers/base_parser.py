@@ -32,7 +32,7 @@ class ParsedTransaction(TypedDict):
 class EmailParseError(Exception):
     """Error específico para fallos de parsing de email."""
 
-    def __init__(self, message: str, email_subject: str | None = None):
+    def __init__(self, message: str, email_subject: str | None = None) -> None:
         self.email_subject = email_subject
         super().__init__(message)
 
@@ -126,9 +126,7 @@ class BaseParser(ABC):
             )
             return None
 
-    def _validate_transaction(
-        self, monto: Decimal, moneda: str, subject: str
-    ) -> str | None:
+    def _validate_transaction(self, monto: Decimal, moneda: str, subject: str) -> str | None:
         """
         Valida monto y moneda de la transacción.
 
@@ -167,9 +165,7 @@ class BaseParser(ABC):
         ...
 
     @abstractmethod
-    def _extract_fecha(
-        self, soup: BeautifulSoup, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha(self, soup: BeautifulSoup, email_data: dict[str, Any]) -> datetime:
         """Extrae la fecha de la transacción."""
         ...
 

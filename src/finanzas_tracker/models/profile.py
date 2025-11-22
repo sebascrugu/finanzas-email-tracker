@@ -108,11 +108,11 @@ class Profile(Base):
         if not self.cards:
             return []
         return list(
-            set(
+            {
                 card.banco.value if hasattr(card.banco, "value") else card.banco
                 for card in self.cards
                 if card.activa
-            )
+            }
         )
 
     def activar(self) -> None:

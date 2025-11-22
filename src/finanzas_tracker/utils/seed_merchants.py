@@ -149,7 +149,7 @@ COMMON_MERCHANTS = [
 ]
 
 
-def seed_merchants():
+def seed_merchants() -> None:
     """
     Crea merchants comunes en la base de datos si no existen.
 

@@ -83,10 +83,7 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
     with get_session() as session:
         # Calcular rango del mes
         primer_dia = date(year, month, 1)
-        if month == 12:
-            proximo_mes = date(year + 1, 1, 1)
-        else:
-            proximo_mes = date(year, month + 1, 1)
+        proximo_mes = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
 
         # Ingresos del mes
         ingresos_mes = (

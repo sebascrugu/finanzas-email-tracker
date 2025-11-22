@@ -1,14 +1,12 @@
 """Tests for model enums."""
 
-import pytest
-
 from finanzas_tracker.models.enums import (
     BankName,
+    CardType,
     Currency,
-    TransactionType,
     IncomeType,
     RecurrenceFrequency,
-    CardType,
+    TransactionType,
 )
 
 
@@ -83,6 +81,3 @@ class TestCardType:
 
     def test_debit(self) -> None:
         assert CardType.DEBIT.value == "debito"
-
-
-

@@ -88,9 +88,7 @@ class Account(Base):
     )
 
     # Estado
-    activa: Mapped[bool] = mapped_column(
-        Boolean, default=True, comment="Si la cuenta está activa"
-    )
+    activa: Mapped[bool] = mapped_column(Boolean, default=True, comment="Si la cuenta está activa")
     incluir_en_patrimonio: Mapped[bool] = mapped_column(
         Boolean, default=True, comment="Si se incluye en el cálculo de patrimonio total"
     )

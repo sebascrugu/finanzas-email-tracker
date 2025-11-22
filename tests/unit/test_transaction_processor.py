@@ -15,13 +15,14 @@ from datetime import datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-import pytest
 from sqlalchemy.exc import IntegrityError
 
 from finanzas_tracker.services.transaction_processor import TransactionProcessor
 
 
-def create_transaction_mock(comercio: str = "TEST", monto_crc: Decimal = Decimal("1000.00")) -> MagicMock:
+def create_transaction_mock(
+    comercio: str = "TEST", monto_crc: Decimal = Decimal("1000.00")
+) -> MagicMock:
     """
     Crea un mock de Transaction con atributos necesarios para logging.
 
@@ -118,9 +119,9 @@ class TestTransactionProcessorCurrencyConversion:
 
     def test_apply_currency_conversion_crc_no_conversion(self) -> None:
         """Test que verifica que CRC no se convierte."""
-        processor = TransactionProcessor(auto_categorize=False)
+        TransactionProcessor(auto_categorize=False)
 
-        transaction_data = {
+        {
             "moneda_original": "CRC",
             "monto_original": Decimal("5000.00"),
             "fecha_transaccion": datetime(2025, 11, 6, 10, 0),
@@ -195,9 +196,7 @@ class TestTransactionProcessorCategorization:
         assert stats["necesitan_revision"] == 1
 
     @patch("finanzas_tracker.services.transaction_processor.TransactionCategorizer")
-    def test_categorize_transaction_error_handling(
-        self, mock_categorizer_class: MagicMock
-    ) -> None:
+    def test_categorize_transaction_error_handling(self, mock_categorizer_class: MagicMock) -> None:
         """Test manejando errores en categorización."""
         mock_categorizer = MagicMock()
         mock_categorizer.categorize.side_effect = Exception("API Error")
@@ -292,7 +291,9 @@ class TestTransactionProcessorProcessEmails:
         mock_get_session.return_value.__enter__.return_value = mock_session
 
         # Mock de Transaction
-        mock_transaction_class.return_value = create_transaction_mock("STARBUCKS", Decimal("5000.00"))
+        mock_transaction_class.return_value = create_transaction_mock(
+            "STARBUCKS", Decimal("5000.00")
+        )
 
         processor = TransactionProcessor(auto_categorize=False)
 
@@ -334,7 +335,9 @@ class TestTransactionProcessorProcessEmails:
         """Test procesando correos de Banco Popular exitosamente."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
-        mock_transaction_class.return_value = create_transaction_mock("SUPERMERCADO", Decimal("15000.00"))
+        mock_transaction_class.return_value = create_transaction_mock(
+            "SUPERMERCADO", Decimal("15000.00")
+        )
 
         processor = TransactionProcessor(auto_categorize=False)
 
@@ -416,7 +419,9 @@ class TestTransactionProcessorProcessEmails:
         """Test procesando con categorización automática."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
-        mock_transaction_class.return_value = create_transaction_mock("STARBUCKS", Decimal("5000.00"))
+        mock_transaction_class.return_value = create_transaction_mock(
+            "STARBUCKS", Decimal("5000.00")
+        )
 
         mock_categorizer = MagicMock()
         mock_categorizer.categorize.return_value = {

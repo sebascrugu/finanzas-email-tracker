@@ -1,7 +1,7 @@
 """Servicio de normalización de comercios (merchants)."""
 
-import re
 from decimal import Decimal
+import re
 
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
@@ -41,7 +41,7 @@ class MerchantNormalizationService:
         r"[^\w\s]",  # Caracteres especiales
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Inicializa el servicio."""
 
     def normalize_merchant_name(self, raw_name: str) -> str:
@@ -76,9 +76,7 @@ class MerchantNormalizationService:
         normalized = " ".join(normalized.split())
 
         # Capitalizar primera letra de cada palabra
-        normalized = normalized.title()
-
-        return normalized
+        return normalized.title()
 
     def find_or_create_merchant(
         self,
@@ -107,9 +105,7 @@ class MerchantNormalizationService:
         """
         # 1. Buscar por nombre raw exacto
         variant = (
-            session.query(MerchantVariant)
-            .filter(MerchantVariant.nombre_raw == raw_name)
-            .first()
+            session.query(MerchantVariant).filter(MerchantVariant.nombre_raw == raw_name).first()
         )
 
         if variant:
@@ -161,9 +157,7 @@ class MerchantNormalizationService:
         """Crea una nueva variante si no existe."""
         # Verificar que no exista ya
         existing = (
-            session.query(MerchantVariant)
-            .filter(MerchantVariant.nombre_raw == raw_name)
-            .first()
+            session.query(MerchantVariant).filter(MerchantVariant.nombre_raw == raw_name).first()
         )
 
         if existing:
@@ -191,7 +185,7 @@ class MerchantNormalizationService:
         subcategoria: str | None = None,
         tipo_negocio: str | None = None,
         que_vende: str | None = None,
-    ):
+    ) -> None:
         """
         Actualiza metadata de un merchant.
 

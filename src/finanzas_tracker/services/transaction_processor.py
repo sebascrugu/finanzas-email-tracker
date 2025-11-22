@@ -132,7 +132,9 @@ class TransactionProcessor:
                 logger.error(f"Error de datos en correo '{email.get('subject', 'unknown')}': {e}")
                 stats["errores"] += 1
             except Exception as e:
-                logger.error(f"Error inesperado procesando correo '{email.get('subject', 'unknown')}': {type(e).__name__}: {e}")
+                logger.error(
+                    f"Error inesperado procesando correo '{email.get('subject', 'unknown')}': {type(e).__name__}: {e}"
+                )
                 stats["errores"] += 1
 
         logger.success(

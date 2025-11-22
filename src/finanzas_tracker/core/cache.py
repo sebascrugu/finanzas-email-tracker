@@ -11,9 +11,10 @@ Beneficios:
 - Invalida automáticamente cache al cambiar perfil
 """
 
+from collections.abc import Callable
 import functools
 import time
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from finanzas_tracker.core.logging import get_logger
 
@@ -31,7 +32,7 @@ class TTLCache:
     Útil para datos que cambian poco pero necesitan refrescarse periódicamente.
     """
 
-    def __init__(self, ttl_seconds: int = 300):
+    def __init__(self, ttl_seconds: int = 300) -> None:
         """
         Inicializa el cache con TTL.
 
@@ -98,7 +99,9 @@ class TTLCache:
 dashboard_cache = TTLCache(ttl_seconds=300)  # 5 minutos
 
 
-def cached_query(ttl_seconds: int = 300, profile_aware: bool = True) -> Callable[[Callable[..., T]], Callable[..., T]]:
+def cached_query(
+    ttl_seconds: int = 300, profile_aware: bool = True
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """
     Decorador para cachear resultados de queries con TTL.
 

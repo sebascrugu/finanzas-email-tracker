@@ -23,9 +23,7 @@ class Merchant(Base):
     __tablename__ = "merchants"
 
     # Identificadores
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
 
     # Información del comercio
     nombre_normalizado: Mapped[str] = mapped_column(
@@ -143,9 +141,7 @@ class MerchantVariant(Base):
     __tablename__ = "merchant_variants"
 
     # Identificadores
-    id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4())
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     merchant_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("merchants.id"), nullable=False, index=True
     )
@@ -159,9 +155,7 @@ class MerchantVariant(Base):
     ciudad: Mapped[str | None] = mapped_column(
         String(100), nullable=True, comment="Ciudad donde está el local"
     )
-    pais: Mapped[str] = mapped_column(
-        String(50), default="Costa Rica", comment="País"
-    )
+    pais: Mapped[str] = mapped_column(String(50), default="Costa Rica", comment="País")
     ubicacion_descriptiva: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True,
@@ -192,9 +186,7 @@ class MerchantVariant(Base):
     merchant: Mapped["Merchant"] = relationship("Merchant", back_populates="variantes")
 
     # Índices
-    __table_args__ = (
-        Index("ix_merchant_variants_merchant_ciudad", "merchant_id", "ciudad"),
-    )
+    __table_args__ = (Index("ix_merchant_variants_merchant_ciudad", "merchant_id", "ciudad"),)
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

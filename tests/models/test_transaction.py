@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from finanzas_tracker.models.enums import Currency, TransactionType, BankName
+from finanzas_tracker.models.enums import BankName, Currency, TransactionType
 from finanzas_tracker.models.transaction import Transaction
 
 

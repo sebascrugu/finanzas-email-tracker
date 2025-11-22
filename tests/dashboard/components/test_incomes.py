@@ -2,14 +2,12 @@
 
 from datetime import date
 
-import pytest
-
 from finanzas_tracker.dashboard.components.incomes import (
-    calcular_proximo_ingreso,
-    es_tipo_recurrente,
-    TIPOS_RECURRENTES,
     OPCIONES_TIPO_INGRESO,
     TIPOS_ESPECIALES,
+    TIPOS_RECURRENTES,
+    calcular_proximo_ingreso,
+    es_tipo_recurrente,
 )
 from finanzas_tracker.models.enums import IncomeType
 

@@ -263,7 +263,9 @@ def _procesar_formulario_ingreso(
 
             st.success("Ingreso registrado exitosamente!")
             if es_dinero_ajeno and monto_sobrante_decimal:
-                st.info(f"Desglose: Usaste {monto_usado_decimal:,.0f}, te quedaste {monto_sobrante_decimal:,.0f}")
+                st.info(
+                    f"Desglose: Usaste {monto_usado_decimal:,.0f}, te quedaste {monto_sobrante_decimal:,.0f}"
+                )
             if es_recurrente and proximo:
                 st.info(f"Proximo ingreso esperado: {proximo.strftime('%d/%m/%Y')}")
             st.balloons()

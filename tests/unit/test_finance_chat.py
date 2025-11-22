@@ -2,6 +2,7 @@
 
 import os
 
+
 # Set env vars BEFORE any imports
 os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
 os.environ.setdefault("AZURE_TENANT_ID", "test-tenant-id")
@@ -13,7 +14,6 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 from unittest.mock import MagicMock, patch
 
 import anthropic
-import pytest
 
 
 class TestFinanceChatService:
@@ -48,9 +48,7 @@ class TestFinanceChatService:
     ) -> None:
         """Test manejo de error de conexion."""
         mock_client = MagicMock()
-        mock_client.messages.create.side_effect = anthropic.APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client.messages.create.side_effect = anthropic.APIConnectionError(request=MagicMock())
         mock_anthropic_class.return_value = mock_client
         mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.all.return_value = []
 
@@ -69,9 +67,7 @@ class TestFinanceChatService:
         """Test manejo de rate limit."""
         mock_client = MagicMock()
         mock_client.messages.create.side_effect = anthropic.RateLimitError(
-            message="Rate limited",
-            response=MagicMock(status_code=429),
-            body={}
+            message="Rate limited", response=MagicMock(status_code=429), body={}
         )
         mock_anthropic_class.return_value = mock_client
         mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.all.return_value = []

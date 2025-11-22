@@ -88,7 +88,8 @@ class ExchangeRateService:
                 # Guardar en cache de memoria para próximas consultas
                 self._cache[date_str] = rate
                 logger.debug(
-                    f"Cache hit (DB) para {date_str}: ₡{rate:.2f} " f"(source: {cached_entry.source})"
+                    f"Cache hit (DB) para {date_str}: ₡{rate:.2f} "
+                    f"(source: {cached_entry.source})"
                 )
                 return rate
 

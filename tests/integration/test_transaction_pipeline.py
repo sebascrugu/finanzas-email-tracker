@@ -4,10 +4,7 @@ Tests de integracion para el pipeline de transacciones.
 Prueba el flujo de parseo: Email -> Parser -> Datos estructurados
 """
 
-from datetime import datetime
 from decimal import Decimal
-
-import pytest
 
 from finanzas_tracker.parsers import BACParser, PopularParser
 

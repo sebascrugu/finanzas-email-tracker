@@ -2,8 +2,6 @@
 
 import time
 
-import pytest
-
 from finanzas_tracker.core.cache import TTLCache, cached_query, invalidate_profile_cache
 
 

@@ -1,6 +1,6 @@
 """Tests for Income model."""
 
-from datetime import UTC, datetime, date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
