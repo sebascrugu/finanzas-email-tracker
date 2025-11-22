@@ -155,6 +155,9 @@ class Subscription(Base):
     profile: Mapped["Profile"] = relationship("Profile", back_populates="subscriptions")
     merchant: Mapped["Merchant | None"] = relationship("Merchant")
     subcategory: Mapped["Subcategory | None"] = relationship("Subcategory")
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert", back_populates="subscription", cascade="all, delete-orphan"
+    )
 
     # Constraints e índices
     __table_args__ = (

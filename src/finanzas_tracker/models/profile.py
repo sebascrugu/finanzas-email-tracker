@@ -95,6 +95,12 @@ class Profile(Base):
     subscriptions: Mapped[list["Subscription"]] = relationship(
         "Subscription", back_populates="profile", cascade="all, delete-orphan"
     )
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert", back_populates="profile", cascade="all, delete-orphan"
+    )
+    alert_config: Mapped["AlertConfig | None"] = relationship(
+        "AlertConfig", back_populates="profile", cascade="all, delete-orphan", uselist=False
+    )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

@@ -250,6 +250,9 @@ class Transaction(Base):
         "Subcategory",
         back_populates="transactions",
     )
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert", back_populates="transaction", cascade="all, delete-orphan"
+    )
     refund_of: Mapped["Transaction | None"] = relationship(
         "Transaction",
         remote_side="Transaction.id",

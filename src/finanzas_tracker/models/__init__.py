@@ -1,6 +1,7 @@
 """Modelos de base de datos."""
 
 from finanzas_tracker.models.account import Account, AccountType
+from finanzas_tracker.models.alert import Alert, AlertConfig, AlertSeverity, AlertStatus, AlertType
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.category import Category, Subcategory
@@ -25,6 +26,8 @@ from finanzas_tracker.models.transaction import Transaction
 __all__ = [
     # Models
     "Account",
+    "Alert",
+    "AlertConfig",
     "Budget",
     "Card",
     "Category",
@@ -39,6 +42,9 @@ __all__ = [
     "Transaction",
     # Enums
     "AccountType",
+    "AlertSeverity",
+    "AlertStatus",
+    "AlertType",
     "BankName",
     "CardType",
     "CategoryType",
