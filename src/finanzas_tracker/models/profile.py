@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 
@@ -127,3 +127,28 @@ class Profile(Base):
     def desactivar(self) -> None:
         """Marca este perfil como inactivo."""
         self.es_activo = False
+
+    # Validators
+    @validates("nombre")
+    def validate_nombre(self, key: str, value: str) -> str:
+        """Valida que el nombre no esté vacío."""
+        if not value or not value.strip():
+            raise ValueError("El nombre del perfil no puede estar vacío")
+        return value.strip()
+
+    @validates("email_outlook")
+    def validate_email_outlook(self, key: str, value: str) -> str:
+        """Valida formato básico de email."""
+        if not value or not value.strip():
+            raise ValueError("El email de Outlook no puede estar vacío")
+
+        value = value.strip().lower()
+
+        # Validación básica de formato email
+        if "@" not in value or "." not in value.split("@")[-1]:
+            raise ValueError(f"Formato de email inválido: '{value}'")
+
+        # Nota: No validamos el dominio específico para permitir flexibilidad
+        # en el futuro (otros proveedores de email, testing, etc.)
+
+        return value

@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import BankName, CardType
@@ -213,3 +213,43 @@ class Card(Base):
         """Restaura una tarjeta eliminada."""
         self.deleted_at = None
         self.activa = True
+
+    # Validators
+    @validates("ultimos_4_digitos")
+    def validate_ultimos_4_digitos(self, key: str, value: str) -> str:
+        """Valida que sean exactamente 4 dígitos numéricos."""
+        if not value:
+            raise ValueError("Los últimos 4 dígitos son obligatorios")
+
+        # Eliminar espacios
+        value = value.strip()
+
+        # Validar longitud
+        if len(value) != 4:
+            raise ValueError(
+                f"Deben ser exactamente 4 dígitos, recibido: '{value}' ({len(value)} caracteres)"
+            )
+
+        # Validar que sean solo números
+        if not value.isdigit():
+            raise ValueError(f"Los últimos 4 dígitos deben ser solo números, recibido: '{value}'")
+
+        return value
+
+    @validates("limite_credito")
+    def validate_limite_credito(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el límite de crédito sea positivo."""
+        if value is not None and value <= 0:
+            raise ValueError(
+                f"El límite de crédito debe ser positivo, recibido: ₡{value:,.2f}"
+            )
+        return value
+
+    @validates("alias")
+    def validate_alias(self, key: str, value: str | None) -> str | None:
+        """Valida que el alias no esté vacío si se proporciona."""
+        if value is not None:
+            value = value.strip()
+            if not value:
+                return None  # Si está vacío, retornar None
+        return value

@@ -7,7 +7,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import (
@@ -343,3 +343,39 @@ class Transaction(Base):
 
         # Gasto normal, reduce patrimonio
         return self.monto_crc
+
+    # Validators
+    @validates("comercio")
+    def validate_comercio(self, key: str, value: str) -> str:
+        """Valida que el comercio no esté vacío."""
+        if not value or not value.strip():
+            raise ValueError("El nombre del comercio no puede estar vacío")
+        return value.strip()
+
+    @validates("email_id")
+    def validate_email_id(self, key: str, value: str) -> str:
+        """Valida que el email_id no esté vacío."""
+        if not value or not value.strip():
+            raise ValueError("El email_id es obligatorio para evitar duplicados")
+        return value.strip()
+
+    @validates("monto_crc")
+    def validate_monto_crc(self, key: str, value: Decimal) -> Decimal:
+        """Valida que el monto en CRC sea positivo."""
+        if value <= 0:
+            raise ValueError(f"El monto en CRC debe ser positivo, recibido: ₡{value:,.2f}")
+        return value
+
+    @validates("monto_original")
+    def validate_monto_original(self, key: str, value: Decimal) -> Decimal:
+        """Valida que el monto original sea positivo."""
+        if value <= 0:
+            raise ValueError(f"El monto original debe ser positivo, recibido: {value}")
+        return value
+
+    @validates("tipo_cambio_usado")
+    def validate_tipo_cambio(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el tipo de cambio sea positivo si existe."""
+        if value is not None and value <= 0:
+            raise ValueError(f"El tipo de cambio debe ser positivo, recibido: {value}")
+        return value

@@ -17,7 +17,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import Currency, IncomeType, RecurrenceFrequency
@@ -251,3 +251,68 @@ class Income(Base):
 
         # Ingreso normal, cuenta todo
         return self.monto_crc
+
+    # Validators
+    @validates("monto_original")
+    def validate_monto_original(self, key: str, value: Decimal) -> Decimal:
+        """Valida que el monto original sea positivo."""
+        if value <= 0:
+            raise ValueError(f"El monto original debe ser positivo, recibido: {value}")
+        return value
+
+    @validates("monto_crc")
+    def validate_monto_crc(self, key: str, value: Decimal) -> Decimal:
+        """Valida que el monto en CRC sea positivo."""
+        if value <= 0:
+            raise ValueError(f"El monto en CRC debe ser positivo, recibido: {value}")
+        return value
+
+    @validates("tipo_cambio_usado")
+    def validate_tipo_cambio(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el tipo de cambio sea positivo si existe."""
+        if value is not None and value <= 0:
+            raise ValueError(f"El tipo de cambio debe ser positivo, recibido: {value}")
+        return value
+
+    @validates("fecha")
+    def validate_fecha(self, key: str, value: date) -> date:
+        """Valida que la fecha no sea futura (con margen de 1 día para timezones)."""
+        hoy = date.today()
+        if value > hoy:
+            # Permitir margen de 1 día por timezones
+            from datetime import timedelta
+
+            margen = hoy + timedelta(days=1)
+            if value > margen:
+                raise ValueError(
+                    f"La fecha del ingreso no puede ser futura. Fecha: {value}, Hoy: {hoy}"
+                )
+        return value
+
+    @validates("descripcion")
+    def validate_descripcion(self, key: str, value: str) -> str:
+        """Valida que la descripción no esté vacía."""
+        if not value or not value.strip():
+            raise ValueError("La descripción no puede estar vacía")
+        return value.strip()
+
+    @validates("monto_sobrante")
+    def validate_monto_sobrante(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el monto sobrante no sea mayor al monto total."""
+        if value is not None:
+            if value < 0:
+                raise ValueError(f"El monto sobrante no puede ser negativo, recibido: {value}")
+            # Solo validar si ya tenemos monto_crc (evitar errores durante construcción)
+            if hasattr(self, "monto_crc") and self.monto_crc and value > self.monto_crc:
+                raise ValueError(
+                    f"El monto sobrante (₡{value:,.2f}) no puede ser mayor "
+                    f"al monto total (₡{self.monto_crc:,.2f})"
+                )
+        return value
+
+    @validates("monto_usado")
+    def validate_monto_usado(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el monto usado no sea negativo."""
+        if value is not None and value < 0:
+            raise ValueError(f"El monto usado no puede ser negativo, recibido: {value}")
+        return value

@@ -56,10 +56,9 @@ class TestAccountProperties:
         assert result == Decimal("0")
 
     def test_calcular_interes_mensual_negative_rate(self, savings_account: Account) -> None:
-        """Should return 0 when negative interest rate."""
-        savings_account.tasa_interes = Decimal("-1.0")
-        result = savings_account.calcular_interes_mensual()
-        assert result == Decimal("0")
+        """Should raise ValueError when trying to set negative interest rate."""
+        with pytest.raises(ValueError, match="La tasa de interés no puede ser negativa"):
+            savings_account.tasa_interes = Decimal("-1.0")
 
     def test_calcular_interes_anual_simple(self, savings_account: Account) -> None:
         """Should calculate annual interest for simple interest."""
