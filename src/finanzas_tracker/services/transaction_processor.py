@@ -15,6 +15,7 @@ from finanzas_tracker.services.anomaly_detector import AnomalyDetectionService
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
+from finanzas_tracker.services.subscription_detector import subscription_detector
 
 
 logger = get_logger(__name__)
@@ -157,6 +158,25 @@ class TransactionProcessor:
                     f"Error inesperado procesando correo '{email.get('subject', 'unknown')}': {type(e).__name__}: {e}"
                 )
                 stats["errores"] += 1
+
+        # Sincronizar suscripciones automáticamente después de procesar
+        if stats["procesados"] > 0:  # Solo si se agregaron nuevas transacciones
+            try:
+                logger.info("\n📋 Actualizando suscripciones recurrentes...")
+                sub_stats = subscription_detector.sync_subscriptions_to_db(profile_id)
+
+                if sub_stats["created"] > 0 or sub_stats["updated"] > 0:
+                    logger.info(
+                        f"✅ Suscripciones: "
+                        f"{sub_stats['created']} nuevas, "
+                        f"{sub_stats['updated']} actualizadas"
+                    )
+                    stats["suscripciones_nuevas"] = sub_stats["created"]
+                    stats["suscripciones_actualizadas"] = sub_stats["updated"]
+
+            except Exception as e:
+                logger.warning(f"⚠️  No se pudieron actualizar suscripciones: {e}")
+                # No fallar el procesamiento por esto
 
         logger.success(
             f" Procesamiento completado: "
