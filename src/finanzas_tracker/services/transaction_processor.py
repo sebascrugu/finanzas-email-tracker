@@ -11,6 +11,7 @@ from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
+from finanzas_tracker.services.alert_service import alert_service
 from finanzas_tracker.services.anomaly_detector import AnomalyDetectionService
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
@@ -144,9 +145,24 @@ class TransactionProcessor:
                     self._detect_anomaly(parsed_data, stats)
 
                 # Guardar en base de datos
-                success = self._save_transaction(parsed_data)
+                success, transaction = self._save_transaction(parsed_data)
                 if success:
                     stats["procesados"] += 1
+
+                    # Generar alertas para esta transacción
+                    if transaction:
+                        try:
+                            alerts = alert_service.generate_alerts_for_transaction(
+                                transaction, profile_id
+                            )
+                            if alerts:
+                                logger.info(
+                                    f"  🔔 {len(alerts)} alerta(s) generada(s) "
+                                    f"para {transaction.comercio}"
+                                )
+                        except Exception as e:
+                            logger.warning(f"Error generando alertas: {e}")
+                            # No fallar el procesamiento por esto
                 else:
                     stats["duplicados"] += 1
 
@@ -177,6 +193,30 @@ class TransactionProcessor:
             except Exception as e:
                 logger.warning(f"⚠️  No se pudieron actualizar suscripciones: {e}")
                 # No fallar el procesamiento por esto
+
+        # Generar alertas de suscripciones y presupuesto
+        try:
+            logger.info("\n🔔 Generando alertas inteligentes...")
+
+            # Alertas de suscripciones próximas (3 días)
+            sub_alerts = alert_service.generate_subscription_alerts(profile_id, days_ahead=3)
+
+            # Alertas de presupuesto excedido
+            budget_alerts = alert_service.generate_budget_alerts(profile_id)
+
+            total_alerts = len(sub_alerts) + len(budget_alerts)
+            if total_alerts > 0:
+                logger.info(
+                    f"✅ Alertas: "
+                    f"{len(sub_alerts)} suscripciones, "
+                    f"{len(budget_alerts)} presupuesto"
+                )
+                stats["alertas_suscripciones"] = len(sub_alerts)
+                stats["alertas_presupuesto"] = len(budget_alerts)
+
+        except Exception as e:
+            logger.warning(f"⚠️  No se pudieron generar alertas: {e}")
+            # No fallar el procesamiento por esto
 
         logger.success(
             f" Procesamiento completado: "
@@ -415,7 +455,7 @@ class TransactionProcessor:
                 f"     Se activará automáticamente cuando tengas suficientes datos\n"
             )
 
-    def _save_transaction(self, transaction_data: dict[str, Any]) -> bool:
+    def _save_transaction(self, transaction_data: dict[str, Any]) -> tuple[bool, Transaction | None]:
         """
         Guarda una transacción en la base de datos.
 
@@ -423,7 +463,9 @@ class TransactionProcessor:
             transaction_data: Datos de la transacción
 
         Returns:
-            bool: True si se guardó exitosamente, False si es duplicada
+            tuple: (success: bool, transaction: Transaction | None)
+                   - True si se guardó exitosamente, False si es duplicada
+                   - Transaction object si se guardó, None si es duplicada
         """
         try:
             with get_session() as session:
@@ -449,16 +491,20 @@ class TransactionProcessor:
                 session.add(transaction)
                 session.commit()
 
+                # Expunge to use outside session
+                session.refresh(transaction)
+                session.expunge(transaction)
+
                 logger.debug(
                     f" Transacción guardada: {transaction.comercio} - "
                     f"₡{transaction.monto_crc:,.2f}"
                 )
-                return True
+                return (True, transaction)
 
         except IntegrityError:
             # Ya existe (email_id es único)
             logger.debug(f"  Transacción duplicada (ya existe): {transaction_data['email_id']}")
-            return False
+            return (False, None)
 
         except (ValueError, TypeError) as e:
             logger.error(f"Error de datos guardando transacción: {type(e).__name__}: {e}")
