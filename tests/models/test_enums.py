@@ -85,3 +85,27 @@ class TestCardType:
         assert CardType.DEBIT.value == "debito"
 
 
+class TestEnumStringMethods:
+    """Tests for enum __str__ methods."""
+
+    def test_bank_name_str(self) -> None:
+        """Should return value as string."""
+        assert str(BankName.BAC) == "bac"
+
+    def test_currency_str(self) -> None:
+        """Should return value as string."""
+        assert str(Currency.CRC) == "CRC"
+
+    def test_transaction_type_str(self) -> None:
+        """Should return value as string."""
+        assert str(TransactionType.PURCHASE) == "compra"
+
+    def test_income_type_str(self) -> None:
+        """Should return value as string."""
+        assert str(IncomeType.SALARY) == "salario"
+
+    def test_recurrence_frequency_str(self) -> None:
+        """Should return value as string."""
+        assert str(RecurrenceFrequency.MONTHLY) == "mensual"
+
+
