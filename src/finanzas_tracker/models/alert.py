@@ -21,6 +21,9 @@ class AlertType(str, Enum):
     HIGH_SPENDING_DAY = "high_spending_day"  # Día de gasto alto
     UNUSUAL_TIME = "unusual_time"  # Compra en horario inusual
     INTERNATIONAL_PURCHASE = "international_purchase"  # Compra internacional
+    CREDIT_CARD_CLOSING = "credit_card_closing"  # Tarjeta de crédito próxima a cerrar
+    MONTHLY_COMPARISON = "monthly_comparison"  # Comparación de gasto mensual
+    SAVINGS_GOAL_PROGRESS = "savings_goal_progress"  # Progreso hacia meta de ahorro
 
 
 class AlertSeverity(str, Enum):

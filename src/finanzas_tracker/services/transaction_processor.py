@@ -204,15 +204,20 @@ class TransactionProcessor:
             # Alertas de presupuesto excedido
             budget_alerts = alert_service.generate_budget_alerts(profile_id)
 
-            total_alerts = len(sub_alerts) + len(budget_alerts)
+            # Alertas de comparación mensual (gastos vs mes anterior)
+            comparison_alerts = alert_service.generate_monthly_comparison_alerts(profile_id)
+
+            total_alerts = len(sub_alerts) + len(budget_alerts) + len(comparison_alerts)
             if total_alerts > 0:
                 logger.info(
                     f"✅ Alertas: "
                     f"{len(sub_alerts)} suscripciones, "
-                    f"{len(budget_alerts)} presupuesto"
+                    f"{len(budget_alerts)} presupuesto, "
+                    f"{len(comparison_alerts)} comparaciones"
                 )
                 stats["alertas_suscripciones"] = len(sub_alerts)
                 stats["alertas_presupuesto"] = len(budget_alerts)
+                stats["alertas_comparacion"] = len(comparison_alerts)
 
         except Exception as e:
             logger.warning(f"⚠️  No se pudieron generar alertas: {e}")

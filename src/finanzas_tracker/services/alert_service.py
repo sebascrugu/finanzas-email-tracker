@@ -247,12 +247,16 @@ class AlertService:
 
         severity = AlertSeverity.CRITICAL if transaction.anomaly_score < -0.5 else AlertSeverity.WARNING
 
-        title = f"⚠️ Transacción Anómala: {transaction.comercio}"
+        # Mensaje más específico como el usuario quiere
+        title = f"⚠️ Gasto inusual detectado: ₡{transaction.monto_crc:,.0f} en {transaction.comercio}"
         message = (
-            f"Se detectó una transacción inusual de ₡{transaction.monto_crc:,.0f} "
-            f"en {transaction.comercio}.\n\n"
-            f"Razón: {transaction.anomaly_reason or 'Patrón inusual detectado'}\n\n"
-            f"Fecha: {transaction.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}"
+            f"**Transacción anómala detectada**\n\n"
+            f"💰 Monto: ₡{transaction.monto_crc:,.0f}\n"
+            f"🏪 Comercio: {transaction.comercio}\n"
+            f"📅 Fecha: {transaction.fecha_transaccion.strftime('%d/%m/%Y %H:%M')}\n\n"
+            f"**¿Por qué es inusual?**\n"
+            f"{transaction.anomaly_reason or 'Patrón diferente a tus hábitos de compra'}\n\n"
+            f"💡 Verifica que reconozcas esta transacción."
         )
 
         return Alert(
@@ -369,11 +373,19 @@ class AlertService:
 
             # Si la transacción es 3x el promedio, generar alerta
             if transaction.monto_crc >= (avg_amount * 3):
-                title = f"📈 Gasto Alto: {transaction.comercio}"
+                multiplier = transaction.monto_crc / avg_amount
+                category_name = transaction.subcategory.name if transaction.subcategory else "esta categoría"
+
+                title = f"📈 Gasto {multiplier:.1f}x superior en {category_name}"
                 message = (
-                    f"Gasto de ₡{transaction.monto_crc:,.0f} en {transaction.comercio}.\n\n"
-                    f"Esto es {transaction.monto_crc / avg_amount:.1f}x el promedio usual "
-                    f"en esta categoría (₡{avg_amount:,.0f})."
+                    f"**Gasto inusualmente alto detectado**\n\n"
+                    f"💰 Monto: ₡{transaction.monto_crc:,.0f}\n"
+                    f"🏪 Comercio: {transaction.comercio}\n"
+                    f"📊 Categoría: {category_name}\n\n"
+                    f"**Comparación:**\n"
+                    f"Este gasto es **{multiplier:.1f}x** superior a tu promedio usual "
+                    f"en esta categoría (₡{avg_amount:,.0f}).\n\n"
+                    f"💡 Revisa si este gasto está dentro de tu presupuesto."
                 )
 
                 return Alert(
@@ -430,6 +442,150 @@ class AlertService:
                 return True
 
             return False
+
+    def generate_monthly_comparison_alerts(self, profile_id: str) -> list[Alert]:
+        """
+        Genera alertas comparando gastos del mes actual vs mes anterior.
+
+        Alertas como: "Este mes gastaste 40% más en Uber Eats"
+
+        Args:
+            profile_id: ID del perfil
+
+        Returns:
+            Lista de alertas generadas
+        """
+        alerts = []
+        config = self._get_alert_config(profile_id)
+
+        # Por ahora usamos el flag de category_spike como indicador
+        # En el futuro se puede agregar un flag específico
+        if not config.enable_category_spike_alerts:
+            return alerts
+
+        with get_session() as session:
+            now = datetime.now(UTC)
+
+            # Mes actual
+            current_month_start = datetime(now.year, now.month, 1, tzinfo=UTC)
+
+            # Mes anterior
+            if now.month == 1:
+                prev_month_start = datetime(now.year - 1, 12, 1, tzinfo=UTC)
+                prev_month_end = datetime(now.year, 1, 1, tzinfo=UTC)
+            else:
+                prev_month_start = datetime(now.year, now.month - 1, 1, tzinfo=UTC)
+                prev_month_end = current_month_start
+
+            # Analizar por merchant (comercios específicos como Uber Eats)
+            # Obtener top merchants del mes actual
+            current_spending = (
+                session.query(
+                    Transaction.comercio,
+                    func.sum(Transaction.monto_crc).label("total"),
+                    func.count(Transaction.id).label("count"),
+                )
+                .filter(
+                    Transaction.profile_id == profile_id,
+                    Transaction.fecha_transaccion >= current_month_start,
+                    Transaction.deleted_at.is_(None),
+                )
+                .group_by(Transaction.comercio)
+                .having(func.sum(Transaction.monto_crc) > 10000)  # Mínimo 10k
+                .all()
+            )
+
+            for comercio, current_total, current_count in current_spending:
+                # Obtener gasto del mismo comercio el mes anterior
+                prev_total = (
+                    session.query(func.sum(Transaction.monto_crc))
+                    .filter(
+                        Transaction.profile_id == profile_id,
+                        Transaction.comercio == comercio,
+                        Transaction.fecha_transaccion >= prev_month_start,
+                        Transaction.fecha_transaccion < prev_month_end,
+                        Transaction.deleted_at.is_(None),
+                    )
+                    .scalar()
+                ) or Decimal("0")
+
+                if prev_total > 0:
+                    # Calcular porcentaje de cambio
+                    change_pct = float(((current_total - prev_total) / prev_total) * 100)
+
+                    # Solo alertar si el cambio es significativo (> 30%)
+                    if abs(change_pct) >= 30:
+                        # Verificar si ya existe alerta para este comercio este mes
+                        existing = (
+                            session.query(Alert)
+                            .filter(
+                                Alert.profile_id == profile_id,
+                                Alert.alert_type == AlertType.MONTHLY_COMPARISON,
+                                Alert.created_at >= current_month_start,
+                                Alert.title.like(f"%{comercio}%"),
+                                Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+                            )
+                            .first()
+                        )
+
+                        if not existing:
+                            alert = self._create_monthly_comparison_alert(
+                                comercio=comercio,
+                                current_total=current_total,
+                                prev_total=prev_total,
+                                change_pct=change_pct,
+                                profile_id=profile_id,
+                            )
+                            if alert:
+                                alerts.append(alert)
+                                session.add(alert)
+
+            session.commit()
+
+        logger.info(f"Generadas {len(alerts)} alertas de comparación mensual")
+        return alerts
+
+    def _create_monthly_comparison_alert(
+        self,
+        comercio: str,
+        current_total: Decimal,
+        prev_total: Decimal,
+        change_pct: float,
+        profile_id: str,
+    ) -> Alert | None:
+        """Crea alerta de comparación mensual."""
+        # Determinar si es aumento o disminución
+        if change_pct > 0:
+            direction = "más"
+            emoji = "📈"
+            severity = AlertSeverity.WARNING if change_pct > 50 else AlertSeverity.INFO
+        else:
+            direction = "menos"
+            emoji = "📉"
+            severity = AlertSeverity.INFO
+
+        title = f"{emoji} Este mes gastaste {abs(change_pct):.0f}% {direction} en {comercio}"
+        message = (
+            f"**Comparación mensual**\n\n"
+            f"🏪 Comercio: {comercio}\n"
+            f"💰 Mes actual: ₡{current_total:,.0f}\n"
+            f"💰 Mes anterior: ₡{prev_total:,.0f}\n\n"
+            f"**Cambio:** {'+' if change_pct > 0 else ''}{change_pct:.1f}%\n\n"
+        )
+
+        if change_pct > 0:
+            message += "💡 Tu gasto en este comercio ha aumentado. Considera si está dentro de tu presupuesto."
+        else:
+            message += "✅ ¡Buen trabajo! Has reducido tu gasto en este comercio."
+
+        return Alert(
+            profile_id=profile_id,
+            alert_type=AlertType.MONTHLY_COMPARISON,
+            severity=severity,
+            status=AlertStatus.PENDING,
+            title=title,
+            message=message,
+        )
 
 
 # Singleton para usar en toda la aplicación

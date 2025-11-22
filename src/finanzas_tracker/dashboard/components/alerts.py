@@ -103,7 +103,7 @@ def render_alerts_widget(profile_id: str) -> None:
 
             🚨 **Anomalía Detectada**
             - Transacción inusual según tus patrones de gasto
-            - Se analiza monto, frecuencia, y contexto
+            - Ejemplo: "⚠️ Gasto inusual detectado: ₡85,000 en Amazon"
 
             📅 **Suscripción Próxima**
             - Notificación 3 días antes de un cobro recurrente
@@ -117,9 +117,21 @@ def render_alerts_widget(profile_id: str) -> None:
             - Detecta gastos 3x superiores al promedio
             - Compara con tus últimos 3 meses
 
+            📊 **Comparación Mensual**
+            - Compara tus gastos vs mes anterior
+            - Ejemplo: "📈 Este mes gastaste 40% más en Uber Eats"
+
             🌍 **Compra Internacional**
             - Notifica sobre transacciones fuera del país
             - Útil para detectar fraudes
+
+            💳 **Cierre de Tarjeta** (próximamente)
+            - Alertas antes del cierre de tu ciclo de tarjeta
+            - Ejemplo: "Tu tarjeta X5678 cierra en 3 días (saldo: ₡120,000)"
+
+            🎯 **Meta de Ahorro** (próximamente)
+            - Progreso hacia tus metas de ahorro
+            - Ejemplo: "Estás a ₡50,000 de tu meta de ahorro"
 
             **Configuración:**
             Puedes activar/desactivar tipos de alertas desde tu perfil.
@@ -225,6 +237,9 @@ def _get_alert_type_emoji(alert_type: AlertType) -> str:
         AlertType.HIGH_SPENDING_DAY: "💸",
         AlertType.UNUSUAL_TIME: "🕐",
         AlertType.INTERNATIONAL_PURCHASE: "🌍",
+        AlertType.CREDIT_CARD_CLOSING: "💳",
+        AlertType.MONTHLY_COMPARISON: "📊",
+        AlertType.SAVINGS_GOAL_PROGRESS: "🎯",
     }
     return emoji_map.get(alert_type, "🔔")
 
@@ -240,5 +255,8 @@ def _get_alert_type_name(alert_type: AlertType) -> str:
         AlertType.HIGH_SPENDING_DAY: "Día de alto gasto",
         AlertType.UNUSUAL_TIME: "Horario inusual",
         AlertType.INTERNATIONAL_PURCHASE: "Compra internacional",
+        AlertType.CREDIT_CARD_CLOSING: "Cierre de tarjeta",
+        AlertType.MONTHLY_COMPARISON: "Comparación mensual",
+        AlertType.SAVINGS_GOAL_PROGRESS: "Meta de ahorro",
     }
     return name_map.get(alert_type, alert_type.value)
