@@ -278,6 +278,207 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
             "razon": razon,
         }
 
+    def _categorize_with_claude_enhanced(
+        self,
+        comercio: str,
+        monto_crc: float,
+        tipo_transaccion: str,
+        fecha: str | None = None,
+        ubicacion: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Versión mejorada con análisis contextual profundo usando Sonnet.
+
+        Análisis adicional:
+        - Contexto temporal (hora del día, día de la semana)
+        - Monto (bajo/medio/alto)
+        - Ubicación si está disponible
+        - Tipo de transacción
+
+        Usa Claude Sonnet para mejor razonamiento contextual.
+        """
+        from datetime import datetime
+
+        # Análisis contextual
+        context_hints = []
+
+        # Análisis de monto
+        if monto_crc < 5000:
+            context_hints.append("Monto bajo - posiblemente snack, café, o compra menor")
+        elif monto_crc > 50000:
+            context_hints.append("Monto alto - posiblemente compra mayor, electrónica, o servicio")
+
+        # Análisis temporal si hay fecha
+        if fecha:
+            try:
+                dt = datetime.fromisoformat(fecha)
+                hora = dt.hour
+                dia_semana = dt.strftime("%A")
+
+                if 6 <= hora <= 10:
+                    context_hints.append(f"Hora: mañana ({hora}h) - posible desayuno o café")
+                elif 12 <= hora <= 14:
+                    context_hints.append(f"Hora: almuerzo ({hora}h)")
+                elif 18 <= hora <= 22:
+                    context_hints.append(f"Hora: noche ({hora}h) - posible cena")
+                elif 23 <= hora or hora <= 2:
+                    context_hints.append(
+                        f"Hora: madrugada ({hora}h) - posible entretenimiento nocturno"
+                    )
+
+                if dia_semana in ["Friday", "Saturday"]:
+                    context_hints.append(
+                        f"Día: {dia_semana} - fin de semana, posible entretenimiento"
+                    )
+            except (ValueError, TypeError):
+                pass
+
+        # Obtener categorías
+        with get_session() as session:
+            subcategories = session.query(Subcategory).all()
+            categorias_disponibles = [
+                {
+                    "id": subcat.id,
+                    "nombre": subcat.nombre_completo,
+                    "descripcion": subcat.descripcion or "",
+                    "ejemplos": subcat.keywords or "",
+                }
+                for subcat in subcategories
+            ]
+
+        # Prompt mejorado con contexto
+        context_str = "\n".join(f"- {hint}" for hint in context_hints)
+
+        prompt = f"""Eres un experto en finanzas personales en Costa Rica con análisis contextual avanzado.
+
+TRANSACCIÓN:
+- **Comercio**: {comercio}
+- **Monto**: ₡{monto_crc:,.2f}
+- **Tipo**: {tipo_transaccion}
+{f"- **Ubicación**: {ubicacion}" if ubicacion else ""}
+
+CONTEXTO ADICIONAL:
+{context_str if context_hints else "No hay contexto temporal disponible"}
+
+CATEGORÍAS DISPONIBLES:
+{json.dumps(categorias_disponibles, indent=2, ensure_ascii=False)[:1500]}...
+
+ANÁLISIS REQUERIDO:
+1. Considera el CONTEXTO (hora, monto, día) para mejor precisión
+2. Ejemplo: "Uber a las 11pm viernes" → probablemente Entretenimiento, no Transporte laboral
+3. Ejemplo: "Walmart ₡8,000 sábado" → probablemente Supermercado, no shopping
+4. Si hay ambigüedad real, marca necesita_revision = true
+5. Explica tu razonamiento considerando el contexto
+
+Responde ÚNICAMENTE con JSON:
+{{
+  "subcategory_id": "id",
+  "categoria_sugerida": "Nombre",
+  "necesita_revision": true/false,
+  "confianza": 85,
+  "alternativas": ["alt1", "alt2"],
+  "razon": "Razón CONSIDERANDO EL CONTEXTO"
+}}"""
+
+        try:
+            # Usar SONNET para casos ambiguos (mejor razonamiento)
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",  # Sonnet para análisis profundo
+                max_tokens=800,
+                temperature=0.2,  # Más determinístico
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            response_text = response.content[0].text.strip()
+
+            # Parsear JSON
+            if response_text.startswith("```json"):
+                response_text = response_text.replace("```json", "").replace("```", "").strip()
+
+            result = json.loads(response_text)
+
+            # Agregar flag de análisis mejorado
+            result["enhanced_analysis"] = True
+            result["context_used"] = context_hints
+
+            logger.info(
+                f"✨ Análisis contextual: {comercio} → {result['categoria_sugerida']} "
+                f"(confianza: {result['confianza']}%)"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error en análisis contextual: {e}")
+            # Fallback a categorización simple
+            return self._categorize_with_claude(comercio, monto_crc, tipo_transaccion)
+
+    def categorize_smart(
+        self,
+        comercio: str,
+        monto_crc: float,
+        tipo_transaccion: str,
+        profile_id: str | None = None,
+        fecha: str | None = None,
+        ubicacion: str | None = None,
+        use_enhanced: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Versión inteligente que decide automáticamente cuándo usar análisis profundo.
+
+        Usa análisis enhanced (Sonnet + contexto) cuando:
+        - No hay match en historial
+        - No hay match claro por keywords
+        - El comercio es conocidamente ambiguo (Walmart, Amazon, etc.)
+
+        Args:
+            comercio: Nombre del comercio
+            monto_crc: Monto en colones
+            tipo_transaccion: Tipo de transacción
+            profile_id: ID del perfil (para aprendizaje del historial)
+            fecha: Fecha de la transacción (ISO format)
+            ubicacion: Ubicación de la transacción
+            use_enhanced: Si usar análisis enhanced para casos ambiguos
+
+        Returns:
+            dict con resultado de categorización
+        """
+        logger.info(f"Categorizando smart: {comercio} - ₡{monto_crc:,.2f}")
+
+        # 1. Aprendizaje histórico
+        learned = self._categorize_from_history(comercio, profile_id)
+        if learned:
+            return learned
+
+        # 2. Keywords
+        keyword_match = self._categorize_by_keywords(comercio)
+        if keyword_match and keyword_match.get("confianza", 0) >= 80:
+            return keyword_match
+
+        # 3. Decidir si usar enhanced
+        comercios_ambiguos = [
+            "walmart",
+            "amazon",
+            "uber",
+            "rappi",
+            "mercado",
+            "shopping",
+            "mall",
+            "plaza",
+            "centro",
+        ]
+
+        es_ambiguo = any(amb in comercio.lower() for amb in comercios_ambiguos)
+
+        if use_enhanced and (es_ambiguo or not keyword_match):
+            logger.info(f"🔍 Usando análisis contextual profundo para: {comercio}")
+            return self._categorize_with_claude_enhanced(
+                comercio, monto_crc, tipo_transaccion, fecha, ubicacion
+            )
+
+        # 4. Categorización estándar
+        return self._categorize_with_claude(comercio, monto_crc, tipo_transaccion)
+
     def _categorize_from_history(
         self,
         comercio: str,
