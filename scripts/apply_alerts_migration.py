@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Script temporal para aplicar la migración de alerts, alert_configs, credit_cards y savings_goals sin keyring."""
 
+import os
 import sys
 from pathlib import Path
+
+from sqlalchemy import create_engine, text
 
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Evitar que se carguen servicios estableciendo variable de entorno
-import os
-
 os.environ["SKIP_SERVICES_INIT"] = "1"
-
-from sqlalchemy import create_engine, text
 
 # Crear engine directamente sin importar servicios
 engine = create_engine("sqlite:///data/finanzas.db")
@@ -153,75 +152,75 @@ create_savings_goals_indexes_sql = [
 try:
     with engine.connect() as conn:
         # Crear tabla alerts
-        print("Creando tabla alerts...")
+        print("Creando tabla alerts...")  # noqa: T201
         conn.execute(text(create_alerts_table_sql))
         conn.commit()
-        print("✅ Tabla alerts creada")
+        print("✅ Tabla alerts creada")  # noqa: T201
 
         # Crear tabla alert_configs
-        print("\nCreando tabla alert_configs...")
+        print("\nCreando tabla alert_configs...")  # noqa: T201
         conn.execute(text(create_alert_configs_table_sql))
         conn.commit()
-        print("✅ Tabla alert_configs creada")
+        print("✅ Tabla alert_configs creada")  # noqa: T201
 
         # Crear tabla credit_cards
-        print("\nCreando tabla credit_cards...")
+        print("\nCreando tabla credit_cards...")  # noqa: T201
         conn.execute(text(create_credit_cards_table_sql))
         conn.commit()
-        print("✅ Tabla credit_cards creada")
+        print("✅ Tabla credit_cards creada")  # noqa: T201
 
         # Crear tabla savings_goals
-        print("\nCreando tabla savings_goals...")
+        print("\nCreando tabla savings_goals...")  # noqa: T201
         conn.execute(text(create_savings_goals_table_sql))
         conn.commit()
-        print("✅ Tabla savings_goals creada")
+        print("✅ Tabla savings_goals creada")  # noqa: T201
 
         # Crear índices para alerts
-        print("\nCreando índices para alerts...")
+        print("\nCreando índices para alerts...")  # noqa: T201
         for idx_sql in create_alerts_indexes_sql:
             conn.execute(text(idx_sql))
         conn.commit()
-        print("✅ Índices de alerts creados")
+        print("✅ Índices de alerts creados")  # noqa: T201
 
         # Crear índices para alert_configs
-        print("\nCreando índices para alert_configs...")
+        print("\nCreando índices para alert_configs...")  # noqa: T201
         for idx_sql in create_alert_configs_indexes_sql:
             conn.execute(text(idx_sql))
         conn.commit()
-        print("✅ Índices de alert_configs creados")
+        print("✅ Índices de alert_configs creados")  # noqa: T201
 
         # Crear índices para credit_cards
-        print("\nCreando índices para credit_cards...")
+        print("\nCreando índices para credit_cards...")  # noqa: T201
         for idx_sql in create_credit_cards_indexes_sql:
             conn.execute(text(idx_sql))
         conn.commit()
-        print("✅ Índices de credit_cards creados")
+        print("✅ Índices de credit_cards creados")  # noqa: T201
 
         # Crear índices para savings_goals
-        print("\nCreando índices para savings_goals...")
+        print("\nCreando índices para savings_goals...")  # noqa: T201
         for idx_sql in create_savings_goals_indexes_sql:
             conn.execute(text(idx_sql))
         conn.commit()
-        print("✅ Índices de savings_goals creados")
+        print("✅ Índices de savings_goals creados")  # noqa: T201
 
         # Actualizar alembic_version (si existe)
-        print("\nActualizando alembic_version...")
+        print("\nActualizando alembic_version...")  # noqa: T201
         try:
             conn.execute(text("UPDATE alembic_version SET version_num = 'a1b2c3d4e5f6';"))
             conn.commit()
-            print("✅ alembic_version actualizado")
+            print("✅ alembic_version actualizado")  # noqa: T201
         except Exception:
-            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")
+            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")  # noqa: T201
 
-        print("\n✅ Migración completada exitosamente")
-        print("\n📋 Tablas creadas:")
-        print("  - alerts (alertas inteligentes)")
-        print("  - alert_configs (configuración de alertas)")
-        print("  - credit_cards (tarjetas de crédito)")
-        print("  - savings_goals (metas de ahorro)")
-        print("\n💡 Las alertas se generarán automáticamente al procesar correos")
-        print("💡 Agrega tarjetas y metas para recibir alertas personalizadas")
+        print("\n✅ Migración completada exitosamente")  # noqa: T201
+        print("\n📋 Tablas creadas:")  # noqa: T201
+        print("  - alerts (alertas inteligentes)")  # noqa: T201
+        print("  - alert_configs (configuración de alertas)")  # noqa: T201
+        print("  - credit_cards (tarjetas de crédito)")  # noqa: T201
+        print("  - savings_goals (metas de ahorro)")  # noqa: T201
+        print("\n💡 Las alertas se generarán automáticamente al procesar correos")  # noqa: T201
+        print("💡 Agrega tarjetas y metas para recibir alertas personalizadas")  # noqa: T201
 
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"❌ Error: {e}")  # noqa: T201
     sys.exit(1)
