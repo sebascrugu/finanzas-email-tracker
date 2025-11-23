@@ -20,6 +20,7 @@ from finanzas_tracker.models.goal_milestone import GoalMilestone
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.income_split import IncomeSplit
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
+from finanzas_tracker.models.onboarding_progress import OnboardingProgress
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.savings_goal import SavingsGoal
 from finanzas_tracker.models.subscription import Subscription
@@ -41,6 +42,7 @@ __all__ = [
     "IncomeSplit",
     "Merchant",
     "MerchantVariant",
+    "OnboardingProgress",
     "Profile",
     "SavingsGoal",
     "Subcategory",
