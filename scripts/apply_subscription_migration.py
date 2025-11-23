@@ -61,29 +61,29 @@ create_indexes_sql = [
 try:
     with engine.connect() as conn:
         # Crear tabla
-        print("Creando tabla subscriptions...")
+        print("Creando tabla subscriptions...")  # noqa: T201
         conn.execute(text(create_table_sql))
         conn.commit()
-        print("✅ Tabla creada")
+        print("✅ Tabla creada")  # noqa: T201
 
         # Crear índices
-        print("\nCreando índices...")
+        print("\nCreando índices...")  # noqa: T201
         for idx_sql in create_indexes_sql:
             conn.execute(text(idx_sql))
         conn.commit()
-        print("✅ Índices creados")
+        print("✅ Índices creados")  # noqa: T201
 
         # Actualizar alembic_version (si existe)
-        print("\nActualizando alembic_version...")
+        print("\nActualizando alembic_version...")  # noqa: T201
         try:
             conn.execute(text("UPDATE alembic_version SET version_num = 'f0a1b2c3d4e5';"))
             conn.commit()
-            print("✅ alembic_version actualizado")
+            print("✅ alembic_version actualizado")  # noqa: T201
         except Exception:
-            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")
+            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")  # noqa: T201, RUF001
 
-        print("\n✅ Migración completada exitosamente")
+        print("\n✅ Migración completada exitosamente")  # noqa: T201
 
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"❌ Error: {e}")  # noqa: T201
     sys.exit(1)

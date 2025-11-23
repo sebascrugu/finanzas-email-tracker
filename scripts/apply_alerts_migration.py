@@ -211,7 +211,7 @@ try:
             conn.commit()
             print("✅ alembic_version actualizado")  # noqa: T201
         except Exception:
-            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")  # noqa: T201
+            print("ℹ️  alembic_version no existe (ok para nuevas instalaciones)")  # noqa: T201, RUF001
 
         print("\n✅ Migración completada exitosamente")  # noqa: T201
         print("\n📋 Tablas creadas:")  # noqa: T201

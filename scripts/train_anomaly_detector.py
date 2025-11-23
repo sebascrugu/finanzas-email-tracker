@@ -22,19 +22,19 @@ logger = get_logger(__name__)
 
 def main() -> None:
     """Entrena el detector de anomalías."""
-    print("\n" + "=" * 70)
-    print("🤖 ENTRENADOR DE DETECTOR DE ANOMALÍAS")
-    print("=" * 70 + "\n")
+    print("\n" + "=" * 70) # noqa: T201
+    print("🤖 ENTRENADOR DE DETECTOR DE ANOMALÍAS") # noqa: T201
+    print("=" * 70 + "\n") # noqa: T201
 
     # 1. Seleccionar perfil
     with get_session() as session:
         profiles = session.query(Profile).filter(Profile.deleted_at.is_(None)).all()
 
         if not profiles:
-            print("❌ No hay perfiles disponibles. Crea un perfil primero.")
+            print("❌ No hay perfiles disponibles. Crea un perfil primero.") # noqa: T201
             return
 
-        print("Perfiles disponibles:\n")
+        print("Perfiles disponibles:\n") # noqa: T201
         for i, profile in enumerate(profiles, 1):
             # Contar transacciones
             tx_count = (
@@ -45,21 +45,21 @@ def main() -> None:
                 )
                 .count()
             )
-            print(f"  {i}. {profile.nombre} ({tx_count} transacciones)")
+            print(f"  {i}. {profile.nombre} ({tx_count} transacciones)") # noqa: T201
 
-        print()
+        print() # noqa: T201
         try:
             choice = int(input("Selecciona un perfil (número): "))
             if choice < 1 or choice > len(profiles):
-                print("❌ Opción inválida")
+                print("❌ Opción inválida") # noqa: T201
                 return
             profile = profiles[choice - 1]
         except (ValueError, KeyboardInterrupt):
-            print("\n❌ Cancelado")
+            print("\n❌ Cancelado") # noqa: T201
             return
 
     # 2. Verificar datos disponibles
-    print(f"\n📊 Analizando datos de '{profile.nombre}'...")
+    print(f"\n📊 Analizando datos de '{profile.nombre}'...") # noqa: T201
 
     with get_session() as session:
         # Contar transacciones por período
@@ -100,42 +100,42 @@ def main() -> None:
             .count()
         )
 
-    print("\n📈 Transacciones disponibles:")
-    print(f"  - Últimos 6 meses: {tx_6m}")
-    print(f"  - Últimos 3 meses: {tx_3m}")
-    print(f"  - Último mes: {tx_1m}")
-    print()
+    print("\n📈 Transacciones disponibles:") # noqa: T201
+    print(f"  - Últimos 6 meses: {tx_6m}") # noqa: T201
+    print(f"  - Últimos 3 meses: {tx_3m}") # noqa: T201
+    print(f"  - Último mes: {tx_1m}") # noqa: T201
+    print() # noqa: T201
 
     if tx_6m < 30:
-        print(
+        print( # noqa: T201
             "⚠️  ADVERTENCIA: Tienes menos de 30 transacciones.\n"
             "   El modelo necesita al menos 30 transacciones para entrenar correctamente.\n"
             "   Procesa más correos primero usando 'make process'.\n"
         )
         response = input("¿Continuar de todas formas? (s/n): ")
         if response.lower() != "s":
-            print("❌ Cancelado")
+            print("❌ Cancelado") # noqa: T201
             return
 
     # 3. Entrenar modelo
-    print("\n🔧 Entrenando modelo de detección de anomalías...\n")
+    print("\n🔧 Entrenando modelo de detección de anomalías...\n") # noqa: T201
 
     detector = AnomalyDetectionService()
     success = detector.train(profile_id=profile.id, min_transactions=30)
 
     if not success:
-        print("❌ No se pudo entrenar el modelo (insuficientes datos)")
+        print("❌ No se pudo entrenar el modelo (insuficientes datos)") # noqa: T201
         return
 
     # 4. Mostrar estadísticas
-    print("\n✅ Modelo entrenado exitosamente!\n")
-    print("📊 Estadísticas del modelo:")
-    print(f"  - Categorías conocidas: {len(detector.category_encoder)}")
-    print(f"  - Categorías con estadísticas: {len(detector.category_stats)}")
-    print()
+    print("\n✅ Modelo entrenado exitosamente!\n") # noqa: T201
+    print("📊 Estadísticas del modelo:") # noqa: T201
+    print(f"  - Categorías conocidas: {len(detector.category_encoder)}") # noqa: T201
+    print(f"  - Categorías con estadísticas: {len(detector.category_stats)}") # noqa: T201
+    print() # noqa: T201
 
     # Mostrar algunas categorías con stats
-    print("Categorías aprendidas (top 5 por transacciones):\n")
+    print("Categorías aprendidas (top 5 por transacciones):\n") # noqa: T201
     with get_session() as session:
         from collections import Counter
 
@@ -157,21 +157,21 @@ def main() -> None:
             cat_name = tx.subcategory.nombre_completo if tx and tx.subcategory else cat_id[:8]
 
             if stats:
-                print(
+                print( # noqa: T201
                     f"  - {cat_name}: {count} txs | "
                     f"Promedio: ₡{stats['mean']:,.0f} | "
                     f"Rango: ₡{stats['min']:,.0f} - ₡{stats['max']:,.0f}"
                 )
 
     # 5. Opción de probar
-    print("\n" + "=" * 70)
-    print("🧪 Probar modelo con transacciones existentes")
-    print("=" * 70 + "\n")
+    print("\n" + "=" * 70) # noqa: T201
+    print("🧪 Probar modelo con transacciones existentes") # noqa: T201
+    print("=" * 70 + "\n") # noqa: T201
 
     response = input("¿Quieres probar el modelo con tus transacciones recientes? (s/n): ")
 
     if response.lower() == "s":
-        print("\n🔍 Probando modelo con últimas 20 transacciones...\n")
+        print("\n🔍 Probando modelo con últimas 20 transacciones...\n") # noqa: T201
 
         with get_session() as session:
             recent = (
@@ -190,32 +190,32 @@ def main() -> None:
                 result = detector.detect(tx)
                 if result.is_anomaly:
                     anomalies_found += 1
-                    print(
+                    print( # noqa: T201
                         f"⚠️  {tx.fecha_transaccion.date()} | {tx.comercio[:30]:30} | "
                         f"₡{tx.monto_crc:>12,.0f} | {result.reason}"
                     )
 
             if anomalies_found == 0:
-                print("✅ No se encontraron anomalías en las últimas 20 transacciones")
+                print("✅ No se encontraron anomalías en las últimas 20 transacciones") # noqa: T201
             else:
-                print(f"\n⚠️  Se detectaron {anomalies_found} anomalías")
+                print(f"\n⚠️  Se detectaron {anomalies_found} anomalías") # noqa: T201
 
-    print("\n" + "=" * 70)
-    print("✅ ENTRENAMIENTO COMPLETADO")
-    print("=" * 70)
-    print("\nEl modelo se guardó en: data/anomaly_model.pkl")
-    print("\nAhora cuando proceses correos nuevos, se detectarán automáticamente")
-    print("las transacciones anómalas usando este modelo.\n")
-    print("💡 Tip: Re-entrena el modelo cada mes para mejorar la precisión.\n")
+    print("\n" + "=" * 70) # noqa: T201
+    print("✅ ENTRENAMIENTO COMPLETADO") # noqa: T201
+    print("=" * 70) # noqa: T201
+    print("\nEl modelo se guardó en: data/anomaly_model.pkl") # noqa: T201
+    print("\nAhora cuando proceses correos nuevos, se detectarán automáticamente") # noqa: T201
+    print("las transacciones anómalas usando este modelo.\n") # noqa: T201
+    print("💡 Tip: Re-entrena el modelo cada mes para mejorar la precisión.\n") # noqa: T201
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n❌ Cancelado por el usuario")
+        print("\n\n❌ Cancelado por el usuario") # noqa: T201
         sys.exit(1)
     except Exception as e:
         logger.exception("Error inesperado")
-        print(f"\n❌ Error: {e}")
+        print(f"\n❌ Error: {e}") # noqa: T201
         sys.exit(1)
