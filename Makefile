@@ -85,6 +85,12 @@ income: ## Gestiona tus ingresos (agregar, listar, balance)
 balance: ## Muestra el balance rápido del mes actual
 	poetry run python scripts/quick_balance.py
 
+train-anomaly: ## Entrena el detector de anomalías con datos históricos (ML)
+	poetry run python scripts/train_anomaly_detector.py
+
+detect-subscriptions: ## Detecta suscripciones recurrentes en transacciones
+	poetry run python scripts/detect_subscriptions.py
+
 init-db: ## Inicializa la base de datos
 	@echo "$(BLUE)Inicializando base de datos...$(NC)"
 	@mkdir -p data logs

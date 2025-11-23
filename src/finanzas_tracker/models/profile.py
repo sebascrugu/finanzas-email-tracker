@@ -92,6 +92,21 @@ class Profile(Base):
     accounts: Mapped[list["Account"]] = relationship(
         "Account", back_populates="profile", cascade="all, delete-orphan"
     )
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        "Subscription", back_populates="profile", cascade="all, delete-orphan"
+    )
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert", back_populates="profile", cascade="all, delete-orphan"
+    )
+    alert_config: Mapped["AlertConfig | None"] = relationship(
+        "AlertConfig", back_populates="profile", cascade="all, delete-orphan", uselist=False
+    )
+    credit_cards: Mapped[list["CreditCard"]] = relationship(
+        "CreditCard", back_populates="profile", cascade="all, delete-orphan"
+    )
+    savings_goals: Mapped[list["SavingsGoal"]] = relationship(
+        "SavingsGoal", back_populates="profile", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

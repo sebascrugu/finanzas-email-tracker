@@ -24,6 +24,10 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 os.environ.setdefault("ENVIRONMENT", "testing")
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from finanzas_tracker.core.database import Base
 
 
 # Mock keyring ANTES de que cualquier módulo lo importe
@@ -31,6 +35,49 @@ keyring_mock = MagicMock()
 keyring_mock.get_password.return_value = None
 keyring_mock.set_password.return_value = None
 sys.modules["keyring"] = keyring_mock
+
+
+@pytest.fixture(scope="function")
+def session(tmp_path, request):
+    """
+    Fixture de sesión de base de datos para tests.
+
+    Crea una nueva base de datos SQLite temporal para cada test.
+    """
+    import uuid
+
+    # Crear archivo temporal único para cada test
+    test_id = str(uuid.uuid4())[:8]
+    db_file = tmp_path / f"test_{test_id}.db"
+
+    engine = create_engine(f"sqlite:///{db_file}")
+
+    # Importar todos los modelos
+    from finanzas_tracker.models import (  # noqa: F401
+        Budget,
+        Card,
+        Category,
+        Income,
+        Profile,
+        Subcategory,
+        Subscription,
+        Transaction,
+    )
+
+    # Crear todas las tablas
+    Base.metadata.create_all(engine)
+
+    session_local = sessionmaker(bind=engine)
+    session = session_local()
+
+    yield session
+
+    session.close()
+    engine.dispose()
+
+    # Limpiar archivo de base de datos
+    if db_file.exists():
+        db_file.unlink()
 
 
 @pytest.fixture

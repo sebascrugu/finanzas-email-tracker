@@ -86,6 +86,9 @@ class Budget(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="budgets")
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert", back_populates="budget", cascade="all, delete-orphan"
+    )
 
     # Constraints e índices
     __table_args__ = (

@@ -44,7 +44,7 @@ class TestTransactionProcessorInitialization:
 
     def test_initialization_with_auto_categorize_true(self) -> None:
         """Test que verifica inicialización con categorización automática."""
-        processor = TransactionProcessor(auto_categorize=True)
+        processor = TransactionProcessor(auto_categorize=True, detect_anomalies=False)
 
         assert processor is not None
         assert processor.auto_categorize is True
@@ -52,7 +52,7 @@ class TestTransactionProcessorInitialization:
 
     def test_initialization_with_auto_categorize_false(self) -> None:
         """Test que verifica inicialización sin categorización automática."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         assert processor is not None
         assert processor.auto_categorize is False
@@ -64,7 +64,7 @@ class TestTransactionProcessorIdentifyBank:
 
     def test_identify_bank_bac_from_sender(self) -> None:
         """Test identificando BAC desde el sender."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         email = {
             "from": {"emailAddress": {"address": "notificaciones@notificacionesbaccr.com"}},
             "subject": "Notificación de transacción",
@@ -75,7 +75,7 @@ class TestTransactionProcessorIdentifyBank:
 
     def test_identify_bank_popular_from_sender(self) -> None:
         """Test identificando Banco Popular desde el sender."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         email = {
             "from": {"emailAddress": {"address": "infopersonal@bancopopular.fi.cr"}},
             "subject": "Notificación de transacción",
@@ -86,7 +86,7 @@ class TestTransactionProcessorIdentifyBank:
 
     def test_identify_bank_unknown_sender(self) -> None:
         """Test con sender desconocido."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         email = {
             "from": {"emailAddress": {"address": "unknown@example.com"}},
             "subject": "Test",
@@ -102,7 +102,7 @@ class TestTransactionProcessorCurrencyConversion:
     @patch("finanzas_tracker.services.transaction_processor.exchange_rate_service")
     def test_apply_currency_conversion_usd(self, mock_exchange_service: MagicMock) -> None:
         """Test aplicando conversión de USD a CRC."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         mock_exchange_service.get_rate.return_value = 520.0
 
         transaction_data = {
@@ -119,7 +119,7 @@ class TestTransactionProcessorCurrencyConversion:
 
     def test_apply_currency_conversion_crc_no_conversion(self) -> None:
         """Test que verifica que CRC no se convierte."""
-        TransactionProcessor(auto_categorize=False)
+        TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         {
             "moneda_original": "CRC",
@@ -146,7 +146,7 @@ class TestTransactionProcessorCategorization:
         }
         mock_categorizer_class.return_value = mock_categorizer
 
-        processor = TransactionProcessor(auto_categorize=True)
+        processor = TransactionProcessor(auto_categorize=True, detect_anomalies=False)
         transaction_data = {
             "comercio": "STARBUCKS",
             "monto_crc": Decimal("5000.00"),
@@ -177,7 +177,7 @@ class TestTransactionProcessorCategorization:
         }
         mock_categorizer_class.return_value = mock_categorizer
 
-        processor = TransactionProcessor(auto_categorize=True)
+        processor = TransactionProcessor(auto_categorize=True, detect_anomalies=False)
         transaction_data = {
             "comercio": "WALMART",
             "monto_crc": Decimal("10000.00"),
@@ -202,7 +202,7 @@ class TestTransactionProcessorCategorization:
         mock_categorizer.categorize.side_effect = Exception("API Error")
         mock_categorizer_class.return_value = mock_categorizer
 
-        processor = TransactionProcessor(auto_categorize=True)
+        processor = TransactionProcessor(auto_categorize=True, detect_anomalies=False)
         transaction_data = {
             "comercio": "TEST",
             "monto_crc": Decimal("1000.00"),
@@ -236,7 +236,7 @@ class TestTransactionProcessorSaveTransaction:
         # Mock de Transaction con atributos reales para el logging
         mock_transaction_class.return_value = create_transaction_mock("TEST", Decimal("1000.00"))
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         transaction_data = {
             "email_id": "test-123",
             "banco": "bac",
@@ -260,7 +260,7 @@ class TestTransactionProcessorSaveTransaction:
         mock_session.commit.side_effect = IntegrityError("", "", "")
         mock_get_session.return_value.__enter__.return_value = mock_session
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
         transaction_data = {
             "email_id": "duplicate-123",
             "banco": "bac",
@@ -273,6 +273,7 @@ class TestTransactionProcessorSaveTransaction:
         assert result is False
 
 
+@patch("finanzas_tracker.services.transaction_processor.subscription_detector")
 class TestTransactionProcessorProcessEmails:
     """Tests para procesamiento completo de correos."""
 
@@ -284,6 +285,7 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test procesando correos de BAC exitosamente."""
         # Mock de sesión DB
@@ -295,7 +297,7 @@ class TestTransactionProcessorProcessEmails:
             "STARBUCKS", Decimal("5000.00")
         )
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -331,15 +333,17 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test procesando correos de Banco Popular exitosamente."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
+
         mock_transaction_class.return_value = create_transaction_mock(
             "SUPERMERCADO", Decimal("15000.00")
         )
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -373,14 +377,19 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test procesando correo con conversión USD→CRC."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
+
+        # Mock query chain for auto-train check (return 0 to skip training)
+        mock_session.query.return_value.filter.return_value.count.return_value = 0
+
         mock_exchange_service.get_rate.return_value = 520.0
         mock_transaction_class.return_value = create_transaction_mock("AMAZON", Decimal("26000.00"))
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -415,10 +424,15 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test procesando con categorización automática."""
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
+
+        # Mock query chain for auto-train check (return 0 to skip training)
+        mock_session.query.return_value.filter.return_value.count.return_value = 0
+
         mock_transaction_class.return_value = create_transaction_mock(
             "STARBUCKS", Decimal("5000.00")
         )
@@ -432,7 +446,7 @@ class TestTransactionProcessorProcessEmails:
         }
         mock_categorizer_class.return_value = mock_categorizer
 
-        processor = TransactionProcessor(auto_categorize=True)
+        processor = TransactionProcessor(auto_categorize=True, detect_anomalies=False)
 
         emails = [
             {
@@ -459,9 +473,9 @@ class TestTransactionProcessorProcessEmails:
         assert stats["necesitan_revision"] == 0
 
     @patch("finanzas_tracker.services.transaction_processor.get_session")
-    def test_process_emails_unknown_bank(self, mock_get_session: MagicMock) -> None:
+    def test_process_emails_unknown_bank(self, mock_get_session: MagicMock, mock_subscription_detector: MagicMock) -> None:
         """Test procesando correo de banco desconocido."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -480,9 +494,9 @@ class TestTransactionProcessorProcessEmails:
         assert stats["errores"] == 1
 
     @patch("finanzas_tracker.services.transaction_processor.get_session")
-    def test_process_emails_parsing_error(self, mock_get_session: MagicMock) -> None:
+    def test_process_emails_parsing_error(self, mock_get_session: MagicMock, mock_subscription_detector: MagicMock) -> None:
         """Test manejando error de parseo."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -510,15 +524,20 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test manejando correos duplicados."""
         mock_session = MagicMock()
         # Primera vez: éxito, segunda vez: duplicado
         mock_session.commit.side_effect = [None, IntegrityError("", "", "")]
         mock_get_session.return_value.__enter__.return_value = mock_session
+
+        # Mock query chain for auto-train check (return 0 to skip training)
+        mock_session.query.return_value.filter.return_value.count.return_value = 0
+
         mock_transaction_class.return_value = create_transaction_mock("TEST", Decimal("1000.00"))
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             {
@@ -565,16 +584,21 @@ class TestTransactionProcessorProcessEmails:
         mock_transaction_class: MagicMock,
         mock_get_session: MagicMock,
         mock_exchange_service: MagicMock,
+        mock_subscription_detector: MagicMock,
     ) -> None:
         """Test procesando batch mixto (BAC, Popular, errores)."""
         mock_session = MagicMock()
         # Simular: éxito, éxito, duplicado
         mock_session.commit.side_effect = [None, None, IntegrityError("", "", "")]
         mock_get_session.return_value.__enter__.return_value = mock_session
+
+        # Mock query chain for auto-train check (return 0 to skip training)
+        mock_session.query.return_value.filter.return_value.count.return_value = 0
+
         mock_exchange_service.get_rate.return_value = 520.0
         mock_transaction_class.return_value = create_transaction_mock("VARIOS", Decimal("5000.00"))
 
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         emails = [
             # Email 1: BAC en CRC - éxito
@@ -642,9 +666,9 @@ class TestTransactionProcessorProcessEmails:
         assert stats["duplicados"] == 1
         assert stats["errores"] == 1
 
-    def test_process_emails_empty_list(self) -> None:
+    def test_process_emails_empty_list(self, mock_subscription_detector: MagicMock) -> None:
         """Test procesando lista vacía de correos."""
-        processor = TransactionProcessor(auto_categorize=False)
+        processor = TransactionProcessor(auto_categorize=False, detect_anomalies=False)
 
         stats = processor.process_emails([], profile_id="profile-123")
 
