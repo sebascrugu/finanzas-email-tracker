@@ -90,6 +90,48 @@ class SavingsGoal(Base):
         comment="Categoría de la meta (ej: 'Vacaciones', 'Emergencia', 'Compra')",
     )
 
+    # Nuevas features para Fase 3 🚀
+    icon: Mapped[str | None] = mapped_column(
+        String(10),
+        comment="Emoji/icono de la meta (ej: '✈️', '🏠', '⚽')",
+    )
+
+    priority: Mapped[int] = mapped_column(
+        default=3,
+        comment="Prioridad de la meta (1=Alta, 2=Media, 3=Baja)",
+    )
+
+    savings_type: Mapped[str] = mapped_column(
+        String(50),
+        default="manual",
+        comment="Tipo de ahorro: 'manual', 'automatic', 'monthly_target'",
+    )
+
+    monthly_contribution_target: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2),
+        comment="Meta de contribución mensual sugerida/configurada",
+    )
+
+    success_probability: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 2),
+        comment="Probabilidad de éxito calculada por ML (0-100)",
+    )
+
+    last_ml_prediction_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        comment="Última vez que se calculó la predicción ML",
+    )
+
+    ai_recommendations: Mapped[str | None] = mapped_column(
+        Text,
+        comment="Recomendaciones personalizadas generadas por Claude AI",
+    )
+
+    last_ai_analysis_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        comment="Última vez que Claude analizó esta meta",
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -111,6 +153,12 @@ class SavingsGoal(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="savings_goals")
+    milestones: Mapped[list["GoalMilestone"]] = relationship(
+        "GoalMilestone",
+        back_populates="goal",
+        cascade="all, delete-orphan",
+        order_by="GoalMilestone.created_at.desc()",
+    )
 
     @property
     def progress_percentage(self) -> float:
@@ -182,6 +230,74 @@ class SavingsGoal(Base):
         # Auto-completar si alcanzó la meta
         if self.current_amount >= self.target_amount and not self.is_completed:
             self.mark_as_completed()
+
+    @property
+    def display_name(self) -> str:
+        """Nombre con icono para display."""
+        return f"{self.icon} {self.name}" if self.icon else self.name
+
+    @property
+    def is_at_risk(self) -> bool:
+        """
+        True si la meta está en riesgo de no cumplirse.
+
+        Una meta está en riesgo si:
+        - Tiene deadline
+        - No está completada
+        - El progreso actual es menor al esperado según tiempo transcurrido
+        """
+        if not self.deadline or self.is_completed:
+            return False
+
+        today = date.today()
+        if self.deadline <= today:
+            return not self.is_completed  # Ya pasó y no se completó
+
+        # Calcular progreso esperado según tiempo
+        total_days = (self.deadline - self.created_at.date()).days
+        days_passed = (today - self.created_at.date()).days
+
+        if total_days <= 0:
+            return False
+
+        expected_progress = (days_passed / total_days) * 100
+        actual_progress = self.progress_percentage
+
+        # En riesgo si va 15% o más atrasado
+        return actual_progress < (expected_progress - 15)
+
+    @property
+    def health_status(self) -> str:
+        """
+        Estado de salud de la meta: 'excellent', 'good', 'warning', 'critical'.
+
+        - excellent: >90% probabilidad de éxito o completada
+        - good: 70-90% probabilidad
+        - warning: 50-70% probabilidad o en riesgo
+        - critical: <50% probabilidad o vencida
+        """
+        if self.is_completed:
+            return "excellent"
+
+        if self.is_overdue:
+            return "critical"
+
+        if self.success_probability is not None:
+            prob = float(self.success_probability)
+            if prob >= 90:
+                return "excellent"
+            elif prob >= 70:
+                return "good"
+            elif prob >= 50:
+                return "warning"
+            else:
+                return "critical"
+
+        # Sin predicción ML, usar progreso vs tiempo
+        if self.is_at_risk:
+            return "warning"
+
+        return "good"
 
     def __repr__(self) -> str:
         """Representación en string."""

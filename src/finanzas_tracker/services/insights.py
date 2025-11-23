@@ -2,16 +2,20 @@
 
 __all__ = ["InsightsService", "Insight", "InsightType", "insights_service"]
 
+import json
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import Any
 
+import anthropic
 from sqlalchemy.orm import joinedload
 
+from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_anthropic_error
 from finanzas_tracker.models.category import Subcategory
 from finanzas_tracker.models.transaction import Transaction
 
@@ -28,6 +32,11 @@ class InsightType(Enum):
     TOP_CATEGORY = "top_category"
     SAVINGS_OPPORTUNITY = "savings_opportunity"
     RECURRING_EXPENSE = "recurring_expense"
+    # Nuevos tipos AI-powered
+    BEHAVIORAL_PATTERN = "behavioral_pattern"
+    WEEKLY_PATTERN = "weekly_pattern"
+    TIME_OF_DAY_PATTERN = "time_of_day_pattern"
+    AI_RECOMMENDATION = "ai_recommendation"
 
 
 @dataclass
@@ -55,7 +64,8 @@ class InsightsService:
 
     def __init__(self) -> None:
         """Inicializa el servicio de insights."""
-        logger.info("InsightsService inicializado")
+        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        logger.info("InsightsService inicializado con Claude AI")
 
     def generate_insights(self, profile_id: str) -> list[Insight]:
         """
@@ -80,6 +90,11 @@ class InsightsService:
                 insights.extend(self._analyze_top_categories(data))
                 insights.extend(self._analyze_recurring_expenses(data))
                 insights.extend(self._analyze_savings_opportunities(data))
+
+                # Nuevos análisis AI-powered
+                insights.extend(self._analyze_behavioral_patterns(data))
+                insights.extend(self._analyze_time_patterns(data))
+                insights.extend(self._generate_ai_insights(data, profile_id))
 
         except Exception as e:
             logger.error(f"Error generando insights: {e}")
@@ -286,6 +301,261 @@ class InsightsService:
                     )
 
         return insights[:2]
+
+    def _analyze_behavioral_patterns(self, data: dict) -> list[Insight]:
+        """Analiza patrones de comportamiento de gasto."""
+        insights = []
+
+        try:
+            # Detectar si gasta más en fin de semana
+            weekend_spending = Decimal("0")
+            weekday_spending = Decimal("0")
+            weekend_count = 0
+            weekday_count = 0
+
+            for t in data["current_month"]:
+                is_weekend = t.fecha_transaccion.weekday() >= 5  # Sábado=5, Domingo=6
+                if is_weekend:
+                    weekend_spending += t.monto_crc
+                    weekend_count += 1
+                else:
+                    weekday_spending += t.monto_crc
+                    weekday_count += 1
+
+            # Calcular promedio por día
+            avg_weekend = (
+                (weekend_spending / (weekend_count / 7)) if weekend_count > 0 else Decimal("0")
+            )
+            avg_weekday = (
+                (weekday_spending / (weekday_count / 7)) if weekday_count > 0 else Decimal("0")
+            )
+
+            if avg_weekend > 0 and avg_weekday > 0:
+                if avg_weekend > avg_weekday * Decimal("1.5"):
+                    diff_pct = ((avg_weekend - avg_weekday) / avg_weekday) * 100
+                    insights.append(
+                        Insight(
+                            type=InsightType.BEHAVIORAL_PATTERN,
+                            title="Gastas más en fines de semana",
+                            description=f"Promedio fin de semana: ₡{float(avg_weekend):,.0f} vs "
+                            f"entre semana: ₡{float(avg_weekday):,.0f} ({diff_pct:.0f}% más)",
+                            impact="neutral",
+                            value=float(avg_weekend - avg_weekday),
+                            recommendation="Considera planificar actividades de fin de semana "
+                            "más económicas o establecer un presupuesto específico",
+                        )
+                    )
+
+            # Detectar concentración de gastos pequeños
+            small_transactions = [
+                t for t in data["current_month"] if float(t.monto_crc) < 5000
+            ]
+            if len(small_transactions) > 20:
+                total_small = sum(float(t.monto_crc) for t in small_transactions)
+                pct_of_total = (total_small / float(data["total_current"])) * 100
+
+                if pct_of_total > 30:
+                    insights.append(
+                        Insight(
+                            type=InsightType.BEHAVIORAL_PATTERN,
+                            title="Muchos gastos pequeños",
+                            description=f"{len(small_transactions)} transacciones menores a ₡5,000 "
+                            f"suman ₡{total_small:,.0f} ({pct_of_total:.0f}% del total)",
+                            impact="neutral",
+                            value=total_small,
+                            recommendation="Los gastos pequeños se acumulan. Considera usar efectivo "
+                            "o una app de presupuesto diario para estos gastos",
+                        )
+                    )
+
+        except Exception as e:
+            logger.error(f"Error analizando patrones de comportamiento: {e}")
+
+        return insights
+
+    def _analyze_time_patterns(self, data: dict) -> list[Insight]:
+        """Analiza patrones temporales de gasto."""
+        insights = []
+
+        try:
+            # Agrupar por hora del día
+            by_hour = {}
+            for t in data["current_month"]:
+                hour = t.fecha_transaccion.hour
+                time_slot = self._get_time_slot(hour)
+                if time_slot not in by_hour:
+                    by_hour[time_slot] = {"count": 0, "total": Decimal("0")}
+                by_hour[time_slot]["count"] += 1
+                by_hour[time_slot]["total"] += t.monto_crc
+
+            # Detectar slot con más gasto
+            if by_hour:
+                max_slot = max(by_hour.items(), key=lambda x: x[1]["total"])
+                slot_name, slot_data = max_slot
+                total = float(data["total_current"])
+                pct = (float(slot_data["total"]) / total) * 100 if total > 0 else 0
+
+                if pct > 40:
+                    insights.append(
+                        Insight(
+                            type=InsightType.TIME_OF_DAY_PATTERN,
+                            title=f"Gastas más en {slot_name}",
+                            description=f"{slot_data['count']} transacciones, "
+                            f"₡{float(slot_data['total']):,.0f} ({pct:.0f}% del total)",
+                            impact="neutral",
+                            value=float(slot_data["total"]),
+                            recommendation=f"Tus gastos se concentran en {slot_name}. "
+                            "Esto puede ser normal según tu rutina, pero vale la pena revisarlo",
+                        )
+                    )
+
+            # Detectar gastos nocturnos (posible entretenimiento/impulso)
+            night_transactions = [
+                t
+                for t in data["current_month"]
+                if t.fecha_transaccion.hour >= 22 or t.fecha_transaccion.hour <= 2
+            ]
+
+            if len(night_transactions) >= 5:
+                total_night = sum(float(t.monto_crc) for t in night_transactions)
+                insights.append(
+                    Insight(
+                        type=InsightType.TIME_OF_DAY_PATTERN,
+                        title="Gastos nocturnos frecuentes",
+                        description=f"{len(night_transactions)} transacciones entre 10pm-2am "
+                        f"totalizan ₡{total_night:,.0f}",
+                        impact="neutral",
+                        value=total_night,
+                        recommendation="Los gastos nocturnos suelen ser por entretenimiento o "
+                        "compras impulsivas. Considera establecer un límite para estas ocasiones",
+                    )
+                )
+
+        except Exception as e:
+            logger.error(f"Error analizando patrones temporales: {e}")
+
+        return insights
+
+    def _get_time_slot(self, hour: int) -> str:
+        """Convierte hora en slot de tiempo."""
+        if 6 <= hour < 12:
+            return "mañanas (6am-12pm)"
+        elif 12 <= hour < 18:
+            return "tardes (12pm-6pm)"
+        elif 18 <= hour < 22:
+            return "noches (6pm-10pm)"
+        else:
+            return "madrugadas (10pm-6am)"
+
+    @retry_on_anthropic_error(max_attempts=2, max_wait=8)
+    def _generate_ai_insights(self, data: dict, profile_id: str) -> list[Insight]:
+        """Genera insights usando Claude AI para análisis profundo."""
+        insights = []
+
+        try:
+            # Preparar contexto para Claude
+            context = self._prepare_ai_context(data)
+
+            # Solo generar si hay suficientes datos
+            if len(data["current_month"]) < 5:
+                return insights
+
+            prompt = f"""Eres un asesor financiero experto analizando el comportamiento de gastos de un usuario.
+
+DATOS DEL MES ACTUAL:
+{json.dumps(context, indent=2, ensure_ascii=False)}
+
+TAREA:
+Analiza estos datos y genera 1-2 insights ACCIONABLES y ESPECÍFICOS que no sean obvios.
+NO repitas información básica (como "gastaste más este mes").
+Busca patrones sutiles, tendencias preocupantes, o oportunidades reales.
+
+Responde ÚNICAMENTE con un JSON válido:
+{{
+  "insights": [
+    {{
+      "title": "Título corto y específico",
+      "description": "Descripción clara del hallazgo (1-2 oraciones)",
+      "recommendation": "Acción concreta que puede tomar",
+      "impact": "positive/negative/neutral"
+    }}
+  ]
+}}"""
+
+            # Llamar a Claude Sonnet para mejor análisis
+            response = self.client.messages.create(
+                model="claude-3-5-sonnet-20241022",  # Sonnet para insights profundos
+                max_tokens=600,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}],
+            )
+
+            response_text = response.content[0].text.strip()
+
+            # Parsear respuesta
+            if response_text.startswith("```json"):
+                response_text = response_text.replace("```json", "").replace("```", "").strip()
+
+            result = json.loads(response_text)
+
+            # Convertir a objetos Insight
+            for ai_insight in result.get("insights", [])[:2]:  # Max 2 AI insights
+                insights.append(
+                    Insight(
+                        type=InsightType.AI_RECOMMENDATION,
+                        title=f"💡 {ai_insight['title']}",
+                        description=ai_insight["description"],
+                        impact=ai_insight.get("impact", "neutral"),
+                        recommendation=ai_insight["recommendation"],
+                    )
+                )
+
+            logger.info(f"✨ Generados {len(insights)} insights con Claude AI")
+
+        except Exception as e:
+            logger.error(f"Error generando insights con AI: {e}")
+
+        return insights
+
+    def _prepare_ai_context(self, data: dict) -> dict[str, Any]:
+        """Prepara contexto resumido para Claude."""
+        # Top 5 categorías
+        top_categories = sorted(
+            data["by_category_current"].items(), key=lambda x: x[1], reverse=True
+        )[:5]
+
+        # Top 5 comercios
+        top_merchants = sorted(
+            data["by_merchant"].items(), key=lambda x: x[1]["total"], reverse=True
+        )[:5]
+
+        # Estadísticas básicas
+        current_transactions = data["current_month"]
+        avg_transaction = float(data["avg_transaction"])
+
+        return {
+            "total_gastado": float(data["total_current"]),
+            "numero_transacciones": len(current_transactions),
+            "promedio_por_transaccion": avg_transaction,
+            "cambio_vs_mes_anterior": (
+                float(
+                    ((data["total_current"] - data["total_last"]) / data["total_last"]) * 100
+                )
+                if data["total_last"] > 0
+                else 0
+            ),
+            "top_categorias": [
+                {"nombre": cat, "monto": float(amt)} for cat, amt in top_categories
+            ],
+            "top_comercios": [
+                {
+                    "nombre": merchant,
+                    "visitas": info["count"],
+                    "total": float(info["total"]),
+                }
+                for merchant, info in top_merchants
+            ],
+        }
 
 
 # Singleton
