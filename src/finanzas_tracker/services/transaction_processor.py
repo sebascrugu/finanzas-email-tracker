@@ -213,12 +213,20 @@ class TransactionProcessor:
             # Alertas de progreso de metas de ahorro
             goal_alerts = alert_service.generate_savings_goal_progress_alerts(profile_id)
 
+            # Alertas de predicciones de gasto mensual
+            forecast_alerts = alert_service.generate_spending_forecast_alerts(profile_id)
+
+            # Alertas de predicción de exceso de presupuesto
+            budget_forecast_alerts = alert_service.generate_budget_forecast_alerts(profile_id)
+
             total_alerts = (
                 len(sub_alerts)
                 + len(budget_alerts)
                 + len(comparison_alerts)
                 + len(card_alerts)
                 + len(goal_alerts)
+                + len(forecast_alerts)
+                + len(budget_forecast_alerts)
             )
             if total_alerts > 0:
                 logger.info(
@@ -227,13 +235,17 @@ class TransactionProcessor:
                     f"{len(budget_alerts)} presupuesto, "
                     f"{len(comparison_alerts)} comparaciones, "
                     f"{len(card_alerts)} tarjetas, "
-                    f"{len(goal_alerts)} metas"
+                    f"{len(goal_alerts)} metas, "
+                    f"{len(forecast_alerts)} predicciones, "
+                    f"{len(budget_forecast_alerts)} forecast presupuesto"
                 )
                 stats["alertas_suscripciones"] = len(sub_alerts)
                 stats["alertas_presupuesto"] = len(budget_alerts)
                 stats["alertas_comparacion"] = len(comparison_alerts)
                 stats["alertas_tarjetas"] = len(card_alerts)
                 stats["alertas_metas"] = len(goal_alerts)
+                stats["alertas_predicciones"] = len(forecast_alerts)
+                stats["alertas_forecast_presupuesto"] = len(budget_forecast_alerts)
 
         except Exception as e:
             logger.warning(f"⚠️  No se pudieron generar alertas: {e}")

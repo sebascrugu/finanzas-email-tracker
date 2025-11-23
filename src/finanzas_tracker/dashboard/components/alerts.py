@@ -240,6 +240,9 @@ def _get_alert_type_emoji(alert_type: AlertType) -> str:
         AlertType.CREDIT_CARD_CLOSING: "💳",
         AlertType.MONTHLY_COMPARISON: "📊",
         AlertType.SAVINGS_GOAL_PROGRESS: "🎯",
+        AlertType.MONTHLY_SPENDING_FORECAST: "📊",
+        AlertType.BUDGET_FORECAST_WARNING: "⚠️",
+        AlertType.CATEGORY_TREND_ALERT: "📈",
     }
     return emoji_map.get(alert_type, "🔔")
 
@@ -258,5 +261,8 @@ def _get_alert_type_name(alert_type: AlertType) -> str:
         AlertType.CREDIT_CARD_CLOSING: "Cierre de tarjeta",
         AlertType.MONTHLY_COMPARISON: "Comparación mensual",
         AlertType.SAVINGS_GOAL_PROGRESS: "Meta de ahorro",
+        AlertType.MONTHLY_SPENDING_FORECAST: "Predicción de Gasto",
+        AlertType.BUDGET_FORECAST_WARNING: "Advertencia de Presupuesto",
+        AlertType.CATEGORY_TREND_ALERT: "Tendencia de Categoría",
     }
     return name_map.get(alert_type, alert_type.value)

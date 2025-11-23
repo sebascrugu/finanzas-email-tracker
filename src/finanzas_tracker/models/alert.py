@@ -24,6 +24,9 @@ class AlertType(str, Enum):
     CREDIT_CARD_CLOSING = "credit_card_closing"  # Tarjeta de crédito próxima a cerrar
     MONTHLY_COMPARISON = "monthly_comparison"  # Comparación de gasto mensual
     SAVINGS_GOAL_PROGRESS = "savings_goal_progress"  # Progreso hacia meta de ahorro
+    MONTHLY_SPENDING_FORECAST = "monthly_spending_forecast"  # Predicción de gasto mensual
+    BUDGET_FORECAST_WARNING = "budget_forecast_warning"  # Advertencia: excederá presupuesto
+    CATEGORY_TREND_ALERT = "category_trend_alert"  # Alerta de tendencia por categoría
 
 
 class AlertSeverity(str, Enum):
@@ -306,6 +309,25 @@ class AlertConfig(Base):
     savings_goal_alert_frequency: Mapped[int] = mapped_column(
         default=7,
         comment="Frecuencia en días para alertas de progreso de metas",
+    )
+    enable_spending_forecast_alerts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Habilitar alertas de predicción de gasto mensual",
+    )
+    enable_budget_forecast_alerts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Habilitar alertas si excederá presupuesto según predicción",
+    )
+    enable_category_trend_alerts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Habilitar alertas de tendencias por categoría",
+    )
+    forecast_alert_frequency: Mapped[int] = mapped_column(
+        default=7,
+        comment="Frecuencia en días para alertas de predicciones (default: semanal)",
     )
 
     # Timestamps

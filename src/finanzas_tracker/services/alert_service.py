@@ -880,6 +880,222 @@ class AlertService:
             message=message,
         )
 
+    def generate_spending_forecast_alerts(self, profile_id: str) -> list[Alert]:
+        """
+        Genera alertas de predicción de gasto mensual.
+
+        Alerta como: "A este ritmo vas a gastar ₡X este mes"
+
+        Args:
+            profile_id: ID del perfil
+
+        Returns:
+            Lista de alertas generadas
+        """
+        alerts = []
+        config = self._get_alert_config(profile_id)
+
+        if not config.enable_spending_forecast_alerts:
+            return alerts
+
+        # Importar aquí para evitar imports circulares
+        from finanzas_tracker.services.prediction_service import prediction_service
+
+        with get_session() as session:
+            # Obtener predicción
+            forecast = prediction_service.predict_monthly_spending(profile_id)
+
+            # Solo alertar si estamos al menos en el día 7 del mes
+            if forecast["days_elapsed"] < 7:
+                return alerts
+
+            # Verificar si ya existe alerta este mes
+            from datetime import date
+
+            today = date.today()
+            month_start = datetime(today.year, today.month, 1, tzinfo=UTC)
+            days_ago = timedelta(days=config.forecast_alert_frequency)
+
+            existing = (
+                session.query(Alert)
+                .filter(
+                    Alert.profile_id == profile_id,
+                    Alert.alert_type == AlertType.MONTHLY_SPENDING_FORECAST,
+                    Alert.created_at >= datetime.now(UTC) - days_ago,
+                    Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+                )
+                .first()
+            )
+
+            if not existing:
+                alert = self._create_spending_forecast_alert(forecast, profile_id)
+                if alert:
+                    alerts.append(alert)
+                    session.add(alert)
+
+            session.commit()
+
+        logger.info(f"Generadas {len(alerts)} alertas de predicción de gasto")
+        return alerts
+
+    def _create_spending_forecast_alert(
+        self, forecast: dict[str, Any], profile_id: str
+    ) -> Alert | None:
+        """Crea alerta de predicción de gasto mensual."""
+        projected = forecast["projected_spending"]
+        current = forecast["current_spending"]
+        days_elapsed = forecast["days_elapsed"]
+        days_remaining = forecast["days_remaining"]
+        daily_avg = forecast["daily_average"]
+
+        title = f"📊 A este ritmo vas a gastar ₡{projected:,.0f} este mes"
+
+        message = (
+            f"**Predicción de Gasto Mensual**\n\n"
+            f"💰 Gasto actual: ₡{current:,.0f}\n"
+            f"📈 Proyección fin de mes: ₡{projected:,.0f}\n"
+            f"📊 Promedio diario: ₡{daily_avg:,.0f}\n\n"
+            f"📅 Días transcurridos: {days_elapsed}\n"
+            f"📅 Días restantes: {days_remaining}\n\n"
+        )
+
+        # Comparar con promedio histórico
+        if forecast["historical_average"] > 0:
+            historical = forecast["historical_average"]
+            diff_pct = float(((projected - historical) / historical) * 100)
+
+            if diff_pct > 10:
+                message += (
+                    f"⚠️ Esto es **{diff_pct:.0f}% más** que tu promedio "
+                    f"histórico (₡{historical:,.0f})\n\n"
+                )
+                severity = AlertSeverity.WARNING
+            elif diff_pct < -10:
+                message += (
+                    f"✅ Esto es **{abs(diff_pct):.0f}% menos** que tu promedio "
+                    f"histórico (₡{historical:,.0f})\n\n"
+                )
+                severity = AlertSeverity.INFO
+            else:
+                message += f"📊 Similar a tu promedio histórico (₡{historical:,.0f})\n\n"
+                severity = AlertSeverity.INFO
+        else:
+            severity = AlertSeverity.INFO
+
+        message += (
+            f"💡 **Consejo:** Para mantener el control, intenta gastar "
+            f"₡{forecast['recommended_daily_spending']:,.0f} por día el resto del mes."
+        )
+
+        return Alert(
+            profile_id=profile_id,
+            alert_type=AlertType.MONTHLY_SPENDING_FORECAST,
+            severity=severity,
+            status=AlertStatus.PENDING,
+            title=title,
+            message=message,
+        )
+
+    def generate_budget_forecast_alerts(self, profile_id: str) -> list[Alert]:
+        """
+        Genera alertas si según la tendencia excederá el presupuesto.
+
+        Alerta como: "Si seguís así, vas a exceder tu presupuesto en ₡X"
+
+        Args:
+            profile_id: ID del perfil
+
+        Returns:
+            Lista de alertas generadas
+        """
+        alerts = []
+        config = self._get_alert_config(profile_id)
+
+        if not config.enable_budget_forecast_alerts:
+            return alerts
+
+        from finanzas_tracker.services.prediction_service import prediction_service
+
+        with get_session() as session:
+            # Obtener predicción de presupuesto
+            budget_forecast = prediction_service.predict_budget_status(profile_id)
+
+            if not budget_forecast:
+                return alerts  # No hay presupuesto configurado
+
+            # Solo alertar si va a exceder
+            if not budget_forecast["will_exceed"]:
+                return alerts
+
+            # Solo alertar si estamos al menos en el día 7 del mes
+            from datetime import date
+
+            today = date.today()
+            if today.day < 7:
+                return alerts
+
+            month_start = datetime(today.year, today.month, 1, tzinfo=UTC)
+
+            # Verificar si ya existe alerta este mes
+            existing = (
+                session.query(Alert)
+                .filter(
+                    Alert.profile_id == profile_id,
+                    Alert.alert_type == AlertType.BUDGET_FORECAST_WARNING,
+                    Alert.created_at >= month_start,
+                    Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+                )
+                .first()
+            )
+
+            if not existing:
+                alert = self._create_budget_forecast_alert(budget_forecast, profile_id)
+                if alert:
+                    alerts.append(alert)
+                    session.add(alert)
+
+            session.commit()
+
+        logger.info(f"Generadas {len(alerts)} alertas de predicción de presupuesto")
+        return alerts
+
+    def _create_budget_forecast_alert(
+        self, budget_forecast: dict[str, Any], profile_id: str
+    ) -> Alert | None:
+        """Crea alerta de advertencia de exceso de presupuesto."""
+        projected = budget_forecast["projected_spending"]
+        budget_total = budget_forecast["budget_total"]
+        difference = budget_forecast["projected_difference"]
+        projected_pct = budget_forecast["projected_percentage"]
+
+        title = f"⚠️ Si seguís así, vas a exceder tu presupuesto en ₡{difference:,.0f}"
+
+        message = (
+            f"**Advertencia: Presupuesto en Riesgo**\n\n"
+            f"💰 Presupuesto mensual: ₡{budget_total:,.0f}\n"
+            f"📈 Gasto proyectado: ₡{projected:,.0f} ({projected_pct:.0f}%)\n"
+            f"⚠️ Exceso proyectado: ₡{difference:,.0f}\n\n"
+            f"📅 Días restantes del mes: {budget_forecast['days_remaining']}\n\n"
+            f"💡 **Recomendación:** Para mantenerte dentro del presupuesto, "
+            f"necesitas reducir tu gasto diario promedio.\n\n"
+            f"🎯 Ajusta tus gastos lo antes posible para evitar exceder el presupuesto."
+        )
+
+        # Severidad según qué tan grave es
+        if projected_pct >= 120:
+            severity = AlertSeverity.CRITICAL
+        else:
+            severity = AlertSeverity.WARNING
+
+        return Alert(
+            profile_id=profile_id,
+            alert_type=AlertType.BUDGET_FORECAST_WARNING,
+            severity=severity,
+            status=AlertStatus.PENDING,
+            title=title,
+            message=message,
+        )
+
 
 # Singleton para usar en toda la aplicación
 alert_service = AlertService()
