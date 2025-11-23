@@ -2,6 +2,7 @@
 
 from finanzas_tracker.models.account import Account, AccountType
 from finanzas_tracker.models.alert import Alert, AlertConfig, AlertSeverity, AlertStatus, AlertType
+from finanzas_tracker.models.bank_statement import BankStatement
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.category import Category, Subcategory
@@ -32,6 +33,7 @@ __all__ = [
     "Account",
     "Alert",
     "AlertConfig",
+    "BankStatement",
     "Budget",
     "Card",
     "Category",
