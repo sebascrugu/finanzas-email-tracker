@@ -9,15 +9,17 @@ from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.database import Base
 
 # Importar todos los modelos para que Alembic los detecte
-from finanzas_tracker.models import (  # noqa: F401
-    Budget,
-    Card,
-    Category,
-    Income,
-    Profile,
-    Subcategory,
-    Transaction,
-)
+# Importar directamente desde los módulos para evitar cargar servicios
+from finanzas_tracker.models.budget import Budget  # noqa: F401
+from finanzas_tracker.models.card import Card  # noqa: F401
+from finanzas_tracker.models.category import Category, Subcategory  # noqa: F401
+from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache  # noqa: F401
+from finanzas_tracker.models.income import Income  # noqa: F401
+from finanzas_tracker.models.income_split import IncomeSplit  # noqa: F401
+from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
+from finanzas_tracker.models.profile import Profile  # noqa: F401
+from finanzas_tracker.models.subscription import Subscription  # noqa: F401
+from finanzas_tracker.models.transaction import Transaction  # noqa: F401
 
 
 # this is the Alembic Config object, which provides

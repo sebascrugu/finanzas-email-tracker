@@ -29,6 +29,7 @@ class TestTransactionProperties:
             confianza_categoria=85,
             es_desconocida=False,
             excluir_de_presupuesto=False,
+            is_anomaly=False,
         )
 
     def test_monto_display_crc(self, base_transaction: Transaction) -> None:

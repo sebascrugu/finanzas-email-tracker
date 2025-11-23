@@ -31,6 +31,7 @@ lxml = "^5.1.0"
 anthropic = "^0.72.0"
 keyring = "^25.7.0"
 tenacity = "^8.2.3"
+scikit-learn = "^1.7.2"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -67,6 +68,11 @@ warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
 plugins = ["pydantic.mypy"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["T201", "RUF001"]  # Allow prints and Unicode chars in scripts
+"src/finanzas_tracker/services/*.py" = ["RUF001"]  # Allow Unicode chars in services
+"src/finanzas_tracker/dashboard/components/*.py" = ["RUF001"]  # Allow Unicode chars in dashboard
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
