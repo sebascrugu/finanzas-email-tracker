@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Script temporal para aplicar la migración de subscriptions sin keyring."""
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 # Evitar que se carguen servicios estableciendo variable de entorno
 import os
+
+
 os.environ["SKIP_SERVICES_INIT"] = "1"
 
 from sqlalchemy import create_engine, text
+
 
 # Crear engine directamente sin importar servicios
 engine = create_engine("sqlite:///data/finanzas.db")

@@ -2,10 +2,11 @@
 """Script temporal para aplicar la migración de alerts, alert_configs, credit_cards y savings_goals sin keyring."""
 
 import os
-import sys
 from pathlib import Path
+import sys
 
 from sqlalchemy import create_engine, text
+
 
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))

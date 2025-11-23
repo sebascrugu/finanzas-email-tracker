@@ -2,12 +2,12 @@
 
 from datetime import UTC, datetime
 from enum import Enum
+from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
-from uuid import uuid4
 
 
 class AlertType(str, Enum):

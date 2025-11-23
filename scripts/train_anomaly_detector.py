@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Script para entrenar el detector de anomalías con datos históricos."""
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -99,7 +100,7 @@ def main() -> None:
             .count()
         )
 
-    print(f"\n📈 Transacciones disponibles:")
+    print("\n📈 Transacciones disponibles:")
     print(f"  - Últimos 6 meses: {tx_6m}")
     print(f"  - Últimos 3 meses: {tx_3m}")
     print(f"  - Último mes: {tx_1m}")

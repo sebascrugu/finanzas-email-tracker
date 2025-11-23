@@ -27,7 +27,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from finanzas_tracker.core.database import Base, get_session
+from finanzas_tracker.core.database import Base
 
 
 # Mock keyring ANTES de que cualquier módulo lo importe
@@ -54,14 +54,14 @@ def session(tmp_path, request):
 
     # Importar todos los modelos
     from finanzas_tracker.models import (  # noqa: F401
-        Profile,
-        Transaction,
-        Subscription,
-        Category,
-        Subcategory,
-        Income,
         Budget,
         Card,
+        Category,
+        Income,
+        Profile,
+        Subcategory,
+        Subscription,
+        Transaction,
     )
 
     # Crear todas las tablas

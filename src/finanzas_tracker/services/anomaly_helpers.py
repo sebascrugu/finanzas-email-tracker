@@ -3,7 +3,6 @@
 __all__ = ["get_anomaly_detector_status", "retrain_anomaly_detector"]
 
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
@@ -56,9 +55,9 @@ def get_anomaly_detector_status(profile_id: str) -> dict:
     # Generar mensaje
     if is_active:
         message = (
-            f"✅ Detección de anomalías ACTIVA\n"
-            f"El modelo está entrenado con tus datos históricos.\n"
-            f"Transacciones anómalas se detectarán automáticamente."
+            "✅ Detección de anomalías ACTIVA\n"
+            "El modelo está entrenado con tus datos históricos.\n"
+            "Transacciones anómalas se detectarán automáticamente."
         )
     elif can_train:
         message = (
@@ -69,7 +68,7 @@ def get_anomaly_detector_status(profile_id: str) -> dict:
     else:
         needed = min_required - tx_count
         message = (
-            f"ℹ️ Detección de anomalías NO DISPONIBLE\n"
+            f"ℹ️ Detección de anomalías NO DISPONIBLE\n"  # noqa: RUF001
             f"Necesitas {needed} transacciones más (tienes {tx_count}/{min_required}).\n"
             f"Procesa más correos para activar esta función."
         )
@@ -118,18 +117,17 @@ def retrain_anomaly_detector(profile_id: str, min_transactions: int = 30) -> dic
                 "message": message,
                 "categories_count": categories_count,
             }
-        else:
-            return {
-                "success": False,
-                "message": (
-                    f"❌ No se pudo entrenar el modelo.\n"
-                    f"Asegúrate de tener al menos {min_transactions} transacciones."
-                ),
-            }
+        return {
+            "success": False,
+            "message": (
+                f"❌ No se pudo entrenar el modelo.\n"
+                f"Asegúrate de tener al menos {min_transactions} transacciones."
+            ),
+        }
 
     except Exception as e:
         logger.error(f"Error re-entrenando detector: {e}")
         return {
             "success": False,
-            "message": f"❌ Error durante el entrenamiento: {str(e)}",
+            "message": f"❌ Error durante el entrenamiento: {e!s}",
         }

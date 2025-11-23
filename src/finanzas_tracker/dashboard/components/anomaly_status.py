@@ -79,7 +79,7 @@ def render_anomaly_status_widget(profile_id: str) -> None:
                     st.error(result["message"])
 
     # Info adicional colapsable
-    with st.expander("ℹ️ ¿Qué es la Detección de Anomalías?"):
+    with st.expander("ℹ️ ¿Qué es la Detección de Anomalías?"):  # noqa: RUF001
         st.markdown(
             """
             La **Detección de Anomalías** usa Machine Learning para identificar transacciones inusuales

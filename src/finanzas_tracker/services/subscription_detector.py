@@ -6,10 +6,6 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any
-
-from sqlalchemy import and_, func
-from sqlalchemy.orm import Session
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
@@ -343,7 +339,7 @@ class SubscriptionDetectorService:
         # Si estaba inactiva pero se detectó de nuevo, reactivarla
         if not subscription.is_active:
             subscription.activar()
-            logger.info(f"    (reactivada - se detectó nuevamente)")
+            logger.info("    (reactivada - se detectó nuevamente)")
 
     def _should_deactivate(self, subscription: Subscription) -> bool:
         """

@@ -6,7 +6,17 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -194,24 +204,22 @@ class Subscription(Base):
         """Retorna el monto formateado para display."""
         if self.monto_min == self.monto_max:
             return f"₡{self.monto_promedio:,.2f}"
-        else:
-            return f"₡{self.monto_promedio:,.2f} (₡{self.monto_min:,.0f} - ₡{self.monto_max:,.0f})"
+        return f"₡{self.monto_promedio:,.2f} (₡{self.monto_min:,.0f} - ₡{self.monto_max:,.0f})"
 
     @property
     def frecuencia_display(self) -> str:
         """Retorna la frecuencia en formato legible."""
         if self.frecuencia_dias <= 7:
             return "Semanal"
-        elif self.frecuencia_dias <= 15:
+        if self.frecuencia_dias <= 15:
             return "Quincenal"
-        elif self.frecuencia_dias <= 35:
+        if self.frecuencia_dias <= 35:
             return "Mensual"
-        elif self.frecuencia_dias <= 95:
+        if self.frecuencia_dias <= 95:
             return "Trimestral"
-        elif self.frecuencia_dias <= 185:
+        if self.frecuencia_dias <= 185:
             return "Semestral"
-        else:
-            return "Anual"
+        return "Anual"
 
     @property
     def dias_hasta_proximo_cobro(self) -> int:
@@ -219,8 +227,7 @@ class Subscription(Base):
         hoy = date.today()
         if self.proxima_fecha_estimada > hoy:
             return (self.proxima_fecha_estimada - hoy).days
-        else:
-            return 0  # Ya pasó o es hoy
+        return 0  # Ya pasó o es hoy
 
     @property
     def esta_vencida(self) -> bool:

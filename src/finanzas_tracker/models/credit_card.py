@@ -102,10 +102,9 @@ class CreditCard(Base):
         """Nombre para mostrar de la tarjeta."""
         if self.card_nickname:
             return f"{self.card_nickname} (X{self.last_four_digits})"
-        elif self.bank_name:
+        if self.bank_name:
             return f"{self.bank_name} X{self.last_four_digits}"
-        else:
-            return f"Tarjeta X{self.last_four_digits}"
+        return f"Tarjeta X{self.last_four_digits}"
 
     @property
     def days_until_closing(self) -> int:
@@ -118,23 +117,22 @@ class CreditCard(Base):
         if current_day <= self.closing_day:
             # El cierre es este mes
             return self.closing_day - current_day
+        # El cierre es el próximo mes
+        # Calcular días restantes del mes + días del próximo mes
+        if today.month == 12:
+            next_month = date(today.year + 1, 1, self.closing_day)
         else:
-            # El cierre es el próximo mes
-            # Calcular días restantes del mes + días del próximo mes
-            if today.month == 12:
-                next_month = date(today.year + 1, 1, self.closing_day)
-            else:
-                # Manejar el caso donde closing_day > días del próximo mes
-                try:
-                    next_month = date(today.year, today.month + 1, self.closing_day)
-                except ValueError:
-                    # El próximo mes tiene menos días
-                    import calendar
+            # Manejar el caso donde closing_day > días del próximo mes
+            try:
+                next_month = date(today.year, today.month + 1, self.closing_day)
+            except ValueError:
+                # El próximo mes tiene menos días
+                import calendar
 
-                    last_day = calendar.monthrange(today.year, today.month + 1)[1]
-                    next_month = date(today.year, today.month + 1, last_day)
+                last_day = calendar.monthrange(today.year, today.month + 1)[1]
+                next_month = date(today.year, today.month + 1, last_day)
 
-            return (next_month - today).days
+        return (next_month - today).days
 
     @property
     def days_until_payment(self) -> int:
@@ -147,20 +145,19 @@ class CreditCard(Base):
         if current_day <= self.payment_due_day:
             # El pago es este mes
             return self.payment_due_day - current_day
+        # El pago es el próximo mes
+        if today.month == 12:
+            next_month = date(today.year + 1, 1, self.payment_due_day)
         else:
-            # El pago es el próximo mes
-            if today.month == 12:
-                next_month = date(today.year + 1, 1, self.payment_due_day)
-            else:
-                try:
-                    next_month = date(today.year, today.month + 1, self.payment_due_day)
-                except ValueError:
-                    import calendar
+            try:
+                next_month = date(today.year, today.month + 1, self.payment_due_day)
+            except ValueError:
+                import calendar
 
-                    last_day = calendar.monthrange(today.year, today.month + 1)[1]
-                    next_month = date(today.year, today.month + 1, last_day)
+                last_day = calendar.monthrange(today.year, today.month + 1)[1]
+                next_month = date(today.year, today.month + 1, last_day)
 
-            return (next_month - today).days
+        return (next_month - today).days
 
     def __repr__(self) -> str:
         """Representación en string."""

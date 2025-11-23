@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import and_, func
+from sqlalchemy import func
 
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.models.alert import (
@@ -634,19 +634,18 @@ class AlertService:
                     if today.day > card.closing_day:
                         # Ciclo comenzó este mes
                         cycle_start = date(today.year, today.month, card.closing_day)
+                    # Ciclo comenzó el mes pasado
+                    elif today.month == 1:
+                        cycle_start = date(today.year - 1, 12, card.closing_day)
                     else:
-                        # Ciclo comenzó el mes pasado
-                        if today.month == 1:
-                            cycle_start = date(today.year - 1, 12, card.closing_day)
-                        else:
-                            try:
-                                cycle_start = date(today.year, today.month - 1, card.closing_day)
-                            except ValueError:
-                                # El mes pasado tiene menos días
-                                import calendar
+                        try:
+                            cycle_start = date(today.year, today.month - 1, card.closing_day)
+                        except ValueError:
+                            # El mes pasado tiene menos días
+                            import calendar
 
-                                last_day = calendar.monthrange(today.year, today.month - 1)[1]
-                                cycle_start = date(today.year, today.month - 1, last_day)
+                            last_day = calendar.monthrange(today.year, today.month - 1)[1]
+                            cycle_start = date(today.year, today.month - 1, last_day)
 
                     # Calcular saldo del ciclo
                     balance = (
@@ -722,17 +721,16 @@ class AlertService:
         today = date.today()
         if today.day <= card.closing_day:
             closing_date = date(today.year, today.month, card.closing_day)
+        elif today.month == 12:
+            closing_date = date(today.year + 1, 1, card.closing_day)
         else:
-            if today.month == 12:
-                closing_date = date(today.year + 1, 1, card.closing_day)
-            else:
-                try:
-                    closing_date = date(today.year, today.month + 1, card.closing_day)
-                except ValueError:
-                    import calendar
+            try:
+                closing_date = date(today.year, today.month + 1, card.closing_day)
+            except ValueError:
+                import calendar
 
-                    last_day = calendar.monthrange(today.year, today.month + 1)[1]
-                    closing_date = date(today.year, today.month + 1, last_day)
+                last_day = calendar.monthrange(today.year, today.month + 1)[1]
+                closing_date = date(today.year, today.month + 1, last_day)
 
         message += f"{closing_date.strftime('%d/%m/%Y')}\n"
         message += f"📅 Vencimiento de pago: {card.days_until_payment} días\n\n"
@@ -819,27 +817,22 @@ class AlertService:
 
         # Determinar mensaje y severidad según el progreso
         if progress >= 90:
-            emoji = "🎉"
             title = f"🎉 ¡Casi llegas! Estás a ₡{remaining:,.0f} de '{goal.name}'"
             severity = AlertSeverity.INFO
             motivation = "¡Excelente! Estás muy cerca de alcanzar tu meta. ¡Sigue así!"
         elif progress >= 75:
-            emoji = "🎯"
             title = f"🎯 Estás a ₡{remaining:,.0f} de tu meta '{goal.name}'"
             severity = AlertSeverity.INFO
             motivation = "¡Muy buen progreso! Ya pasaste el 75% de tu meta."
         elif progress >= 50:
-            emoji = "💪"
             title = f"💪 Llevas {progress:.0f}% de '{goal.name}'"
             severity = AlertSeverity.INFO
             motivation = "¡Vas por buen camino! Ya superaste la mitad de tu meta."
         elif progress >= 25:
-            emoji = "🌱"
             title = f"🌱 Progreso: {progress:.0f}% de '{goal.name}'"
             severity = AlertSeverity.INFO
             motivation = "Buen comienzo. Mantén la constancia para alcanzar tu meta."
         else:
-            emoji = "🚀"
             title = f"🚀 Iniciaste tu meta '{goal.name}'"
             severity = AlertSeverity.INFO
             motivation = "¡Excelente! El primer paso es el más importante. ¡Adelante!"
@@ -913,7 +906,7 @@ class AlertService:
             from datetime import date
 
             today = date.today()
-            month_start = datetime(today.year, today.month, 1, tzinfo=UTC)
+            datetime(today.year, today.month, 1, tzinfo=UTC)
             days_ago = timedelta(days=config.forecast_alert_frequency)
 
             existing = (
@@ -1082,10 +1075,7 @@ class AlertService:
         )
 
         # Severidad según qué tan grave es
-        if projected_pct >= 120:
-            severity = AlertSeverity.CRITICAL
-        else:
-            severity = AlertSeverity.WARNING
+        severity = AlertSeverity.CRITICAL if projected_pct >= 120 else AlertSeverity.WARNING
 
         return Alert(
             profile_id=profile_id,

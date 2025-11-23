@@ -2,12 +2,10 @@
 
 __all__ = ["AnomalyDetectionService", "AnomalyResult"]
 
-import pickle
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -269,7 +267,7 @@ class AnomalyDetectionService:
         else:
             monto_vs_promedio = 1.0  # Sin referencia
 
-        features = [
+        return [
             float(np.log1p(float(transaction.monto_crc))),  # monto_normalizado
             transaction.fecha_transaccion.hour,  # hora
             transaction.fecha_transaccion.weekday(),  # dia_semana
@@ -278,7 +276,6 @@ class AnomalyDetectionService:
             monto_vs_promedio,
         ]
 
-        return features
 
     def _determine_reason(
         self,

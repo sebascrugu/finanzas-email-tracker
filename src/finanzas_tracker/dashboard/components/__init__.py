@@ -4,6 +4,7 @@ from finanzas_tracker.dashboard.components.alerts import render_alerts_widget
 from finanzas_tracker.dashboard.components.anomaly_status import render_anomaly_status_widget
 from finanzas_tracker.dashboard.components.subscriptions import render_subscriptions_widget
 
+
 __all__ = [
     "render_alerts_widget",
     "render_anomaly_status_widget",

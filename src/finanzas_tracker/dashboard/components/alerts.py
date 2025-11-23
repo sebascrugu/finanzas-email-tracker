@@ -1,6 +1,5 @@
 """Componente de dashboard para mostrar alertas inteligentes."""
 
-from datetime import datetime
 
 import streamlit as st
 
@@ -161,7 +160,7 @@ def _render_alert_list(alerts: list[Alert], profile_id: str, show_actions: bool)
             severity_emoji = "⚠️"
             severity_color = "orange"
         else:
-            severity_emoji = "ℹ️"
+            severity_emoji = "ℹ️"  # noqa: RUF001
             severity_color = "blue"
 
         # Determinar emoji según tipo de alerta

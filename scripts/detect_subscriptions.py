@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Script para detectar suscripciones recurrentes en transacciones existentes."""
 
-import sys
 from pathlib import Path
+import sys
+
 
 # Agregar src al path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -107,7 +108,7 @@ def main() -> None:
     print("✅ DETECCIÓN COMPLETADA")
     print("=" * 70 + "\n")
 
-    print(f"📊 Estadísticas:")
+    print("📊 Estadísticas:")
     print(f"  • Nuevas suscripciones: {stats['created']}")
     print(f"  • Actualizadas: {stats['updated']}")
     print(f"  • Desactivadas: {stats['deactivated']}")
@@ -143,7 +144,7 @@ def main() -> None:
             if days_until > 0:
                 print(f"     Próximo cobro en {days_until} días")
             elif days_until == 0:
-                print(f"     Próximo cobro HOY")
+                print("     Próximo cobro HOY")
             else:
                 print(f"     ⚠️  Vencida hace {abs(days_until)} días")
 

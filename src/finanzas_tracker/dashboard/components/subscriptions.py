@@ -1,6 +1,5 @@
 """Componente de dashboard para mostrar suscripciones recurrentes."""
 
-from datetime import date
 
 import streamlit as st
 
@@ -39,7 +38,7 @@ def render_subscriptions_widget(profile_id: str) -> None:
 
     if not active_subs:
         st.info(
-            "ℹ️ No se han detectado suscripciones recurrentes.\n\n"
+            "ℹ️ No se han detectado suscripciones recurrentes.\n\n"  # noqa: RUF001
             "💡 Tip: Necesitas al menos 2 cobros del mismo servicio para detectar un patrón."
         )
 
@@ -140,7 +139,7 @@ def render_subscriptions_widget(profile_id: str) -> None:
                 st.caption(f"{sub.proxima_fecha_estimada.strftime('%d/%m/%Y')}")
 
             # Información adicional en expander
-            with st.expander("ℹ️ Más información"):
+            with st.expander("ℹ️ Más información"):  # noqa: RUF001
                 st.write(f"**Cobros detectados:** {sub.occurrences_count}")
                 st.write(f"**Primera vez:** {sub.primera_fecha_cobro.strftime('%d/%m/%Y')}")
                 st.write(f"**Última vez:** {sub.ultima_fecha_cobro.strftime('%d/%m/%Y')}")

@@ -478,12 +478,12 @@ class TransactionProcessor:
             except Exception as e:
                 logger.error(f"Error entrenando detector de anomalías: {e}")
                 logger.info(
-                    "  ℹ️  La detección de anomalías estará desactivada por ahora\n"
+                    "  ℹ️  La detección de anomalías estará desactivada por ahora\n"  # noqa: RUF001
                     f"{'='*70}\n"
                 )
         else:
             logger.info(
-                f"  ℹ️  Detección de anomalías desactivada temporalmente\n"
+                f"  ℹ️  Detección de anomalías desactivada temporalmente\n"  # noqa: RUF001
                 f"     (necesitas al menos 30 transacciones, tienes {tx_count})\n"
                 f"     Se activará automáticamente cuando tengas suficientes datos\n"
             )

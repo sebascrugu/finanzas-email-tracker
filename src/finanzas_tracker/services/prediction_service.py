@@ -12,7 +12,6 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 
-from loguru import logger
 from sqlalchemy import func
 
 from finanzas_tracker.core.database import get_session
