@@ -152,7 +152,7 @@ class TestAnomalyDetectionService:
             banco=BankName.BAC,
             tipo_transaccion=TransactionType.PURCHASE,
             comercio="Walmart",
-            subcategory_id=list(trained_detector.category_encoder.keys())[0],
+            subcategory_id=next(iter(trained_detector.category_encoder.keys())),
             monto_original=Decimal("25000"),  # Dentro del rango normal
             moneda_original=Currency.CRC,
             monto_crc=Decimal("25000"),
@@ -162,7 +162,7 @@ class TestAnomalyDetectionService:
         result = trained_detector.detect(normal_tx)
 
         assert isinstance(result, AnomalyResult)
-        assert result.is_anomaly is False or True  # Puede variar
+        assert True  # Puede variar
         assert -1 <= result.score <= 1
         assert 0 <= result.confidence <= 100
 
@@ -179,7 +179,7 @@ class TestAnomalyDetectionService:
             banco=BankName.BAC,
             tipo_transaccion=TransactionType.PURCHASE,
             comercio="Compra Sospechosa",
-            subcategory_id=list(trained_detector.category_encoder.keys())[0],
+            subcategory_id=next(iter(trained_detector.category_encoder.keys())),
             monto_original=Decimal("500000"),  # 10x el promedio normal
             moneda_original=Currency.CRC,
             monto_crc=Decimal("500000"),
@@ -208,7 +208,7 @@ class TestAnomalyDetectionService:
             banco=BankName.BAC,
             tipo_transaccion=TransactionType.PURCHASE,
             comercio="Compra Nocturna",
-            subcategory_id=list(trained_detector.category_encoder.keys())[0],
+            subcategory_id=next(iter(trained_detector.category_encoder.keys())),
             monto_original=Decimal("25000"),
             moneda_original=Currency.CRC,
             monto_crc=Decimal("25000"),
@@ -234,7 +234,7 @@ class TestAnomalyDetectionService:
             banco=BankName.BAC,
             tipo_transaccion=TransactionType.PURCHASE,
             comercio="Amazon USA",
-            subcategory_id=list(trained_detector.category_encoder.keys())[0],
+            subcategory_id=next(iter(trained_detector.category_encoder.keys())),
             monto_original=Decimal("25000"),
             moneda_original=Currency.CRC,
             monto_crc=Decimal("25000"),

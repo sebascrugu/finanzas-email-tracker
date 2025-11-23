@@ -24,10 +24,10 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 os.environ.setdefault("ENVIRONMENT", "testing")
 
 import pytest
-
-from finanzas_tracker.core.database import Base, get_session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from finanzas_tracker.core.database import Base, get_session
 
 
 # Mock keyring ANTES de que cualquier módulo lo importe
@@ -67,8 +67,8 @@ def session(tmp_path, request):
     # Crear todas las tablas
     Base.metadata.create_all(engine)
 
-    SessionLocal = sessionmaker(bind=engine)
-    session = SessionLocal()
+    session_local = sessionmaker(bind=engine)
+    session = session_local()
 
     yield session
 
