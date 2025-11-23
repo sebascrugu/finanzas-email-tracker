@@ -16,6 +16,7 @@ from finanzas_tracker.models.enums import (
     TransactionType,
 )
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
+from finanzas_tracker.models.goal_milestone import GoalMilestone
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.income_split import IncomeSplit
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
@@ -35,6 +36,7 @@ __all__ = [
     "Category",
     "CreditCard",
     "ExchangeRateCache",
+    "GoalMilestone",
     "Income",
     "IncomeSplit",
     "Merchant",

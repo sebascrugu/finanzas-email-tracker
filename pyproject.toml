@@ -46,6 +46,7 @@ mypy = "^1.11.0"
 # Pre-commit hooks (opcional)
 pre-commit = "^3.6.0"
 pytest-env = "^1.2.0"
+keyrings-alt = "^5.0.2"
 
 [build-system]
 requires = ["poetry-core"]
