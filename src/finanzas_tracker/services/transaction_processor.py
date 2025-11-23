@@ -207,17 +207,33 @@ class TransactionProcessor:
             # Alertas de comparación mensual (gastos vs mes anterior)
             comparison_alerts = alert_service.generate_monthly_comparison_alerts(profile_id)
 
-            total_alerts = len(sub_alerts) + len(budget_alerts) + len(comparison_alerts)
+            # Alertas de cierre de tarjetas de crédito
+            card_alerts = alert_service.generate_credit_card_closing_alerts(profile_id)
+
+            # Alertas de progreso de metas de ahorro
+            goal_alerts = alert_service.generate_savings_goal_progress_alerts(profile_id)
+
+            total_alerts = (
+                len(sub_alerts)
+                + len(budget_alerts)
+                + len(comparison_alerts)
+                + len(card_alerts)
+                + len(goal_alerts)
+            )
             if total_alerts > 0:
                 logger.info(
                     f"✅ Alertas: "
                     f"{len(sub_alerts)} suscripciones, "
                     f"{len(budget_alerts)} presupuesto, "
-                    f"{len(comparison_alerts)} comparaciones"
+                    f"{len(comparison_alerts)} comparaciones, "
+                    f"{len(card_alerts)} tarjetas, "
+                    f"{len(goal_alerts)} metas"
                 )
                 stats["alertas_suscripciones"] = len(sub_alerts)
                 stats["alertas_presupuesto"] = len(budget_alerts)
                 stats["alertas_comparacion"] = len(comparison_alerts)
+                stats["alertas_tarjetas"] = len(card_alerts)
+                stats["alertas_metas"] = len(goal_alerts)
 
         except Exception as e:
             logger.warning(f"⚠️  No se pudieron generar alertas: {e}")

@@ -24,6 +24,8 @@ from finanzas_tracker.models.alert import (
     AlertType,
 )
 from finanzas_tracker.models.budget import Budget
+from finanzas_tracker.models.credit_card import CreditCard
+from finanzas_tracker.models.savings_goal import SavingsGoal
 from finanzas_tracker.models.subscription import Subscription
 from finanzas_tracker.models.transaction import Transaction
 
@@ -581,6 +583,297 @@ class AlertService:
         return Alert(
             profile_id=profile_id,
             alert_type=AlertType.MONTHLY_COMPARISON,
+            severity=severity,
+            status=AlertStatus.PENDING,
+            title=title,
+            message=message,
+        )
+
+    def generate_credit_card_closing_alerts(self, profile_id: str) -> list[Alert]:
+        """
+        Genera alertas para tarjetas de crédito próximas a cerrar ciclo.
+
+        Alerta como: "💳 Tu tarjeta X5678 cierra en 3 días (saldo: ₡120,000)"
+
+        Args:
+            profile_id: ID del perfil
+
+        Returns:
+            Lista de alertas generadas
+        """
+        alerts = []
+        config = self._get_alert_config(profile_id)
+
+        if not config.enable_credit_card_closing_alerts:
+            return alerts
+
+        with get_session() as session:
+            # Obtener tarjetas activas
+            cards = (
+                session.query(CreditCard)
+                .filter(
+                    CreditCard.profile_id == profile_id,
+                    CreditCard.is_active == True,  # noqa: E712
+                    CreditCard.deleted_at.is_(None),
+                )
+                .all()
+            )
+
+            for card in cards:
+                days_until_closing = card.days_until_closing
+
+                # Alertar si está dentro del rango configurado
+                if 0 <= days_until_closing <= config.credit_card_alert_days:
+                    # Calcular saldo del ciclo actual
+                    # El ciclo actual es del closing_day del mes pasado hasta hoy
+                    from datetime import date
+
+                    today = date.today()
+
+                    # Calcular fecha de inicio del ciclo
+                    if today.day > card.closing_day:
+                        # Ciclo comenzó este mes
+                        cycle_start = date(today.year, today.month, card.closing_day)
+                    else:
+                        # Ciclo comenzó el mes pasado
+                        if today.month == 1:
+                            cycle_start = date(today.year - 1, 12, card.closing_day)
+                        else:
+                            try:
+                                cycle_start = date(today.year, today.month - 1, card.closing_day)
+                            except ValueError:
+                                # El mes pasado tiene menos días
+                                import calendar
+
+                                last_day = calendar.monthrange(today.year, today.month - 1)[1]
+                                cycle_start = date(today.year, today.month - 1, last_day)
+
+                    # Calcular saldo del ciclo
+                    balance = (
+                        session.query(func.sum(Transaction.monto_crc))
+                        .filter(
+                            Transaction.profile_id == profile_id,
+                            Transaction.fecha_transaccion >= datetime.combine(
+                                cycle_start, datetime.min.time()
+                            ).replace(tzinfo=UTC),
+                            Transaction.deleted_at.is_(None),
+                            # Opcional: filtrar por tarjeta si tienes esa info
+                        )
+                        .scalar()
+                    ) or Decimal("0")
+
+                    # Verificar si ya existe alerta para esta tarjeta este ciclo
+                    existing = (
+                        session.query(Alert)
+                        .filter(
+                            Alert.profile_id == profile_id,
+                            Alert.alert_type == AlertType.CREDIT_CARD_CLOSING,
+                            Alert.created_at
+                            >= datetime.combine(cycle_start, datetime.min.time()).replace(
+                                tzinfo=UTC
+                            ),
+                            Alert.title.like(f"%{card.last_four_digits}%"),
+                            Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+                        )
+                        .first()
+                    )
+
+                    if not existing:
+                        alert = self._create_credit_card_closing_alert(
+                            card=card,
+                            balance=balance,
+                            days_until=days_until_closing,
+                            profile_id=profile_id,
+                        )
+                        if alert:
+                            alerts.append(alert)
+                            session.add(alert)
+
+            session.commit()
+
+        logger.info(f"Generadas {len(alerts)} alertas de cierre de tarjetas")
+        return alerts
+
+    def _create_credit_card_closing_alert(
+        self, card: CreditCard, balance: Decimal, days_until: int, profile_id: str
+    ) -> Alert | None:
+        """Crea alerta de cierre de tarjeta de crédito."""
+        if days_until == 0:
+            title = f"💳 Tu tarjeta X{card.last_four_digits} cierra HOY"
+            severity = AlertSeverity.WARNING
+        elif days_until == 1:
+            title = f"💳 Tu tarjeta X{card.last_four_digits} cierra mañana"
+            severity = AlertSeverity.INFO
+        else:
+            title = f"💳 Tu tarjeta X{card.last_four_digits} cierra en {days_until} días"
+            severity = AlertSeverity.INFO
+
+        # Mensaje detallado
+        message = (
+            f"**Cierre de ciclo de tarjeta de crédito**\n\n"
+            f"💳 Tarjeta: {card.display_name}\n"
+            f"💰 Saldo del ciclo: ₡{balance:,.0f}\n"
+            f"📅 Fecha de cierre: "
+        )
+
+        # Agregar fecha de cierre
+        from datetime import date
+
+        today = date.today()
+        if today.day <= card.closing_day:
+            closing_date = date(today.year, today.month, card.closing_day)
+        else:
+            if today.month == 12:
+                closing_date = date(today.year + 1, 1, card.closing_day)
+            else:
+                try:
+                    closing_date = date(today.year, today.month + 1, card.closing_day)
+                except ValueError:
+                    import calendar
+
+                    last_day = calendar.monthrange(today.year, today.month + 1)[1]
+                    closing_date = date(today.year, today.month + 1, last_day)
+
+        message += f"{closing_date.strftime('%d/%m/%Y')}\n"
+        message += f"📅 Vencimiento de pago: {card.days_until_payment} días\n\n"
+
+        if card.credit_limit:
+            usage_pct = float((balance / Decimal(str(card.credit_limit))) * 100)
+            message += f"📊 Uso del crédito: {usage_pct:.1f}%\n\n"
+
+        message += "💡 Recuerda: Este es el saldo hasta hoy. Aún puedes hacer compras antes del cierre."
+
+        return Alert(
+            profile_id=profile_id,
+            alert_type=AlertType.CREDIT_CARD_CLOSING,
+            severity=severity,
+            status=AlertStatus.PENDING,
+            title=title,
+            message=message,
+        )
+
+    def generate_savings_goal_progress_alerts(self, profile_id: str) -> list[Alert]:
+        """
+        Genera alertas de progreso hacia metas de ahorro.
+
+        Alerta como: "🎯 Estás a ₡50,000 de tu meta de ahorro 'Vacaciones'"
+
+        Args:
+            profile_id: ID del perfil
+
+        Returns:
+            Lista de alertas generadas
+        """
+        alerts = []
+        config = self._get_alert_config(profile_id)
+
+        if not config.enable_savings_goal_alerts:
+            return alerts
+
+        with get_session() as session:
+            # Obtener metas activas
+            goals = (
+                session.query(SavingsGoal)
+                .filter(
+                    SavingsGoal.profile_id == profile_id,
+                    SavingsGoal.is_active == True,  # noqa: E712
+                    SavingsGoal.is_completed == False,  # noqa: E712
+                    SavingsGoal.deleted_at.is_(None),
+                )
+                .all()
+            )
+
+            for goal in goals:
+                # Verificar si ya existe alerta reciente para esta meta
+                days_ago = timedelta(days=config.savings_goal_alert_frequency)
+                existing = (
+                    session.query(Alert)
+                    .filter(
+                        Alert.profile_id == profile_id,
+                        Alert.alert_type == AlertType.SAVINGS_GOAL_PROGRESS,
+                        Alert.created_at >= datetime.now(UTC) - days_ago,
+                        Alert.title.like(f"%{goal.name}%"),
+                        Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+                    )
+                    .first()
+                )
+
+                if not existing:
+                    # Generar alerta de progreso
+                    alert = self._create_savings_goal_progress_alert(goal, profile_id)
+                    if alert:
+                        alerts.append(alert)
+                        session.add(alert)
+
+            session.commit()
+
+        logger.info(f"Generadas {len(alerts)} alertas de progreso de metas")
+        return alerts
+
+    def _create_savings_goal_progress_alert(
+        self, goal: SavingsGoal, profile_id: str
+    ) -> Alert | None:
+        """Crea alerta de progreso de meta de ahorro."""
+        progress = goal.progress_percentage
+        remaining = goal.amount_remaining
+
+        # Determinar mensaje y severidad según el progreso
+        if progress >= 90:
+            emoji = "🎉"
+            title = f"🎉 ¡Casi llegas! Estás a ₡{remaining:,.0f} de '{goal.name}'"
+            severity = AlertSeverity.INFO
+            motivation = "¡Excelente! Estás muy cerca de alcanzar tu meta. ¡Sigue así!"
+        elif progress >= 75:
+            emoji = "🎯"
+            title = f"🎯 Estás a ₡{remaining:,.0f} de tu meta '{goal.name}'"
+            severity = AlertSeverity.INFO
+            motivation = "¡Muy buen progreso! Ya pasaste el 75% de tu meta."
+        elif progress >= 50:
+            emoji = "💪"
+            title = f"💪 Llevas {progress:.0f}% de '{goal.name}'"
+            severity = AlertSeverity.INFO
+            motivation = "¡Vas por buen camino! Ya superaste la mitad de tu meta."
+        elif progress >= 25:
+            emoji = "🌱"
+            title = f"🌱 Progreso: {progress:.0f}% de '{goal.name}'"
+            severity = AlertSeverity.INFO
+            motivation = "Buen comienzo. Mantén la constancia para alcanzar tu meta."
+        else:
+            emoji = "🚀"
+            title = f"🚀 Iniciaste tu meta '{goal.name}'"
+            severity = AlertSeverity.INFO
+            motivation = "¡Excelente! El primer paso es el más importante. ¡Adelante!"
+
+        # Construir mensaje
+        message = (
+            f"**Progreso de Meta de Ahorro**\n\n"
+            f"🎯 Meta: {goal.name}\n"
+            f"💰 Actual: ₡{goal.current_amount:,.0f}\n"
+            f"🎁 Objetivo: ₡{goal.target_amount:,.0f}\n"
+            f"📊 Progreso: {progress:.1f}%\n"
+            f"💵 Falta: ₡{remaining:,.0f}\n\n"
+        )
+
+        # Agregar info de deadline si existe
+        if goal.deadline:
+            days_left = goal.days_remaining
+            if days_left is not None:
+                if days_left <= 0:
+                    message += f"⚠️ **Fecha límite alcanzada:** {goal.deadline.strftime('%d/%m/%Y')}\n\n"
+                    severity = AlertSeverity.WARNING
+                else:
+                    message += f"📅 Días restantes: {days_left}\n"
+
+                    # Calcular ahorro mensual requerido
+                    required_monthly = goal.required_monthly_savings
+                    if required_monthly:
+                        message += f"💡 Ahorro mensual requerido: ₡{required_monthly:,.0f}\n\n"
+
+        message += f"✨ {motivation}"
+
+        return Alert(
+            profile_id=profile_id,
+            alert_type=AlertType.SAVINGS_GOAL_PROGRESS,
             severity=severity,
             status=AlertStatus.PENDING,
             title=title,

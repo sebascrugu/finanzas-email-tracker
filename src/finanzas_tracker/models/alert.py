@@ -289,6 +289,24 @@ class AlertConfig(Base):
         default=True,
         comment="Habilitar alertas de compras internacionales",
     )
+    enable_credit_card_closing_alerts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Habilitar alertas de cierre de ciclo de tarjetas de crédito",
+    )
+    credit_card_alert_days: Mapped[int] = mapped_column(
+        default=3,
+        comment="Días de anticipación para alertas de cierre de tarjeta",
+    )
+    enable_savings_goal_alerts: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        comment="Habilitar alertas de progreso de metas de ahorro",
+    )
+    savings_goal_alert_frequency: Mapped[int] = mapped_column(
+        default=7,
+        comment="Frecuencia en días para alertas de progreso de metas",
+    )
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

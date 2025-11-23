@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script temporal para aplicar la migración de alerts y alert_configs sin keyring."""
+"""Script temporal para aplicar la migración de alerts, alert_configs, credit_cards y savings_goals sin keyring."""
 
 import sys
 from pathlib import Path
@@ -56,7 +56,11 @@ CREATE TABLE IF NOT EXISTS alert_configs (
     enable_high_spending_alerts BOOLEAN NOT NULL DEFAULT 0,
     enable_unusual_time_alerts BOOLEAN NOT NULL DEFAULT 0,
     enable_multiple_purchase_alerts BOOLEAN NOT NULL DEFAULT 0,
+    enable_credit_card_closing_alerts BOOLEAN NOT NULL DEFAULT 1,
+    enable_savings_goal_alerts BOOLEAN NOT NULL DEFAULT 1,
     subscription_alert_days_ahead INTEGER NOT NULL DEFAULT 3,
+    credit_card_alert_days INTEGER NOT NULL DEFAULT 3,
+    savings_goal_alert_frequency INTEGER NOT NULL DEFAULT 7,
     budget_alert_threshold NUMERIC(5, 2) NOT NULL DEFAULT 85.0,
     category_spike_threshold NUMERIC(5, 2) NOT NULL DEFAULT 3.0,
     high_spending_threshold NUMERIC(15, 2),
@@ -65,6 +69,48 @@ CREATE TABLE IF NOT EXISTS alert_configs (
     PRIMARY KEY (id),
     FOREIGN KEY(profile_id) REFERENCES profiles (id) ON DELETE CASCADE,
     UNIQUE (profile_id)
+);
+"""
+
+# SQL para crear la tabla credit_cards
+create_credit_cards_table_sql = """
+CREATE TABLE IF NOT EXISTS credit_cards (
+    id VARCHAR(36) NOT NULL,
+    profile_id VARCHAR(26) NOT NULL,
+    last_four_digits VARCHAR(4) NOT NULL,
+    card_nickname VARCHAR(100),
+    bank_name VARCHAR(100),
+    closing_day INTEGER NOT NULL,
+    payment_due_day INTEGER NOT NULL,
+    credit_limit NUMERIC(15, 2),
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    deleted_at DATETIME,
+    PRIMARY KEY (id),
+    FOREIGN KEY(profile_id) REFERENCES profiles (id) ON DELETE CASCADE
+);
+"""
+
+# SQL para crear la tabla savings_goals
+create_savings_goals_table_sql = """
+CREATE TABLE IF NOT EXISTS savings_goals (
+    id VARCHAR(36) NOT NULL,
+    profile_id VARCHAR(26) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    target_amount NUMERIC(15, 2) NOT NULL,
+    current_amount NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    deadline DATE,
+    is_active BOOLEAN NOT NULL DEFAULT 1,
+    is_completed BOOLEAN NOT NULL DEFAULT 0,
+    completed_at DATETIME,
+    category VARCHAR(100),
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    deleted_at DATETIME,
+    PRIMARY KEY (id),
+    FOREIGN KEY(profile_id) REFERENCES profiles (id) ON DELETE CASCADE
 );
 """
 
@@ -86,6 +132,19 @@ create_alert_configs_indexes_sql = [
     "CREATE INDEX IF NOT EXISTS ix_alert_configs_profile_id ON alert_configs (profile_id);",
 ]
 
+# Crear índices para credit_cards
+create_credit_cards_indexes_sql = [
+    "CREATE INDEX IF NOT EXISTS ix_credit_cards_profile_id ON credit_cards (profile_id);",
+    "CREATE INDEX IF NOT EXISTS ix_credit_cards_is_active ON credit_cards (is_active);",
+]
+
+# Crear índices para savings_goals
+create_savings_goals_indexes_sql = [
+    "CREATE INDEX IF NOT EXISTS ix_savings_goals_profile_id ON savings_goals (profile_id);",
+    "CREATE INDEX IF NOT EXISTS ix_savings_goals_is_active ON savings_goals (is_active);",
+    "CREATE INDEX IF NOT EXISTS ix_savings_goals_is_completed ON savings_goals (is_completed);",
+]
+
 # Ejecutar SQL
 try:
     with engine.connect() as conn:
@@ -101,6 +160,18 @@ try:
         conn.commit()
         print("✅ Tabla alert_configs creada")
 
+        # Crear tabla credit_cards
+        print("\nCreando tabla credit_cards...")
+        conn.execute(text(create_credit_cards_table_sql))
+        conn.commit()
+        print("✅ Tabla credit_cards creada")
+
+        # Crear tabla savings_goals
+        print("\nCreando tabla savings_goals...")
+        conn.execute(text(create_savings_goals_table_sql))
+        conn.commit()
+        print("✅ Tabla savings_goals creada")
+
         # Crear índices para alerts
         print("\nCreando índices para alerts...")
         for idx_sql in create_alerts_indexes_sql:
@@ -115,6 +186,20 @@ try:
         conn.commit()
         print("✅ Índices de alert_configs creados")
 
+        # Crear índices para credit_cards
+        print("\nCreando índices para credit_cards...")
+        for idx_sql in create_credit_cards_indexes_sql:
+            conn.execute(text(idx_sql))
+        conn.commit()
+        print("✅ Índices de credit_cards creados")
+
+        # Crear índices para savings_goals
+        print("\nCreando índices para savings_goals...")
+        for idx_sql in create_savings_goals_indexes_sql:
+            conn.execute(text(idx_sql))
+        conn.commit()
+        print("✅ Índices de savings_goals creados")
+
         # Actualizar alembic_version (si existe)
         print("\nActualizando alembic_version...")
         try:
@@ -128,7 +213,10 @@ try:
         print("\n📋 Tablas creadas:")
         print("  - alerts (alertas inteligentes)")
         print("  - alert_configs (configuración de alertas)")
+        print("  - credit_cards (tarjetas de crédito)")
+        print("  - savings_goals (metas de ahorro)")
         print("\n💡 Las alertas se generarán automáticamente al procesar correos")
+        print("💡 Agrega tarjetas y metas para recibir alertas personalizadas")
 
 except Exception as e:
     print(f"❌ Error: {e}")
