@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from finanzas_tracker.core.database import Base
@@ -105,6 +106,37 @@ class OnboardingProgress(Base):
     imported_transactions_count: Mapped[int | None] = mapped_column(
         Integer,
         comment="Número de transacciones importadas",
+    )
+
+    # PDF Reconciliation (Step 3.5 - Nuevo)
+    bank_statement_uploaded: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Si subió el estado de cuenta PDF durante onboarding",
+    )
+
+    bank_statement_id: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+        comment="ID del BankStatement procesado durante onboarding",
+    )
+
+    reconciliation_completed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Si completó la reconciliación inicial con PDF",
+    )
+
+    reconciliation_summary: Mapped[dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Resumen de la reconciliación inicial (matched, missing, etc.)",
+    )
+
+    transactions_added_from_pdf: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        comment="Número de transacciones agregadas automáticamente desde el PDF",
     )
 
     # Metadata
