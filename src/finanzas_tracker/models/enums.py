@@ -124,15 +124,24 @@ class AlertType(str, Enum):
     CARD_EXPIRATION = "card_expiration"  # #9: Vencimiento tarjeta física
     UNCATEGORIZED_TRANSACTIONS = "uncategorized_transactions"  # #10: Transacciones sin categorizar
 
-    # Fase 2 - Smart Alerts (Future)
+    # Fase 2 - Smart Alerts (Negative/Preventive)
     OVERDRAFT_PROJECTION = "overdraft_projection"  # Sobregiro proyectado
     LOW_SAVINGS_WARNING = "low_savings_warning"  # Ahorro mínimo crítico
     UNKNOWN_MERCHANT_HIGH = "unknown_merchant_high"  # Cargo desconocido alto
     CREDIT_UTILIZATION_HIGH = "credit_utilization_high"  # Utilización crédito alta
     SPENDING_VELOCITY_HIGH = "spending_velocity_high"  # Velocidad de gasto anormal
-    UNUSED_SUBSCRIPTION = "unused_subscription"  # Suscripción no usada
     SEASONAL_SPENDING_WARNING = "seasonal_spending_warning"  # Patrón estacional
     GOAL_BEHIND_SCHEDULE = "goal_behind_schedule"  # Meta atrasada
+
+    # Fase 2 - Positive Alerts (Gamification/Motivation) 🎉
+    SPENDING_REDUCTION = "spending_reduction"  # Reducción significativa en categoría
+    SAVINGS_MILESTONE = "savings_milestone"  # Milestone de ahorro alcanzado
+    BUDGET_UNDER_TARGET = "budget_under_target"  # Gastó menos del presupuesto
+    DEBT_PAYMENT_PROGRESS = "debt_payment_progress"  # Progreso pagando deudas
+    STREAK_ACHIEVEMENT = "streak_achievement"  # X meses bajo presupuesto
+    CATEGORY_IMPROVEMENT = "category_improvement"  # Mejora sostenida en categoría
+    ZERO_EATING_OUT = "zero_eating_out"  # Periodo sin gastar en comer afuera
+    EMERGENCY_FUND_MILESTONE = "emergency_fund_milestone"  # Fondo emergencia creciendo
 
     def __str__(self) -> str:
         """Retorna el valor del enum como string."""

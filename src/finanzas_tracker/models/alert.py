@@ -150,7 +150,7 @@ class Alert(Base):
     def emoji(self) -> str:
         """Retorna emoji apropiado según el tipo de alerta."""
         emoji_map = {
-            # Fase 1 - Critical
+            # Fase 1 - MVP Critical Alerts
             AlertType.STATEMENT_UPLOAD_REMINDER: "📄",
             AlertType.CREDIT_CARD_PAYMENT_DUE: "💳",
             AlertType.SPENDING_EXCEEDS_INCOME: "🚨",
@@ -161,6 +161,23 @@ class Alert(Base):
             AlertType.HIGH_INTEREST_PROJECTION: "💰",
             AlertType.CARD_EXPIRATION: "💳",
             AlertType.UNCATEGORIZED_TRANSACTIONS: "📊",
+            # Fase 2 - Negative/Preventive Alerts
+            AlertType.OVERDRAFT_PROJECTION: "⛔",
+            AlertType.LOW_SAVINGS_WARNING: "📉",
+            AlertType.UNKNOWN_MERCHANT_HIGH: "❓",
+            AlertType.CREDIT_UTILIZATION_HIGH: "📊",
+            AlertType.SPENDING_VELOCITY_HIGH: "⚡",
+            AlertType.SEASONAL_SPENDING_WARNING: "🎄",
+            AlertType.GOAL_BEHIND_SCHEDULE: "⏰",
+            # Fase 2 - Positive Alerts (Gamification/Motivation)
+            AlertType.SPENDING_REDUCTION: "🎯",
+            AlertType.SAVINGS_MILESTONE: "🏆",
+            AlertType.BUDGET_UNDER_TARGET: "✨",
+            AlertType.DEBT_PAYMENT_PROGRESS: "💪",
+            AlertType.STREAK_ACHIEVEMENT: "🔥",
+            AlertType.CATEGORY_IMPROVEMENT: "📈",
+            AlertType.ZERO_EATING_OUT: "🥗",
+            AlertType.EMERGENCY_FUND_MILESTONE: "🛡️",
         }
         return emoji_map.get(self.alert_type, "🔔")
 

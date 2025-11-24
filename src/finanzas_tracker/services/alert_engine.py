@@ -31,7 +31,7 @@ from finanzas_tracker.models.bank_statement import BankStatement
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.category import Category
-from finanzas_tracker.models.enums import AlertPriority, AlertStatus, AlertType
+from finanzas_tracker.models.enums import AlertPriority, AlertStatus, AlertType, CardType
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.subscription import Subscription
 from finanzas_tracker.models.transaction import Transaction
@@ -82,6 +82,25 @@ class AlertEngine:
         alerts_generated.extend(self._check_high_interest_projection(profile_id))
         alerts_generated.extend(self._check_card_expiration(profile_id))
         alerts_generated.extend(self._check_uncategorized_transactions(profile_id))
+
+        # Fase 2 - Negative/Preventive Alerts
+        alerts_generated.extend(self._check_overdraft_projection(profile_id))
+        alerts_generated.extend(self._check_low_savings_warning(profile_id))
+        alerts_generated.extend(self._check_unknown_merchant_high(profile_id))
+        alerts_generated.extend(self._check_credit_utilization_high(profile_id))
+        alerts_generated.extend(self._check_spending_velocity_high(profile_id))
+        alerts_generated.extend(self._check_seasonal_spending_warning(profile_id))
+        alerts_generated.extend(self._check_goal_behind_schedule(profile_id))
+
+        # Fase 2 - Positive Alerts (Gamification/Motivation)
+        alerts_generated.extend(self._check_spending_reduction(profile_id))
+        alerts_generated.extend(self._check_savings_milestone(profile_id))
+        alerts_generated.extend(self._check_budget_under_target(profile_id))
+        alerts_generated.extend(self._check_debt_payment_progress(profile_id))
+        alerts_generated.extend(self._check_streak_achievement(profile_id))
+        alerts_generated.extend(self._check_category_improvement(profile_id))
+        alerts_generated.extend(self._check_zero_eating_out(profile_id))
+        alerts_generated.extend(self._check_emergency_fund_milestone(profile_id))
 
         logger.info(
             f"Evaluación completa: {len(alerts_generated)} alertas generadas",
@@ -805,3 +824,787 @@ tan 7 días o menos para renovación
             )
 
         return alerts
+
+    # ========================================================================
+    # FASE 2 - NEGATIVE/PREVENTIVE ALERTS
+    # ========================================================================
+
+    def _check_overdraft_projection(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Proyección de sobregiro.
+
+        Genera alerta si proyecta quedarse sin fondos antes de fin de mes.
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+
+        # Obtener ingresos del mes actual
+        stmt = select(func.sum(Income.monto_crc)).where(
+            Income.profile_id == profile_id,
+            func.extract("year", Income.fecha_ingreso) == today.year,
+            func.extract("month", Income.fecha_ingreso) == today.month,
+        )
+        total_income = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Obtener gastos del mes actual
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            func.extract("year", Transaction.fecha_transaccion) == today.year,
+            func.extract("month", Transaction.fecha_transaccion) == today.month,
+        )
+        total_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Proyectar gastos al final del mes
+        days_elapsed = today.day
+        if days_elapsed == 0:
+            return alerts
+
+        projected_spending = (total_spending / days_elapsed) * 30
+        deficit_projected = projected_spending - total_income
+        available_funds = total_income - total_spending
+
+        # Alerta si proyecta deficit
+        if deficit_projected > Decimal("0") and available_funds < deficit_projected:
+            if self._alert_already_exists(profile_id, AlertType.OVERDRAFT_PROJECTION):
+                return alerts
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.OVERDRAFT_PROJECTION,
+                priority=AlertPriority.CRITICAL,
+                status=AlertStatus.PENDING,
+                title="⛔ ¡Alerta de Sobregiro Proyectado!",
+                message=(
+                    f"Según tu ritmo de gasto actual, proyectamos un déficit de ₡{deficit_projected:,.0f} "
+                    f"para fin de mes. Tus ingresos son ₡{total_income:,.0f} pero proyectamos gastos de "
+                    f"₡{projected_spending:,.0f}. Considerá reducir gastos opcionales."
+                ),
+                action_url="/Dashboard",
+            )
+
+            alerts.append(alert)
+            logger.warning("Alerta generada: Overdraft Projection", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_low_savings_warning(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Ahorro mínimo crítico.
+
+        Genera alerta si ahorros < 1 mes de gastos promedio.
+        """
+        alerts: list[Alert] = []
+
+        # Calcular gastos promedio mensual (últimos 3 meses)
+        three_months_ago = date.today() - timedelta(days=90)
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            Transaction.fecha_transaccion >= three_months_ago,
+        )
+        total_spending_3m = self.session.execute(stmt).scalar_one() or Decimal("0")
+        avg_monthly_spending = total_spending_3m / Decimal("3")
+
+        # Obtener ahorros actuales (aproximado con ingresos de inversión)
+        stmt = select(func.sum(Income.monto_crc)).where(
+            Income.profile_id == profile_id, Income.tipo == "inversion"
+        )
+        total_savings = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Umbral: < 1 mes de gastos
+        if avg_monthly_spending > 0 and total_savings < avg_monthly_spending:
+            if self._alert_already_exists(profile_id, AlertType.LOW_SAVINGS_WARNING):
+                return alerts
+
+            months_covered = total_savings / avg_monthly_spending if avg_monthly_spending > 0 else 0
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.LOW_SAVINGS_WARNING,
+                priority=AlertPriority.HIGH,
+                status=AlertStatus.PENDING,
+                title="📉 Ahorros Bajos - Fondo de Emergencia Insuficiente",
+                message=(
+                    f"Tus ahorros actuales (₡{total_savings:,.0f}) cubren solo {months_covered:.1f} "
+                    f"mes(es) de gastos. Lo ideal es tener al menos 3-6 meses. "
+                    f"Tu gasto mensual promedio es ₡{avg_monthly_spending:,.0f}."
+                ),
+                action_url="/Dashboard",
+            )
+
+            alerts.append(alert)
+            logger.warning("Alerta generada: Low Savings Warning", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_unknown_merchant_high(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Cargo alto en comercio desconocido.
+
+        Detecta posibles fraudes o compras no reconocidas.
+        """
+        alerts: list[Alert] = []
+        threshold_amount = Decimal("50000")
+        days_window = 7
+
+        # Buscar transacciones recientes grandes sin merchant
+        since_date = date.today() - timedelta(days=days_window)
+        stmt = select(Transaction).where(
+            Transaction.profile_id == profile_id,
+            Transaction.monto_crc >= threshold_amount,
+            Transaction.fecha_transaccion >= since_date,
+            Transaction.merchant_id.is_(None),
+        )
+        unknown_high_txs = self.session.execute(stmt).scalars().all()
+
+        for tx in unknown_high_txs:
+            if self._alert_already_exists(
+                profile_id, AlertType.UNKNOWN_MERCHANT_HIGH, related_id=tx.id
+            ):
+                continue
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.UNKNOWN_MERCHANT_HIGH,
+                priority=AlertPriority.HIGH,
+                status=AlertStatus.PENDING,
+                title="❓ Cargo Alto en Comercio Desconocido",
+                message=(
+                    f"Detectamos un cargo de ₡{tx.monto_crc:,.0f} en '{tx.descripcion}' "
+                    f"el {tx.fecha_transaccion.strftime('%d/%m/%Y')}. "
+                    f"¿Reconocés esta transacción? Si no, podría ser fraude."
+                ),
+                action_url=f"/Transacciones?tx={tx.id}",
+                transaction_id=tx.id,
+            )
+
+            alerts.append(alert)
+            logger.warning("Alerta generada: Unknown Merchant High", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_credit_utilization_high(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Utilización de crédito alta.
+
+        Afecta credit score si utilización > 70%.
+        """
+        alerts: list[Alert] = []
+
+        # Buscar tarjetas de crédito con límite y saldo
+        stmt = select(Card).where(
+            Card.profile_id == profile_id,
+            Card.tipo == CardType.CREDIT,
+            Card.activa == True,  # noqa: E712
+            Card.limite_credito.is_not(None),
+            Card.current_balance.is_not(None),
+        )
+        credit_cards = self.session.execute(stmt).scalars().all()
+
+        for card in credit_cards:
+            if not card.limite_credito or not card.current_balance:
+                continue
+
+            utilization = (card.current_balance / card.limite_credito) * 100
+
+            if utilization > 70:
+                if self._alert_already_exists(
+                    profile_id, AlertType.CREDIT_UTILIZATION_HIGH, related_id=card.id
+                ):
+                    continue
+
+                # Prioridad según utilización
+                if utilization >= 90:
+                    priority = AlertPriority.CRITICAL
+                elif utilization >= 80:
+                    priority = AlertPriority.HIGH
+                else:
+                    priority = AlertPriority.MEDIUM
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.CREDIT_UTILIZATION_HIGH,
+                    priority=priority,
+                    status=AlertStatus.PENDING,
+                    title=f"📊 Utilización de Crédito Alta - {card.nombre_display}",
+                    message=(
+                        f"Estás utilizando {utilization:.1f}% de tu límite de crédito "
+                        f"(₡{card.current_balance:,.0f} de ₡{card.limite_credito:,.0f}). "
+                        f"Mantener bajo 30% es ideal para tu score crediticio."
+                    ),
+                    action_url="/Tarjetas",
+                )
+
+                alerts.append(alert)
+                logger.warning("Alerta generada: Credit Utilization High", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_spending_velocity_high(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Velocidad de gasto anormal.
+
+        Gasto diario últimos 3 días > 2x promedio histórico.
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+
+        # Gasto últimos 3 días
+        three_days_ago = today - timedelta(days=3)
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            Transaction.fecha_transaccion >= three_days_ago,
+        )
+        recent_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+        daily_recent = recent_spending / Decimal("3")
+
+        # Gasto promedio histórico (últimos 90 días, excluyendo últimos 3)
+        ninety_days_ago = today - timedelta(days=90)
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            Transaction.fecha_transaccion >= ninety_days_ago,
+            Transaction.fecha_transaccion < three_days_ago,
+        )
+        historical_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+        daily_historical = historical_spending / Decimal("87")
+
+        # Umbral: > 2x promedio
+        if daily_historical > 0 and daily_recent > (daily_historical * 2):
+            if self._alert_already_exists(profile_id, AlertType.SPENDING_VELOCITY_HIGH):
+                return alerts
+
+            increase_pct = ((daily_recent / daily_historical) - 1) * 100
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.SPENDING_VELOCITY_HIGH,
+                priority=AlertPriority.HIGH,
+                status=AlertStatus.PENDING,
+                title="⚡ Velocidad de Gasto Inusual",
+                message=(
+                    f"Tu gasto diario de los últimos 3 días (₡{daily_recent:,.0f}/día) "
+                    f"es {increase_pct:.0f}% mayor que tu promedio histórico (₡{daily_historical:,.0f}/día). "
+                    f"¿Hay algún gasto extraordinario o podés reducir?"
+                ),
+                action_url="/Transacciones",
+            )
+
+            alerts.append(alert)
+            logger.warning("Alerta generada: Spending Velocity High", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_seasonal_spending_warning(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Patrón estacional de gasto.
+
+        Detecta épocas de alto gasto (Navidad, etc).
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+
+        # Definir épocas de alto gasto
+        is_high_spending_season = False
+        season_name = ""
+
+        if today.month == 12:
+            is_high_spending_season, season_name = True, "Navidad"
+        elif today.month in [1, 2]:
+            is_high_spending_season, season_name = True, "Inicio de Año"
+        elif today.month == 7:
+            is_high_spending_season, season_name = True, "Vacaciones"
+
+        if not is_high_spending_season:
+            return alerts
+
+        # Comparar gasto del mes vs promedio
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            func.extract("year", Transaction.fecha_transaccion) == today.year,
+            func.extract("month", Transaction.fecha_transaccion) == today.month,
+        )
+        current_month_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Promedio meses normales (últimos 6 meses, excluyendo diciembre)
+        six_months_ago = today - timedelta(days=180)
+        stmt = select(func.avg(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            Transaction.fecha_transaccion >= six_months_ago,
+            func.extract("month", Transaction.fecha_transaccion) != 12,
+        )
+        avg_normal_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Si gasto actual > 150% del promedio
+        if avg_normal_spending > 0 and current_month_spending > (avg_normal_spending * Decimal("1.5")):
+            if self._alert_already_exists(profile_id, AlertType.SEASONAL_SPENDING_WARNING):
+                return alerts
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.SEASONAL_SPENDING_WARNING,
+                priority=AlertPriority.MEDIUM,
+                status=AlertStatus.PENDING,
+                title=f"🎄 Gasto Elevado en Época de {season_name}",
+                message=(
+                    f"Estamos en época de {season_name} y tu gasto este mes (₡{current_month_spending:,.0f}) "
+                    f"es mayor que tu promedio (₡{avg_normal_spending:,.0f}). "
+                    f"Es normal gastar más en esta época, pero vigilá no excederte demasiado."
+                ),
+                action_url="/Dashboard",
+            )
+
+            alerts.append(alert)
+            logger.info("Alerta generada: Seasonal Spending Warning", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_goal_behind_schedule(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Fase 2: Meta financiera atrasada.
+
+        Placeholder - requiere modelo Goal completo.
+        """
+        return []
+
+    # ========================================================================
+    # FASE 2 - POSITIVE ALERTS (GAMIFICATION/MOTIVATION)
+    # ========================================================================
+
+    def _check_spending_reduction(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Reducción significativa en categoría.
+
+        Celebra cuando reduce >30% gasto en una categoría vs mes anterior.
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+        current_month = today.month
+        current_year = today.year
+
+        # Mes anterior
+        if current_month == 1:
+            prev_month, prev_year = 12, current_year - 1
+        else:
+            prev_month, prev_year = current_month - 1, current_year
+
+        # Obtener categorías del usuario
+        stmt = select(Category).where(Category.profile_id == profile_id)
+        categories = self.session.execute(stmt).scalars().all()
+
+        for category in categories:
+            # Gasto mes actual
+            stmt = select(func.sum(Transaction.monto_crc)).where(
+                Transaction.profile_id == profile_id,
+                Transaction.category_id == category.id,
+                func.extract("year", Transaction.fecha_transaccion) == current_year,
+                func.extract("month", Transaction.fecha_transaccion) == current_month,
+            )
+            current_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+            # Gasto mes anterior
+            stmt = select(func.sum(Transaction.monto_crc)).where(
+                Transaction.profile_id == profile_id,
+                Transaction.category_id == category.id,
+                func.extract("year", Transaction.fecha_transaccion) == prev_year,
+                func.extract("month", Transaction.fecha_transaccion) == prev_month,
+            )
+            prev_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+            if prev_spending == 0:
+                continue
+
+            # Calcular reducción
+            reduction_pct = ((prev_spending - current_spending) / prev_spending) * 100
+
+            if reduction_pct >= 30:
+                if self._alert_already_exists(
+                    profile_id, AlertType.SPENDING_REDUCTION, related_id=category.id
+                ):
+                    continue
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.SPENDING_REDUCTION,
+                    priority=AlertPriority.LOW,
+                    status=AlertStatus.PENDING,
+                    title=f"🎯 ¡Excelente! Reduciste {reduction_pct:.0f}% en {category.nombre}",
+                    message=(
+                        f"¡Felicitaciones! Este mes gastaste ₡{current_spending:,.0f} en {category.nombre}, "
+                        f"una reducción del {reduction_pct:.0f}% comparado con el mes pasado "
+                        f"(₡{prev_spending:,.0f}). ¡Seguí así!"
+                    ),
+                    action_url="/Dashboard",
+                )
+
+                alerts.append(alert)
+                logger.info("Alerta generada: Spending Reduction", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_savings_milestone(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Milestone de ahorro alcanzado.
+
+        Celebra cuando alcanza hitos de ahorro (₡100k, ₡500k, ₡1M, etc).
+        """
+        alerts: list[Alert] = []
+
+        # Obtener ahorros totales
+        stmt = select(func.sum(Income.monto_crc)).where(
+            Income.profile_id == profile_id, Income.tipo == "inversion"
+        )
+        total_savings = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        # Milestones: 100k, 500k, 1M, 2M, 5M, 10M
+        milestones = [
+            (Decimal("100000"), "₡100 mil"),
+            (Decimal("500000"), "₡500 mil"),
+            (Decimal("1000000"), "₡1 millón"),
+            (Decimal("2000000"), "₡2 millones"),
+            (Decimal("5000000"), "₡5 millones"),
+            (Decimal("10000000"), "₡10 millones"),
+        ]
+
+        for milestone_amount, milestone_name in milestones:
+            if total_savings >= milestone_amount:
+                # Verificar si ya celebramos este milestone
+                if self._alert_already_exists(profile_id, AlertType.SAVINGS_MILESTONE):
+                    continue
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.SAVINGS_MILESTONE,
+                    priority=AlertPriority.LOW,
+                    status=AlertStatus.PENDING,
+                    title=f"🏆 ¡Milestone Alcanzado! {milestone_name} en Ahorros",
+                    message=(
+                        f"¡Increíble! Alcanzaste {milestone_name} en ahorros totales. "
+                        f"Tu saldo actual es ₡{total_savings:,.0f}. ¡Seguí construyendo tu futuro financiero!"
+                    ),
+                    action_url="/Dashboard",
+                )
+
+                alerts.append(alert)
+                logger.info("Alerta generada: Savings Milestone", extra={"profile_id": profile_id})
+                break  # Solo un milestone a la vez
+
+        return alerts
+
+    def _check_budget_under_target(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Gastó menos del presupuesto.
+
+        Celebra cuando gasta <90% del presupuesto mensual.
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+
+        # Obtener presupuestos activos del mes
+        stmt = select(Budget).where(
+            Budget.profile_id == profile_id,
+            func.extract("year", Budget.mes) == today.year,
+            func.extract("month", Budget.mes) == today.month,
+        )
+        budgets = self.session.execute(stmt).scalars().all()
+
+        for budget in budgets:
+            if budget.monto_limite == 0:
+                continue
+
+            # Calcular gasto actual de la categoría
+            stmt = select(func.sum(Transaction.monto_crc)).where(
+                Transaction.profile_id == profile_id,
+                Transaction.category_id == budget.category_id,
+                func.extract("year", Transaction.fecha_transaccion) == today.year,
+                func.extract("month", Transaction.fecha_transaccion) == today.month,
+            )
+            current_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+            utilization_pct = (current_spending / budget.monto_limite) * 100
+
+            # Celebrar si está bajo 90% y estamos cerca del fin del mes (día 25+)
+            if utilization_pct < 90 and today.day >= 25:
+                if self._alert_already_exists(
+                    profile_id, AlertType.BUDGET_UNDER_TARGET, related_id=budget.id
+                ):
+                    continue
+
+                category_name = budget.category.nombre if budget.category else "esta categoría"
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.BUDGET_UNDER_TARGET,
+                    priority=AlertPriority.LOW,
+                    status=AlertStatus.PENDING,
+                    title=f"✨ ¡Bien Hecho! Bajo Presupuesto en {category_name}",
+                    message=(
+                        f"¡Excelente! Solo usaste {utilization_pct:.0f}% de tu presupuesto en {category_name}. "
+                        f"Gastaste ₡{current_spending:,.0f} de ₡{budget.monto_limite:,.0f} permitidos. "
+                        f"¡Seguí con este control!"
+                    ),
+                    action_url="/Presupuestos",
+                    budget_id=budget.id,
+                )
+
+                alerts.append(alert)
+                logger.info("Alerta generada: Budget Under Target", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_debt_payment_progress(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Progreso pagando deudas.
+
+        Celebra cuando reduce saldo de tarjeta de crédito >20% vs mes anterior.
+        """
+        alerts: list[Alert] = []
+
+        # Por ahora placeholder - requiere tracking histórico de balances
+        # TODO: Implementar cuando tengamos historial de current_balance en Card
+
+        return alerts
+
+    def _check_streak_achievement(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: X meses seguidos bajo presupuesto.
+
+        Celebra rachas de 3, 6, 12 meses cumpliendo presupuestos.
+        """
+        alerts: list[Alert] = []
+
+        # Placeholder - requiere tracking histórico de compliance
+        # TODO: Implementar cuando tengamos historial de budget compliance
+
+        return alerts
+
+    def _check_category_improvement(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Mejora sostenida en categoría.
+
+        Celebra cuando reduce gastos en categoría durante 3 meses consecutivos.
+        """
+        alerts: list[Alert] = []
+        today = date.today()
+
+        # Obtener categorías
+        stmt = select(Category).where(Category.profile_id == profile_id)
+        categories = self.session.execute(stmt).scalars().all()
+
+        for category in categories:
+            # Calcular gasto últimos 3 meses
+            spending_by_month = []
+            for month_offset in range(3):
+                target_date = today - timedelta(days=30 * month_offset)
+                stmt = select(func.sum(Transaction.monto_crc)).where(
+                    Transaction.profile_id == profile_id,
+                    Transaction.category_id == category.id,
+                    func.extract("year", Transaction.fecha_transaccion) == target_date.year,
+                    func.extract("month", Transaction.fecha_transaccion) == target_date.month,
+                )
+                spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+                spending_by_month.append(spending)
+
+            # Verificar tendencia decreciente (cada mes < anterior)
+            if len(spending_by_month) == 3:
+                if spending_by_month[0] < spending_by_month[1] < spending_by_month[2]:
+                    if self._alert_already_exists(
+                        profile_id, AlertType.CATEGORY_IMPROVEMENT, related_id=category.id
+                    ):
+                        continue
+
+                    total_reduction = spending_by_month[2] - spending_by_month[0]
+                    reduction_pct = (total_reduction / spending_by_month[2]) * 100 if spending_by_month[2] > 0 else 0
+
+                    alert = Alert(
+                        id=str(uuid4()),
+                        profile_id=profile_id,
+                        alert_type=AlertType.CATEGORY_IMPROVEMENT,
+                        priority=AlertPriority.LOW,
+                        status=AlertStatus.PENDING,
+                        title=f"📈 ¡Mejora Sostenida! 3 Meses Reduciendo {category.nombre}",
+                        message=(
+                            f"¡Impresionante! Llevas 3 meses consecutivos reduciendo gastos en {category.nombre}. "
+                            f"Reducción total: ₡{total_reduction:,.0f} ({reduction_pct:.0f}%). ¡No pares!"
+                        ),
+                        action_url="/Dashboard",
+                    )
+
+                    alerts.append(alert)
+                    logger.info("Alerta generada: Category Improvement", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_zero_eating_out(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Periodo sin gastar en comer afuera.
+
+        Celebra cuando completa 7+ días sin gastos en Comer Afuera.
+        """
+        alerts: list[Alert] = []
+
+        # Buscar categoría "Comer Afuera"
+        stmt = select(Category).where(
+            Category.profile_id == profile_id,
+            Category.nombre.ilike("%comer%afuera%"),
+        )
+        eating_out_category = self.session.execute(stmt).scalar_one_or_none()
+
+        if not eating_out_category:
+            return alerts
+
+        # Verificar últimos 7 días
+        seven_days_ago = date.today() - timedelta(days=7)
+        stmt = select(func.count(Transaction.id)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.category_id == eating_out_category.id,
+            Transaction.fecha_transaccion >= seven_days_ago,
+        )
+        count = self.session.execute(stmt).scalar_one()
+
+        if count == 0:
+            if self._alert_already_exists(profile_id, AlertType.ZERO_EATING_OUT):
+                return alerts
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.ZERO_EATING_OUT,
+                priority=AlertPriority.LOW,
+                status=AlertStatus.PENDING,
+                title="🥗 ¡Semana Completa Sin Comer Afuera!",
+                message=(
+                    "¡Felicitaciones! Llevas 7 días sin gastar en comer afuera. "
+                    "Estás ahorrando dinero y probablemente comiendo más saludable. ¡Seguí así!"
+                ),
+                action_url="/Dashboard",
+            )
+
+            alerts.append(alert)
+            logger.info("Alerta generada: Zero Eating Out", extra={"profile_id": profile_id})
+
+        return alerts
+
+    def _check_emergency_fund_milestone(self, profile_id: str) -> list[Alert]:
+        """
+        Alerta Positiva: Fondo de emergencia creciendo.
+
+        Celebra cuando fondo de emergencia cubre 3, 6, 12 meses de gastos.
+        """
+        alerts: list[Alert] = []
+
+        # Calcular gastos promedio mensual
+        three_months_ago = date.today() - timedelta(days=90)
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.debe_contar_en_presupuesto == True,  # noqa: E712
+            Transaction.fecha_transaccion >= three_months_ago,
+        )
+        total_spending_3m = self.session.execute(stmt).scalar_one() or Decimal("0")
+        avg_monthly_spending = total_spending_3m / Decimal("3")
+
+        # Obtener ahorros actuales
+        stmt = select(func.sum(Income.monto_crc)).where(
+            Income.profile_id == profile_id, Income.tipo == "inversion"
+        )
+        total_savings = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+        if avg_monthly_spending == 0:
+            return alerts
+
+        months_covered = total_savings / avg_monthly_spending
+
+        # Milestones: 3, 6, 12 meses
+        milestones = [(3, "3 meses"), (6, "6 meses"), (12, "1 año")]
+
+        for milestone_months, milestone_name in milestones:
+            if months_covered >= milestone_months:
+                if self._alert_already_exists(profile_id, AlertType.EMERGENCY_FUND_MILESTONE):
+                    continue
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.EMERGENCY_FUND_MILESTONE,
+                    priority=AlertPriority.LOW,
+                    status=AlertStatus.PENDING,
+                    title=f"🛡️ ¡Fondo de Emergencia Sólido! {milestone_name} Cubiertos",
+                    message=(
+                        f"¡Excelente gestión financiera! Tu fondo de emergencia (₡{total_savings:,.0f}) "
+                        f"ya cubre {milestone_name} de gastos. Tu promedio mensual es ₡{avg_monthly_spending:,.0f}. "
+                        f"¡Estás muy bien preparado para imprevistos!"
+                    ),
+                    action_url="/Dashboard",
+                )
+
+                alerts.append(alert)
+                logger.info("Alerta generada: Emergency Fund Milestone", extra={"profile_id": profile_id})
+                break  # Solo un milestone a la vez
+
+        return alerts
+
+    # ========================================================================
+    # HELPER METHODS
+    # ========================================================================
+
+    def _alert_already_exists(
+        self,
+        profile_id: str,
+        alert_type: AlertType,
+        related_id: str | None = None,
+    ) -> bool:
+        """
+        Verifica si ya existe una alerta pendiente/activa del mismo tipo.
+
+        Args:
+            profile_id: ID del perfil
+            alert_type: Tipo de alerta
+            related_id: ID relacionado opcional (transaction_id, budget_id, etc.)
+
+        Returns:
+            True si ya existe, False si no
+        """
+        stmt = select(func.count(Alert.id)).where(
+            Alert.profile_id == profile_id,
+            Alert.alert_type == alert_type,
+            Alert.status.in_([AlertStatus.PENDING, AlertStatus.READ]),
+        )
+
+        # Si hay related_id, verificar contra los campos de relación
+        if related_id:
+            stmt = stmt.where(
+                (Alert.transaction_id == related_id)
+                | (Alert.subscription_id == related_id)
+                | (Alert.budget_id == related_id)
+            )
+
+        count = self.session.execute(stmt).scalar_one()
+        return count > 0
+
+    def create_alert(self, alert: Alert) -> Alert:
+        """
+        Persiste una alerta en la base de datos.
+
+        Args:
+            alert: Instancia de Alert
+
+        Returns:
+            Alert persistido
+        """
+        self.session.add(alert)
+        self.session.commit()
+        self.session.refresh(alert)
+        return alert
