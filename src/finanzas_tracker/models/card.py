@@ -1,10 +1,10 @@
 """Modelo de tarjetas bancarias."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -70,6 +70,30 @@ class Card(Base):
     fecha_vencimiento: Mapped[int | None] = mapped_column(
         nullable=True,
         comment="Día del mes de vencimiento (1-31)",
+    )
+
+    # Información adicional para tarjetas de crédito
+    current_balance: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=15, scale=2),
+        nullable=True,
+        comment="Saldo actual de la tarjeta de crédito en colones",
+    )
+    interest_rate_annual: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=5, scale=2),
+        nullable=True,
+        comment="Tasa de interés anual en % (ej: 52.00 para 52%)",
+    )
+    minimum_payment_percentage: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=5, scale=2),
+        nullable=True,
+        comment="Porcentaje de pago mínimo (ej: 2.50 para 2.5%)",
+    )
+
+    # Fecha de vencimiento de la tarjeta física
+    card_expiration_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Fecha de vencimiento del plástico (mes/año)",
     )
 
     # Alias/nombre personalizado
@@ -250,4 +274,33 @@ class Card(Base):
             value = value.strip()
             if not value:
                 return None  # Si está vacío, retornar None
+        return value
+
+    @validates("current_balance")
+    def validate_current_balance(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que el saldo actual sea no negativo."""
+        if value is not None and value < 0:
+            raise ValueError(f"El saldo actual no puede ser negativo, recibido: ₡{value:,.2f}")
+        return value
+
+    @validates("interest_rate_annual")
+    def validate_interest_rate(self, key: str, value: Decimal | None) -> Decimal | None:
+        """Valida que la tasa de interés esté en rango válido (0-100%)."""
+        if value is not None:
+            if value < 0 or value > 100:
+                raise ValueError(
+                    f"La tasa de interés debe estar entre 0% y 100%, recibido: {value}%"
+                )
+        return value
+
+    @validates("minimum_payment_percentage")
+    def validate_minimum_payment_percentage(
+        self, key: str, value: Decimal | None
+    ) -> Decimal | None:
+        """Valida que el porcentaje de pago mínimo esté en rango válido (0-100%)."""
+        if value is not None:
+            if value < 0 or value > 100:
+                raise ValueError(
+                    f"El porcentaje de pago mínimo debe estar entre 0% y 100%, recibido: {value}%"
+                )
         return value

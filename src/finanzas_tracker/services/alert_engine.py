@@ -606,18 +606,81 @@ tan 7 días o menos para renovación
 
         Genera alerta si:
         - Hay saldo pendiente en tarjeta de crédito
-        - Pagar solo el mínimo genera > ₡20,000 en intereses
+        - Pagar solo el mínimo genera > ₡20,000 en intereses mensuales
         """
         alerts: list[Alert] = []
 
-        # Por ahora, esta alerta requiere información de saldo de tarjeta
-        # que no está en el modelo actual. La implementaremos en Fase 2
-        # cuando tengamos integración con saldos reales.
+        # Buscar tarjetas de crédito con saldo, tasa de interés y pago mínimo configurados
+        from finanzas_tracker.models.card import Card
 
-        # TODO: Implementar cuando tengamos:
-        # - Saldo actual de tarjeta
-        # - Pago mínimo
-        # - Tasa de interés
+        stmt = select(Card).where(
+            Card.profile_id == profile_id,
+            Card.tipo == CardType.CREDIT,
+            Card.activa == True,  # noqa: E712
+            Card.current_balance.is_not(None),
+            Card.interest_rate_annual.is_not(None),
+            Card.minimum_payment_percentage.is_not(None),
+        )
+        credit_cards = self.session.execute(stmt).scalars().all()
+
+        for card in credit_cards:
+            if not card.current_balance or card.current_balance <= 0:
+                continue
+
+            # Calcular interés mensual
+            # Fórmula: (Saldo * Tasa Anual / 12)
+            monthly_interest_rate = card.interest_rate_annual / Decimal("12")
+            monthly_interest = card.current_balance * (monthly_interest_rate / Decimal("100"))
+
+            # Threshold: ₡20,000 de interés mensual
+            interest_threshold = Decimal("20000")
+
+            if monthly_interest >= interest_threshold:
+                # Verificar si ya existe alerta pendiente
+                if self._alert_already_exists(
+                    profile_id, AlertType.HIGH_INTEREST_PROJECTION, related_id=card.id
+                ):
+                    continue
+
+                # Calcular pago mínimo
+                minimum_payment = card.current_balance * (
+                    card.minimum_payment_percentage / Decimal("100")
+                )
+
+                # Prioridad según magnitud del interés
+                if monthly_interest >= Decimal("50000"):
+                    priority = AlertPriority.CRITICAL
+                elif monthly_interest >= Decimal("30000"):
+                    priority = AlertPriority.HIGH
+                else:
+                    priority = AlertPriority.MEDIUM
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.HIGH_INTEREST_PROJECTION,
+                    priority=priority,
+                    status=AlertStatus.PENDING,
+                    title=f"💰 ¡Cuidado con los Intereses! - {card.nombre_display}",
+                    message=(
+                        f"Tu tarjeta {card.nombre_display} tiene un saldo de ₡{card.current_balance:,.0f}. "
+                        f"Si solo pagas el mínimo (₡{minimum_payment:,.0f}), pagarás ~₡{monthly_interest:,.0f} "
+                        f"en intereses este mes ({monthly_interest_rate:.2f}% mensual). "
+                        f"Considera pagar más del mínimo para ahorrar en intereses."
+                    ),
+                    action_url="/Tarjetas",
+                )
+
+                alerts.append(alert)
+                logger.warning(
+                    f"Alerta generada: High Interest Projection - {card.nombre_display}",
+                    extra={
+                        "profile_id": profile_id,
+                        "card_id": card.id,
+                        "balance": float(card.current_balance),
+                        "monthly_interest": float(monthly_interest),
+                    },
+                )
 
         return alerts
 
@@ -630,14 +693,66 @@ tan 7 días o menos para renovación
         Alerta #9: Vencimiento de tarjeta física.
 
         Genera alerta si:
-        - Faltan 60 días o menos para que expire la tarjeta
+        - Faltan 60 días o menos para que expire la tarjeta física
         """
         alerts: list[Alert] = []
+        today = date.today()
+        threshold_date = today + timedelta(days=60)
 
-        # Esta alerta requiere fecha de vencimiento en el modelo Card
-        # que no existe actualmente. Se implementará en Fase 2.
+        # Buscar tarjetas con fecha de vencimiento configurada
+        from finanzas_tracker.models.card import Card
 
-        # TODO: Agregar campo expiration_date al modelo Card
+        stmt = select(Card).where(
+            Card.profile_id == profile_id,
+            Card.activa == True,  # noqa: E712
+            Card.card_expiration_date.is_not(None),
+            Card.card_expiration_date <= threshold_date,
+            Card.card_expiration_date >= today,  # No alertar sobre tarjetas ya vencidas
+        )
+        expiring_cards = self.session.execute(stmt).scalars().all()
+
+        for card in expiring_cards:
+            days_until = (card.card_expiration_date - today).days
+
+            # Verificar si ya existe alerta pendiente
+            if self._alert_already_exists(
+                profile_id, AlertType.CARD_EXPIRATION, related_id=card.id
+            ):
+                continue
+
+            # Prioridad según días restantes
+            if days_until <= 15:
+                priority = AlertPriority.CRITICAL
+            elif days_until <= 30:
+                priority = AlertPriority.HIGH
+            else:
+                priority = AlertPriority.MEDIUM
+
+            alert = Alert(
+                id=str(uuid4()),
+                profile_id=profile_id,
+                alert_type=AlertType.CARD_EXPIRATION,
+                priority=priority,
+                status=AlertStatus.PENDING,
+                title=f"💳 Tarjeta por Vencer - {card.nombre_display}",
+                message=(
+                    f"Tu tarjeta {card.nombre_display} vence en {days_until} día(s) "
+                    f"({card.card_expiration_date.strftime('%m/%Y')}). "
+                    f"Contactá a tu banco para solicitar una nueva tarjeta si aún no te llegó."
+                ),
+                action_url="/Tarjetas",
+            )
+
+            alerts.append(alert)
+            logger.info(
+                f"Alerta generada: Card Expiration - {card.nombre_display}",
+                extra={
+                    "profile_id": profile_id,
+                    "card_id": card.id,
+                    "days_until": days_until,
+                    "expiration_date": card.card_expiration_date.isoformat(),
+                },
+            )
 
         return alerts
 
