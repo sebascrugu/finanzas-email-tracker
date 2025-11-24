@@ -9,7 +9,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",  # Ocultar sidebar durante onboarding
 )
 
-from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 import sys
@@ -271,6 +270,7 @@ def step_3_connect_email() -> None:
         if st.button("⏭️ Omitir", use_container_width=True):
             st.warning("Omitiste la conexión de email. Podrás hacerlo después.")
             next_step()
+            st.rerun()
 
 
 def step_3_5_pdf_reconciliation() -> None:
@@ -310,6 +310,10 @@ def step_3_5_pdf_reconciliation() -> None:
         st.session_state.pdf_uploaded = False
     if "reconciliation_report" not in st.session_state:
         st.session_state.reconciliation_report = None
+    if "banco_selected" not in st.session_state:
+        st.session_state.banco_selected = BankName.BAC
+    if "transactions_added_from_pdf" not in st.session_state:
+        st.session_state.transactions_added_from_pdf = False
 
     # Si aún no se ha subido el PDF
     if not st.session_state.pdf_uploaded:
@@ -332,6 +336,8 @@ def step_3_5_pdf_reconciliation() -> None:
             format_func=lambda x: "BAC Credomatic" if x == BankName.BAC else x.value,
             help="Por ahora solo soportamos BAC Credomatic",
         )
+        # Guardar en session state para uso posterior
+        st.session_state.banco_selected = banco
 
         # Date picker para fecha de corte
         from datetime import date
@@ -347,7 +353,12 @@ def step_3_5_pdf_reconciliation() -> None:
 
         with col1:
             if st.button("⬅️ Atrás", use_container_width=True):
+                # Limpiar state del PDF al retroceder
+                st.session_state.pdf_uploaded = False
+                st.session_state.reconciliation_report = None
+                st.session_state.transactions_added_from_pdf = False
                 previous_step()
+                st.rerun()
 
         with col2:
             if st.button(
@@ -449,105 +460,123 @@ def step_3_5_pdf_reconciliation() -> None:
                 "transacción(es) que NO están en tus correos"
             )
 
-            st.info(
-                "💡 Podemos agregarlas automáticamente con categorización IA. "
-                "¿Querés que las agreguemos?"
-            )
+            # Si YA agregamos las transacciones, mostrar resumen y botón continuar
+            if st.session_state.transactions_added_from_pdf:
+                st.success(
+                    f"✅ ¡Agregamos las transacciones exitosamente!"
+                )
 
-            # Mostrar preview de transacciones faltantes
-            with st.expander("👀 Ver Transacciones Faltantes", expanded=True):
-                for i, pdf_tx in enumerate(report.missing_in_emails[:10]):  # Max 10
-                    st.markdown(
-                        f"**{i+1}.** {pdf_tx.comercio} - "
-                        f"₡{pdf_tx.monto:,.2f} - {pdf_tx.fecha.strftime('%d/%m/%Y')}"
+                # Mostrar resumen (recuperado de session state)
+                if "add_result_summary" in st.session_state:
+                    result_summary = st.session_state.add_result_summary
+                    st.info(
+                        f"""
+                        📊 **Resumen**:
+                        - ✅ Agregadas: {result_summary['added']}
+                        - 🤖 Categorizadas: {result_summary['categorized']}
+                        - ❌ Fallidas: {result_summary['failed']}
+                        """
                     )
-                if len(report.missing_in_emails) > 10:
-                    st.caption(f"... y {len(report.missing_in_emails) - 10} más")
 
-            st.markdown("---")
+                    if result_summary.get('failed_transactions'):
+                        with st.expander(
+                            f"⚠️ Ver {len(result_summary['failed_transactions'])} "
+                            "transacción(es) fallida(s)"
+                        ):
+                            for fail in result_summary['failed_transactions']:
+                                st.caption(f"- {fail['comercio']}: {fail['error']}")
 
-            col1, col2 = st.columns([1, 1])
-
-            with col1:
+                st.markdown("---")
                 if st.button(
-                    f"✅ Agregar {len(report.missing_in_emails)} Transacción(es)",
+                    "Continuar ➡️",
                     use_container_width=True,
                     type="primary",
                 ):
-                    with st.spinner("🔄 Agregando transacciones faltantes..."):
-                        try:
-                            with get_session() as session:
-                                recon_service = OnboardingReconciliationService(session)
-                                profile_id = st.session_state.profile_created.id
-
-                                # Agregar transacciones faltantes
-                                result = recon_service.add_missing_transactions(
-                                    report=report,
-                                    profile_id=profile_id,
-                                    banco=banco,
-                                )
-
-                                if result.success:
-                                    st.success(
-                                        f"✅ ¡Agregamos {result.transactions_added} "
-                                        f"transacción(es) exitosamente!"
-                                    )
-                                    st.balloons()
-
-                                    # Actualizar progreso de onboarding
-                                    onboarding_service.update_pdf_reconciliation_progress(
-                                        email=st.session_state.onboarding_email,
-                                        bank_statement_id=report.statement_id,
-                                        reconciliation_summary=report.summary.__dict__,
-                                        transactions_added=result.transactions_added,
-                                    )
-
-                                    # Mostrar resumen
-                                    st.info(
-                                        f"""
-                                        📊 **Resumen**:
-                                        - ✅ Agregadas: {result.transactions_added}
-                                        - 🤖 Categorizadas: {result.transactions_categorized}
-                                        - ❌ Fallidas: {result.transactions_failed}
-                                        """
-                                    )
-
-                                    if result.failed_transactions:
-                                        with st.expander(
-                                            f"⚠️ Ver {len(result.failed_transactions)} "
-                                            "transacción(es) fallida(s)"
-                                        ):
-                                            for fail in result.failed_transactions:
-                                                st.caption(
-                                                    f"- {fail['comercio']}: {fail['error']}"
-                                                )
-
-                                    # Avanzar al siguiente paso
-                                    st.markdown("---")
-                                    if st.button(
-                                        "Continuar ➡️",
-                                        use_container_width=True,
-                                        type="primary",
-                                    ):
-                                        next_step()
-                                        st.rerun()
-                                else:
-                                    st.error("❌ No se pudieron agregar las transacciones")
-
-                        except Exception as e:
-                            st.error(f"❌ Error al agregar transacciones: {e}")
-                            logger.error(
-                                f"Error adding transactions: {e}", exc_info=True
-                            )
-
-            with col2:
-                if st.button(
-                    "⏭️ Continuar sin Agregar",
-                    use_container_width=True,
-                ):
-                    st.info("Podés agregar estas transacciones después manualmente")
                     next_step()
                     st.rerun()
+
+            else:
+                # Aún NO hemos agregado las transacciones
+                st.info(
+                    "💡 Podemos agregarlas automáticamente con categorización IA. "
+                    "¿Querés que las agreguemos?"
+                )
+
+                # Mostrar preview de transacciones faltantes
+                with st.expander("👀 Ver Transacciones Faltantes", expanded=True):
+                    for i, pdf_tx in enumerate(report.missing_in_emails[:10]):  # Max 10
+                        st.markdown(
+                            f"**{i+1}.** {pdf_tx.comercio} - "
+                            f"₡{pdf_tx.monto:,.2f} - {pdf_tx.fecha.strftime('%d/%m/%Y')}"
+                        )
+                    if len(report.missing_in_emails) > 10:
+                        st.caption(f"... y {len(report.missing_in_emails) - 10} más")
+
+                st.markdown("---")
+
+                col1, col2 = st.columns([1, 1])
+
+                with col1:
+                    if st.button(
+                        f"✅ Agregar {len(report.missing_in_emails)} Transacción(es)",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        with st.spinner("🔄 Agregando transacciones faltantes..."):
+                            try:
+                                with get_session() as session:
+                                    recon_service = OnboardingReconciliationService(session)
+                                    profile_id = st.session_state.profile_created.id
+
+                                    # Agregar transacciones faltantes
+                                    result = recon_service.add_missing_transactions(
+                                        report=report,
+                                        profile_id=profile_id,
+                                        banco=st.session_state.banco_selected,
+                                    )
+
+                                    if result.success:
+                                        # Actualizar progreso de onboarding
+                                        onboarding_service.update_pdf_reconciliation_progress(
+                                            email=st.session_state.onboarding_email,
+                                            bank_statement_id=report.statement_id,
+                                            reconciliation_summary=report.summary.__dict__,
+                                            transactions_added=result.transactions_added,
+                                        )
+
+                                        # Marcar paso 4 como completado
+                                        onboarding_service.mark_step_completed(
+                                            st.session_state.onboarding_email, 4
+                                        )
+
+                                        # Guardar resultado en session state
+                                        st.session_state.transactions_added_from_pdf = True
+                                        st.session_state.add_result_summary = {
+                                            'added': result.transactions_added,
+                                            'categorized': result.transactions_categorized,
+                                            'failed': result.transactions_failed,
+                                            'failed_transactions': result.failed_transactions,
+                                        }
+
+                                        # Rerun para mostrar el resumen
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ No se pudieron agregar las transacciones")
+
+                            except Exception as e:
+                                st.error(f"❌ Error al agregar transacciones: {e}")
+                                logger.error(
+                                    f"Error adding transactions: {e}", exc_info=True
+                                )
+
+                with col2:
+                    if st.button(
+                        "⏭️ Continuar sin Agregar",
+                        use_container_width=True,
+                    ):
+                        st.info("Podés agregar estas transacciones después manualmente")
+                        next_step()
+                        st.rerun()
 
         else:
             # No hay transacciones faltantes - perfecto!
@@ -578,6 +607,11 @@ def step_3_5_pdf_reconciliation() -> None:
                         bank_statement_id=report.statement_id,
                         reconciliation_summary=report.summary.__dict__,
                         transactions_added=0,
+                    )
+
+                    # Marcar paso 4 como completado
+                    onboarding_service.mark_step_completed(
+                        st.session_state.onboarding_email, 4
                     )
 
                     next_step()

@@ -95,7 +95,7 @@ class OnboardingService:
 
         Args:
             email: Email del usuario
-            current_step: Paso actual (1-6)
+            current_step: Paso actual (1-7)
             **step_updates: Actualizaciones adicionales (profile_id, etc.)
 
         Returns:
@@ -358,7 +358,7 @@ class OnboardingService:
         tipo: IncomeType = IncomeType.SALARY,
     ) -> Income:
         """
-        Crea el ingreso inicial en el paso 5.
+        Crea el ingreso inicial en el paso 6.
 
         Args:
             email: Email del usuario
