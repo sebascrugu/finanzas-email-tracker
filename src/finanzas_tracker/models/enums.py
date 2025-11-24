@@ -107,3 +107,60 @@ class RecurrenceFrequency(str, Enum):
     def __str__(self) -> str:
         """Retorna el valor del enum como string."""
         return self.value
+
+
+class AlertType(str, Enum):
+    """Tipos de alertas del sistema."""
+
+    # Fase 1 - MVP (Top 10 Critical Alerts)
+    STATEMENT_UPLOAD_REMINDER = "statement_upload_reminder"  # #1: Recordatorio PDF mensual
+    CREDIT_CARD_PAYMENT_DUE = "credit_card_payment_due"  # #2: Fecha pago tarjeta
+    SPENDING_EXCEEDS_INCOME = "spending_exceeds_income"  # #3: Gastas más de lo que ganás
+    BUDGET_80_PERCENT = "budget_80_percent"  # #4: 80% de presupuesto alcanzado
+    BUDGET_100_PERCENT = "budget_100_percent"  # #5: 100% de presupuesto alcanzado
+    SUBSCRIPTION_RENEWAL = "subscription_renewal"  # #6: Renovación suscripción
+    DUPLICATE_TRANSACTION = "duplicate_transaction"  # #7: Transacción duplicada
+    HIGH_INTEREST_PROJECTION = "high_interest_projection"  # #8: Intereses proyectados
+    CARD_EXPIRATION = "card_expiration"  # #9: Vencimiento tarjeta física
+    UNCATEGORIZED_TRANSACTIONS = "uncategorized_transactions"  # #10: Transacciones sin categorizar
+
+    # Fase 2 - Smart Alerts (Future)
+    OVERDRAFT_PROJECTION = "overdraft_projection"  # Sobregiro proyectado
+    LOW_SAVINGS_WARNING = "low_savings_warning"  # Ahorro mínimo crítico
+    UNKNOWN_MERCHANT_HIGH = "unknown_merchant_high"  # Cargo desconocido alto
+    CREDIT_UTILIZATION_HIGH = "credit_utilization_high"  # Utilización crédito alta
+    SPENDING_VELOCITY_HIGH = "spending_velocity_high"  # Velocidad de gasto anormal
+    UNUSED_SUBSCRIPTION = "unused_subscription"  # Suscripción no usada
+    SEASONAL_SPENDING_WARNING = "seasonal_spending_warning"  # Patrón estacional
+    GOAL_BEHIND_SCHEDULE = "goal_behind_schedule"  # Meta atrasada
+
+    def __str__(self) -> str:
+        """Retorna el valor del enum como string."""
+        return self.value
+
+
+class AlertPriority(str, Enum):
+    """Prioridad de las alertas."""
+
+    CRITICAL = "critical"  # 🔴 Requiere acción inmediata
+    HIGH = "high"  # 🟠 Importante, actuar pronto
+    MEDIUM = "medium"  # 🟡 Revisar cuando puedas
+    LOW = "low"  # 🟢 Informativo
+
+    def __str__(self) -> str:
+        """Retorna el valor del enum como string."""
+        return self.value
+
+
+class AlertStatus(str, Enum):
+    """Estados de una alerta."""
+
+    PENDING = "pending"  # Pendiente de revisar
+    READ = "read"  # Leída pero no resuelta
+    RESOLVED = "resolved"  # Resuelta/Atendida
+    DISMISSED = "dismissed"  # Descartada
+
+    def __str__(self) -> str:
+        """Retorna el valor del enum como string."""
+        return self.value
+
