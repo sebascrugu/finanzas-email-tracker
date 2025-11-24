@@ -22,6 +22,8 @@ from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.enums import BankName, CardType, IncomeType, RecurrenceFrequency
 from finanzas_tracker.services.onboarding_service import onboarding_service
+from finanzas_tracker.services.pdf_reconciliation_service import PDFReconciliationService
+from finanzas_tracker.services.onboarding_reconciliation_service import OnboardingReconciliationService
 
 logger = get_logger(__name__)
 
@@ -48,7 +50,7 @@ if "detected_cards" not in st.session_state:
 # FUNCIONES AUXILIARES
 # ============================================================================
 
-def render_progress_bar(current_step: int, total_steps: int = 6) -> None:
+def render_progress_bar(current_step: int, total_steps: int = 7) -> None:
     """Renderiza la barra de progreso del wizard."""
     progress = (current_step - 1) / total_steps
     st.progress(progress)
@@ -58,6 +60,7 @@ def render_progress_bar(current_step: int, total_steps: int = 6) -> None:
         "Bienvenida",
         "Perfil",
         "Email",
+        "Estado de Cuenta",
         "Tarjetas",
         "Ingresos",
         "Importación",
@@ -71,7 +74,7 @@ def render_progress_bar(current_step: int, total_steps: int = 6) -> None:
 
 def next_step() -> None:
     """Avanza al siguiente paso."""
-    if st.session_state.onboarding_step < 6:
+    if st.session_state.onboarding_step < 7:
         st.session_state.onboarding_step += 1
 
 
@@ -97,10 +100,11 @@ def step_1_welcome() -> None:
 
         1. ✨ **Crear tu perfil** financiero
         2. 📧 **Conectar tu email** de Outlook
-        3. 💳 **Detectar tus tarjetas** automáticamente
-        4. 💰 **Configurar tus ingresos**
-        5. 📊 **Importar transacciones** existentes
-        6. 🚀 **¡Listo para usar!**
+        3. 📄 **Subir tu estado de cuenta** (PDF) para validación
+        4. 💳 **Detectar tus tarjetas** automáticamente
+        5. 💰 **Configurar tus ingresos**
+        6. 📊 **Importar transacciones** existentes
+        7. 🚀 **¡Listo para usar!**
 
         ---
 
@@ -267,6 +271,317 @@ def step_3_connect_email() -> None:
         if st.button("⏭️ Omitir", use_container_width=True):
             st.warning("Omitiste la conexión de email. Podrás hacerlo después.")
             next_step()
+
+
+def step_3_5_pdf_reconciliation() -> None:
+    """Paso 3.5: Reconciliar Estado de Cuenta PDF."""
+    st.title("📄 Validar con Estado de Cuenta")
+
+    st.markdown(
+        """
+        ### 🎯 ¿Por qué es importante este paso?
+
+        Subir tu estado de cuenta PDF nos permite:
+
+        - ✅ **Validar al 100%** que no faltan transacciones de tus correos
+        - 🔍 **Detectar transacciones faltantes** automáticamente
+        - 📊 **Agregar lo que falta** con categorización IA
+        - 💯 **Empezar con datos completos** desde el día 1
+
+        ### 📋 Cómo funciona
+
+        1. Subís tu último estado de cuenta PDF (BAC Credomatic)
+        2. Extraemos las transacciones con Claude Vision IA
+        3. Comparamos con los correos que ya tenemos
+        4. Te mostramos qué falta y lo agregamos automáticamente
+
+        ---
+
+        ### 🏦 Bancos Soportados
+
+        ✅ **BAC Credomatic** (Tarjetas de crédito/débito)
+
+        ---
+        """
+    )
+
+    # Inicializar session state para PDF
+    if "pdf_uploaded" not in st.session_state:
+        st.session_state.pdf_uploaded = False
+    if "reconciliation_report" not in st.session_state:
+        st.session_state.reconciliation_report = None
+
+    # Si aún no se ha subido el PDF
+    if not st.session_state.pdf_uploaded:
+        st.info(
+            "💡 **Tip**: Este paso es opcional pero **muy recomendado**. "
+            "Te asegura empezar con el 100% de tus transacciones."
+        )
+
+        # Upload de PDF
+        uploaded_file = st.file_uploader(
+            "📤 Subir Estado de Cuenta PDF",
+            type=["pdf"],
+            help="Sube tu último estado de cuenta de BAC Credomatic",
+        )
+
+        # Selector de banco (solo BAC por ahora)
+        banco = st.selectbox(
+            "Banco",
+            [BankName.BAC],
+            format_func=lambda x: "BAC Credomatic" if x == BankName.BAC else x.value,
+            help="Por ahora solo soportamos BAC Credomatic",
+        )
+
+        # Date picker para fecha de corte
+        from datetime import date
+        fecha_corte = st.date_input(
+            "Fecha de Corte del Estado",
+            value=date.today(),
+            help="Fecha del estado de cuenta (generalmente el 4 de cada mes para BAC)",
+        )
+
+        st.markdown("---")
+
+        col1, col2, col3 = st.columns([1, 2, 1])
+
+        with col1:
+            if st.button("⬅️ Atrás", use_container_width=True):
+                previous_step()
+
+        with col2:
+            if st.button(
+                "🔍 Procesar PDF",
+                use_container_width=True,
+                type="primary",
+                disabled=uploaded_file is None,
+            ):
+                if uploaded_file:
+                    with st.spinner("🔄 Procesando estado de cuenta con IA..."):
+                        try:
+                            # Leer contenido del PDF
+                            pdf_content = uploaded_file.read()
+
+                            # Crear servicio de reconciliación
+                            with get_session() as session:
+                                pdf_service = PDFReconciliationService(session)
+                                profile_id = st.session_state.profile_created.id
+
+                                # Procesar el PDF
+                                st.info("📄 Extrayendo transacciones del PDF...")
+                                report = pdf_service.process_bank_statement(
+                                    pdf_content=pdf_content,
+                                    profile_id=profile_id,
+                                    banco=banco,
+                                    fecha_corte=fecha_corte,
+                                    pdf_filename=uploaded_file.name,
+                                )
+
+                                # Guardar en session state
+                                st.session_state.reconciliation_report = report
+                                st.session_state.pdf_uploaded = True
+
+                                st.success("✅ ¡PDF procesado exitosamente!")
+                                st.rerun()
+
+                        except Exception as e:
+                            st.error(f"❌ Error al procesar PDF: {e}")
+                            logger.error(f"Error processing PDF: {e}", exc_info=True)
+
+        with col3:
+            if st.button("⏭️ Omitir", use_container_width=True):
+                st.warning(
+                    "⚠️ Omitiste la validación con PDF. "
+                    "Podrás hacerlo después desde el Dashboard."
+                )
+                next_step()
+                st.rerun()
+
+    else:
+        # Ya se procesó el PDF - Mostrar resultados
+        report = st.session_state.reconciliation_report
+
+        st.success("✅ Estado de cuenta procesado exitosamente")
+
+        # Mostrar resumen
+        st.markdown("### 📊 Resumen de Reconciliación")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric(
+                "Transacciones en PDF",
+                report.summary.total_pdf_transactions,
+                help="Total de transacciones encontradas en el PDF",
+            )
+
+        with col2:
+            st.metric(
+                "Coincidencias",
+                report.summary.matched_count,
+                help="Transacciones que coinciden con correos",
+            )
+
+        with col3:
+            missing_count = len(report.missing_in_emails)
+            st.metric(
+                "Faltantes en Email",
+                missing_count,
+                delta=f"-{missing_count}" if missing_count > 0 else None,
+                delta_color="inverse",
+                help="Transacciones que NO están en tus correos",
+            )
+
+        with col4:
+            match_pct = report.summary.match_percentage
+            st.metric(
+                "% Match",
+                f"{match_pct:.1f}%",
+                delta="Excelente" if match_pct >= 90 else "Revisar",
+                help="Porcentaje de coincidencia",
+            )
+
+        # Mostrar transacciones faltantes
+        if report.missing_in_emails:
+            st.markdown("---")
+            st.markdown(
+                f"### ⚠️ Encontramos {len(report.missing_in_emails)} "
+                "transacción(es) que NO están en tus correos"
+            )
+
+            st.info(
+                "💡 Podemos agregarlas automáticamente con categorización IA. "
+                "¿Querés que las agreguemos?"
+            )
+
+            # Mostrar preview de transacciones faltantes
+            with st.expander("👀 Ver Transacciones Faltantes", expanded=True):
+                for i, pdf_tx in enumerate(report.missing_in_emails[:10]):  # Max 10
+                    st.markdown(
+                        f"**{i+1}.** {pdf_tx.comercio} - "
+                        f"₡{pdf_tx.monto:,.2f} - {pdf_tx.fecha.strftime('%d/%m/%Y')}"
+                    )
+                if len(report.missing_in_emails) > 10:
+                    st.caption(f"... y {len(report.missing_in_emails) - 10} más")
+
+            st.markdown("---")
+
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if st.button(
+                    f"✅ Agregar {len(report.missing_in_emails)} Transacción(es)",
+                    use_container_width=True,
+                    type="primary",
+                ):
+                    with st.spinner("🔄 Agregando transacciones faltantes..."):
+                        try:
+                            with get_session() as session:
+                                recon_service = OnboardingReconciliationService(session)
+                                profile_id = st.session_state.profile_created.id
+
+                                # Agregar transacciones faltantes
+                                result = recon_service.add_missing_transactions(
+                                    report=report,
+                                    profile_id=profile_id,
+                                    banco=banco,
+                                )
+
+                                if result.success:
+                                    st.success(
+                                        f"✅ ¡Agregamos {result.transactions_added} "
+                                        f"transacción(es) exitosamente!"
+                                    )
+                                    st.balloons()
+
+                                    # Actualizar progreso de onboarding
+                                    onboarding_service.update_pdf_reconciliation_progress(
+                                        email=st.session_state.onboarding_email,
+                                        bank_statement_id=report.statement_id,
+                                        reconciliation_summary=report.summary.__dict__,
+                                        transactions_added=result.transactions_added,
+                                    )
+
+                                    # Mostrar resumen
+                                    st.info(
+                                        f"""
+                                        📊 **Resumen**:
+                                        - ✅ Agregadas: {result.transactions_added}
+                                        - 🤖 Categorizadas: {result.transactions_categorized}
+                                        - ❌ Fallidas: {result.transactions_failed}
+                                        """
+                                    )
+
+                                    if result.failed_transactions:
+                                        with st.expander(
+                                            f"⚠️ Ver {len(result.failed_transactions)} "
+                                            "transacción(es) fallida(s)"
+                                        ):
+                                            for fail in result.failed_transactions:
+                                                st.caption(
+                                                    f"- {fail['comercio']}: {fail['error']}"
+                                                )
+
+                                    # Avanzar al siguiente paso
+                                    st.markdown("---")
+                                    if st.button(
+                                        "Continuar ➡️",
+                                        use_container_width=True,
+                                        type="primary",
+                                    ):
+                                        next_step()
+                                        st.rerun()
+                                else:
+                                    st.error("❌ No se pudieron agregar las transacciones")
+
+                        except Exception as e:
+                            st.error(f"❌ Error al agregar transacciones: {e}")
+                            logger.error(
+                                f"Error adding transactions: {e}", exc_info=True
+                            )
+
+            with col2:
+                if st.button(
+                    "⏭️ Continuar sin Agregar",
+                    use_container_width=True,
+                ):
+                    st.info("Podés agregar estas transacciones después manualmente")
+                    next_step()
+                    st.rerun()
+
+        else:
+            # No hay transacciones faltantes - perfecto!
+            st.success(
+                "🎉 ¡Perfecto! Todas las transacciones del PDF están en tus correos. "
+                "No hace falta agregar nada."
+            )
+
+            st.markdown("---")
+
+            col1, col2 = st.columns([1, 1])
+
+            with col1:
+                if st.button("⬅️ Procesar Otro PDF", use_container_width=True):
+                    st.session_state.pdf_uploaded = False
+                    st.session_state.reconciliation_report = None
+                    st.rerun()
+
+            with col2:
+                if st.button(
+                    "Continuar ➡️",
+                    use_container_width=True,
+                    type="primary",
+                ):
+                    # Actualizar progreso de onboarding
+                    onboarding_service.update_pdf_reconciliation_progress(
+                        email=st.session_state.onboarding_email,
+                        bank_statement_id=report.statement_id,
+                        reconciliation_summary=report.summary.__dict__,
+                        transactions_added=0,
+                    )
+
+                    next_step()
+                    st.rerun()
 
 
 def step_4_detect_cards() -> None:
@@ -660,9 +975,10 @@ def main() -> None:
         1: step_1_welcome,
         2: step_2_create_profile,
         3: step_3_connect_email,
-        4: step_4_detect_cards,
-        5: step_5_configure_income,
-        6: step_6_first_import,
+        4: step_3_5_pdf_reconciliation,  # Nuevo paso 4 (antes 3.5)
+        5: step_4_detect_cards,  # Paso 5 (antes 4)
+        6: step_5_configure_income,  # Paso 6 (antes 5)
+        7: step_6_first_import,  # Paso 7 (antes 6)
     }
 
     current_step_func = steps.get(st.session_state.onboarding_step)

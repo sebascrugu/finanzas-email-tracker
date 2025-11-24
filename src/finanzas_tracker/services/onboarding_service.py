@@ -27,14 +27,15 @@ class OnboardingService:
     1. Bienvenida
     2. Crear Perfil
     3. Conectar Email (Microsoft Graph)
-    4. Auto-detectar Tarjetas
-    5. Configurar Ingreso
-    6. Primera Importación
+    4. Reconciliar Estado de Cuenta PDF (opcional pero recomendado)
+    5. Auto-detectar Tarjetas
+    6. Configurar Ingreso
+    7. Primera Importación
 
     Features:
     - Persistencia de progreso (puede pausar y continuar)
     - Skip automático si ya está configurado
-    - Integración con CardDetectionService
+    - Integración con CardDetectionService y PDFReconciliationService
     - Validaciones en cada paso
     """
 
@@ -128,7 +129,7 @@ class OnboardingService:
 
         Args:
             email: Email del usuario
-            step: Número de paso (1-6)
+            step: Número de paso (1-7)
             **data: Datos adicionales del paso
 
         Returns:
@@ -143,7 +144,7 @@ class OnboardingService:
             progress.mark_step_completed(step)
 
             # Avanzar al siguiente paso
-            if step < 6:
+            if step < 7:
                 progress.current_step = step + 1
 
             # Actualizar datos adicionales
@@ -243,7 +244,7 @@ class OnboardingService:
             return profile
 
     # ========================================================================
-    # PASO 4: AUTO-DETECTAR TARJETAS
+    # PASO 5: AUTO-DETECTAR TARJETAS
     # ========================================================================
 
     def auto_detect_cards(
@@ -338,13 +339,13 @@ class OnboardingService:
 
             session.commit()
 
-            # Marcar paso 4 completado
-            self.mark_step_completed(email, 4)
+            # Marcar paso 5 completado
+            self.mark_step_completed(email, 5)
 
         return created_cards
 
     # ========================================================================
-    # PASO 5: CONFIGURAR INGRESO
+    # PASO 6: CONFIGURAR INGRESO
     # ========================================================================
 
     def create_initial_income(
@@ -387,8 +388,8 @@ class OnboardingService:
             session.commit()
             session.refresh(income)
 
-            # Marcar paso 5 completado
-            self.mark_step_completed(email, 5)
+            # Marcar paso 6 completado
+            self.mark_step_completed(email, 6)
 
             logger.info(
                 f"✅ Ingreso inicial creado: {nombre} - ₡{monto:,.0f} ({frecuencia.value})"
@@ -396,7 +397,7 @@ class OnboardingService:
             return income
 
     # ========================================================================
-    # PASO 6: PRIMERA IMPORTACIÓN
+    # PASO 7: PRIMERA IMPORTACIÓN
     # ========================================================================
 
     def complete_onboarding(
@@ -420,8 +421,8 @@ class OnboardingService:
             # Marcar como completado
             progress.is_completed = True
             progress.completed_at = datetime.now(UTC)
-            progress.current_step = 6
-            progress.mark_step_completed(6)
+            progress.current_step = 7
+            progress.mark_step_completed(7)
 
             if imported_count is not None:
                 progress.imported_transactions_count = imported_count
@@ -430,6 +431,51 @@ class OnboardingService:
             session.refresh(progress)
 
             logger.info(f"🎉 Onboarding completado para {email}!")
+            return progress
+
+    # ========================================================================
+    # PASO 3.5: PDF RECONCILIATION
+    # ========================================================================
+
+    def update_pdf_reconciliation_progress(
+        self,
+        email: str,
+        bank_statement_id: str,
+        reconciliation_summary: dict[str, Any],
+        transactions_added: int,
+    ) -> OnboardingProgress:
+        """
+        Actualiza el progreso con datos de reconciliación PDF.
+
+        Args:
+            email: Email del usuario
+            bank_statement_id: ID del BankStatement creado
+            reconciliation_summary: Resumen de la reconciliación
+            transactions_added: Número de transacciones agregadas
+
+        Returns:
+            OnboardingProgress actualizado
+        """
+        with get_session() as session:
+            progress = session.execute(
+                select(OnboardingProgress).where(OnboardingProgress.email == email)
+            ).scalar_one()
+
+            # Actualizar campos de PDF reconciliation
+            progress.bank_statement_uploaded = True
+            progress.bank_statement_id = bank_statement_id
+            progress.reconciliation_completed = True
+            progress.reconciliation_summary = reconciliation_summary
+            progress.transactions_added_from_pdf = transactions_added
+            progress.last_activity_at = datetime.now(UTC)
+
+            session.commit()
+            session.refresh(progress)
+
+            logger.info(
+                f"✅ PDF reconciliation actualizado para {email}: "
+                f"{transactions_added} transacciones agregadas"
+            )
             return progress
 
     # ========================================================================
