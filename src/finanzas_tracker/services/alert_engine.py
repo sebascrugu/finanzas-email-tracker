@@ -33,6 +33,7 @@ from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.category import Category
 from finanzas_tracker.models.enums import AlertPriority, AlertStatus, AlertType, CardType
 from finanzas_tracker.models.income import Income
+from finanzas_tracker.models.savings_goal import SavingsGoal
 from finanzas_tracker.models.subscription import Subscription
 from finanzas_tracker.models.transaction import Transaction
 
@@ -1173,9 +1174,59 @@ tan 7 días o menos para renovación
         """
         Alerta Fase 2: Meta financiera atrasada.
 
-        Placeholder - requiere modelo Goal completo.
+        Genera alerta si meta está en riesgo de no cumplirse a tiempo.
         """
-        return []
+        alerts: list[Alert] = []
+
+        # Buscar metas activas que estén en riesgo
+        stmt = select(SavingsGoal).where(
+            SavingsGoal.profile_id == profile_id,
+            SavingsGoal.is_active == True,  # noqa: E712
+            SavingsGoal.is_completed == False,  # noqa: E712
+            SavingsGoal.deadline.is_not(None),
+        )
+        goals = self.session.execute(stmt).scalars().all()
+
+        for goal in goals:
+            # Usar el property is_at_risk del modelo
+            if goal.is_at_risk:
+                if self._alert_already_exists(
+                    profile_id, AlertType.GOAL_BEHIND_SCHEDULE, related_id=goal.id
+                ):
+                    continue
+
+                # Calcular días restantes y ahorro mensual requerido
+                days_left = goal.days_remaining or 0
+                required_monthly = goal.required_monthly_savings or Decimal("0")
+                progress_pct = goal.progress_percentage
+
+                # Prioridad según urgencia
+                if days_left <= 30:
+                    priority = AlertPriority.CRITICAL
+                elif days_left <= 90:
+                    priority = AlertPriority.HIGH
+                else:
+                    priority = AlertPriority.MEDIUM
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.GOAL_BEHIND_SCHEDULE,
+                    priority=priority,
+                    status=AlertStatus.PENDING,
+                    title=f"⏰ Meta Atrasada: {goal.name}",
+                    message=(
+                        f"Tu meta '{goal.name}' está en riesgo. Llevas {progress_pct:.0f}% de progreso "
+                        f"(₡{goal.current_amount:,.0f} de ₡{goal.target_amount:,.0f}) y quedan {days_left} días. "
+                        f"Necesitás ahorrar ₡{required_monthly:,.0f}/mes para lograrlo a tiempo."
+                    ),
+                    action_url="/Metas",
+                )
+
+                alerts.append(alert)
+                logger.warning("Alerta generada: Goal Behind Schedule", extra={"profile_id": profile_id})
+
+        return alerts
 
     # ========================================================================
     # FASE 2 - POSITIVE ALERTS (GAMIFICATION/MOTIVATION)
@@ -1369,12 +1420,70 @@ tan 7 días o menos para renovación
         """
         Alerta Positiva: Progreso pagando deudas.
 
-        Celebra cuando reduce saldo de tarjeta de crédito >20% vs mes anterior.
+        Celebra cuando el saldo de la tarjeta es significativamente menor
+        que las compras del mes (indica pago extra).
         """
         alerts: list[Alert] = []
+        today = date.today()
 
-        # Por ahora placeholder - requiere tracking histórico de balances
-        # TODO: Implementar cuando tengamos historial de current_balance en Card
+        # Buscar tarjetas de crédito con saldo
+        stmt = select(Card).where(
+            Card.profile_id == profile_id,
+            Card.tipo == CardType.CREDIT,
+            Card.activa == True,  # noqa: E712
+            Card.current_balance.is_not(None),
+        )
+        credit_cards = self.session.execute(stmt).scalars().all()
+
+        for card in credit_cards:
+            if not card.current_balance or card.current_balance == 0:
+                continue
+
+            # Calcular compras del mes actual con esta tarjeta
+            stmt = select(func.sum(Transaction.monto_crc)).where(
+                Transaction.profile_id == profile_id,
+                Transaction.card_id == card.id,
+                func.extract("year", Transaction.fecha_transaccion) == today.year,
+                func.extract("month", Transaction.fecha_transaccion) == today.month,
+            )
+            monthly_charges = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+            # Si el saldo actual es mucho menor que las compras del mes,
+            # significa que pagó saldo anterior + parte del actual
+            if monthly_charges > 0:
+                # Calcular "saldo anterior" aproximado
+                previous_balance = card.current_balance + monthly_charges
+
+                # Si pagó >30% del saldo anterior, celebrar
+                if previous_balance > 0:
+                    payment_ratio = (previous_balance - card.current_balance) / previous_balance
+                    reduction_pct = payment_ratio * 100
+
+                    if reduction_pct >= 30:
+                        if self._alert_already_exists(
+                            profile_id, AlertType.DEBT_PAYMENT_PROGRESS, related_id=card.id
+                        ):
+                            continue
+
+                        paid_amount = previous_balance - card.current_balance
+
+                        alert = Alert(
+                            id=str(uuid4()),
+                            profile_id=profile_id,
+                            alert_type=AlertType.DEBT_PAYMENT_PROGRESS,
+                            priority=AlertPriority.LOW,
+                            status=AlertStatus.PENDING,
+                            title=f"💪 ¡Gran Progreso! Reduciendo Deuda - {card.nombre_display}",
+                            message=(
+                                f"¡Excelente! Pagaste ₡{paid_amount:,.0f} en {card.nombre_display} este mes, "
+                                f"reduciendo {reduction_pct:.0f}% del saldo. "
+                                f"Saldo actual: ₡{card.current_balance:,.0f}. ¡Seguí así para estar libre de deudas!"
+                            ),
+                            action_url="/Tarjetas",
+                        )
+
+                        alerts.append(alert)
+                        logger.info("Alerta generada: Debt Payment Progress", extra={"profile_id": profile_id})
 
         return alerts
 
@@ -1385,9 +1494,76 @@ tan 7 días o menos para renovación
         Celebra rachas de 3, 6, 12 meses cumpliendo presupuestos.
         """
         alerts: list[Alert] = []
+        today = date.today()
 
-        # Placeholder - requiere tracking histórico de compliance
-        # TODO: Implementar cuando tengamos historial de budget compliance
+        # Verificar últimos N meses (hasta 12)
+        consecutive_months = 0
+        max_months_to_check = 12
+
+        for months_ago in range(max_months_to_check):
+            # Calcular fecha del mes a revisar
+            target_date = today - timedelta(days=30 * months_ago)
+            target_year = target_date.year
+            target_month = target_date.month
+
+            # Obtener presupuestos de ese mes
+            stmt = select(Budget).where(
+                Budget.profile_id == profile_id,
+                func.extract("year", Budget.mes) == target_year,
+                func.extract("month", Budget.mes) == target_month,
+            )
+            budgets = self.session.execute(stmt).scalars().all()
+
+            if not budgets:
+                break  # No hay presupuestos configurados en este mes, romper racha
+
+            # Verificar si cumplió TODOS los presupuestos de ese mes
+            all_budgets_met = True
+            for budget in budgets:
+                # Calcular gasto real de la categoría en ese mes
+                stmt = select(func.sum(Transaction.monto_crc)).where(
+                    Transaction.profile_id == profile_id,
+                    Transaction.category_id == budget.category_id,
+                    func.extract("year", Transaction.fecha_transaccion) == target_year,
+                    func.extract("month", Transaction.fecha_transaccion) == target_month,
+                )
+                actual_spending = self.session.execute(stmt).scalar_one() or Decimal("0")
+
+                # Si excedió el límite, no cumplió
+                if actual_spending > budget.monto_limite:
+                    all_budgets_met = False
+                    break
+
+            if all_budgets_met:
+                consecutive_months += 1
+            else:
+                break  # Rompe la racha
+
+        # Milestones para celebrar: 3, 6, 12 meses
+        milestones = [(3, "3 meses"), (6, "6 meses"), (12, "1 año")]
+
+        for milestone_months, milestone_name in milestones:
+            if consecutive_months >= milestone_months:
+                if self._alert_already_exists(profile_id, AlertType.STREAK_ACHIEVEMENT):
+                    continue
+
+                alert = Alert(
+                    id=str(uuid4()),
+                    profile_id=profile_id,
+                    alert_type=AlertType.STREAK_ACHIEVEMENT,
+                    priority=AlertPriority.LOW,
+                    status=AlertStatus.PENDING,
+                    title=f"🔥 ¡Racha Increíble! {milestone_name} Bajo Presupuesto",
+                    message=(
+                        f"¡Impresionante disciplina! Llevas {consecutive_months} meses consecutivos "
+                        f"cumpliendo todos tus presupuestos. ¡Esta racha demuestra un control financiero excepcional!"
+                    ),
+                    action_url="/Presupuestos",
+                )
+
+                alerts.append(alert)
+                logger.info("Alerta generada: Streak Achievement", extra={"profile_id": profile_id})
+                break  # Solo celebrar el milestone más alto alcanzado
 
         return alerts
 
