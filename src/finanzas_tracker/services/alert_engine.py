@@ -236,6 +236,7 @@ class AlertEngine:
                         f"No olvides realizar el pago para evitar intereses."
                     ),
                     action_url="/Tarjetas",
+                    card_id=card.id,
                 )
 
                 alerts.append(alert)
@@ -689,6 +690,7 @@ tan 7 días o menos para renovación
                         f"Considera pagar más del mínimo para ahorrar en intereses."
                     ),
                     action_url="/Tarjetas",
+                    card_id=card.id,
                 )
 
                 alerts.append(alert)
@@ -761,6 +763,7 @@ tan 7 días o menos para renovación
                     f"Contactá a tu banco para solicitar una nueva tarjeta si aún no te llegó."
                 ),
                 action_url="/Tarjetas",
+                card_id=card.id,
             )
 
             alerts.append(alert)
@@ -1039,6 +1042,7 @@ tan 7 días o menos para renovación
                         f"Mantener bajo 30% es ideal para tu score crediticio."
                     ),
                     action_url="/Tarjetas",
+                    card_id=card.id,
                 )
 
                 alerts.append(alert)
@@ -1221,6 +1225,7 @@ tan 7 días o menos para renovación
                         f"Necesitás ahorrar ₡{required_monthly:,.0f}/mes para lograrlo a tiempo."
                     ),
                     action_url="/Metas",
+                    savings_goal_id=goal.id,
                 )
 
                 alerts.append(alert)
@@ -1480,6 +1485,7 @@ tan 7 días o menos para renovación
                                 f"Saldo actual: ₡{card.current_balance:,.0f}. ¡Seguí así para estar libre de deudas!"
                             ),
                             action_url="/Tarjetas",
+                            card_id=card.id,
                         )
 
                         alerts.append(alert)
@@ -1765,6 +1771,8 @@ tan 7 días o menos para renovación
                 (Alert.transaction_id == related_id)
                 | (Alert.subscription_id == related_id)
                 | (Alert.budget_id == related_id)
+                | (Alert.card_id == related_id)
+                | (Alert.savings_goal_id == related_id)
             )
 
         count = self.session.execute(stmt).scalar_one()

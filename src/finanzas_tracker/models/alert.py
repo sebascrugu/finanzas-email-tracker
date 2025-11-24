@@ -56,6 +56,20 @@ class Alert(Base):
         index=True,
         comment="ID del presupuesto relacionado (si aplica)",
     )
+    card_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID de la tarjeta relacionada (si aplica)",
+    )
+    savings_goal_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("savings_goals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID de la meta de ahorro relacionada (si aplica)",
+    )
 
     # Tipo y prioridad
     alert_type: Mapped[AlertType] = mapped_column(
@@ -123,6 +137,10 @@ class Alert(Base):
         "Subscription", back_populates="alerts"
     )
     budget: Mapped["Budget | None"] = relationship("Budget", back_populates="alerts")
+    card: Mapped["Card | None"] = relationship("Card", back_populates="alerts")
+    savings_goal: Mapped["SavingsGoal | None"] = relationship(
+        "SavingsGoal", back_populates="alerts"
+    )
 
     def __repr__(self) -> str:
         """Representación en string del objeto."""
