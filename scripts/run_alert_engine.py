@@ -18,8 +18,8 @@ from collections import Counter
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from finanzas_tracker.models.database import get_session
-from finanzas_tracker.models.user_profile import UserProfile
+from finanzas_tracker.core.database import get_session
+from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.alert import Alert
 from finanzas_tracker.services.alert_engine import AlertEngine
 from finanzas_tracker.models.enums import AlertType, AlertPriority
@@ -208,7 +208,7 @@ def main():
 
     with get_session() as session:
         # Get profile
-        profile = session.query(UserProfile).first()
+        profile = session.query(Profile).first()
         if not profile:
             print("❌ Error: No se encontró ningún perfil.")
             print("   Ejecutá primero: python scripts/create_test_data_for_alerts.py")

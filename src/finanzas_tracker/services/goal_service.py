@@ -489,7 +489,7 @@ class GoalService:
 
         return Decimal(str(max(score, 0.0)))
 
-    @retry_on_anthropic_error(max_retries=2)
+    @retry_on_anthropic_error(max_attempts=2)
     def generate_ai_recommendations(self, goal_id: str) -> str:
         """
         Genera recomendaciones personalizadas usando Claude AI.

@@ -138,6 +138,10 @@ class Card(Base):
         "Transaction",
         back_populates="card",
     )
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert",
+        back_populates="card",
+    )
 
     # Constraints e índices
     __table_args__ = (

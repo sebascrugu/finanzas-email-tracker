@@ -22,8 +22,8 @@ from decimal import Decimal
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from finanzas_tracker.models.database import get_session
-from finanzas_tracker.models.user_profile import UserProfile
+from finanzas_tracker.core.database import get_session
+from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.budget import Budget
@@ -33,9 +33,7 @@ from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.category import Category
 from finanzas_tracker.models.enums import (
     TransactionType,
-    PaymentMethod,
     AlertPriority,
-    RecurrenceType,
 )
 
 
@@ -51,7 +49,7 @@ def clear_existing_data(session):
     session.query(SavingsGoal).delete()
     session.query(Card).delete()
     session.query(Category).delete()
-    session.query(UserProfile).delete()
+    session.query(Profile).delete()
 
     session.commit()
     print("✅ Datos limpiados")
@@ -61,7 +59,7 @@ def create_profile(session):
     """Crea un perfil de prueba."""
     print("\n👤 Creando perfil de usuario...")
 
-    profile = UserProfile(
+    profile = Profile(
         email="test@finanzas.cr",
         name="Usuario de Prueba",
         currency="CRC",
@@ -181,10 +179,10 @@ def create_budgets(session, profile, categories):
             budget = Budget(
                 profile_id=profile.id,
                 category_id=cat.id,
-                amount=limit,
+                monto_crc=limit,
                 month_start=current_month,
                 month_end=current_month.replace(day=28),
-                spent_amount=spent,
+                spent_monto_crc=spent,
             )
             session.add(budget)
             budget_objects.append(budget)
@@ -201,10 +199,10 @@ def create_budgets(session, profile, categories):
                 budget = Budget(
                     profile_id=profile.id,
                     category_id=cat.id,
-                    amount=limit,
+                    monto_crc=limit,
                     month_start=month_date,
                     month_end=month_date.replace(day=28),
-                    spent_amount=limit * Decimal("0.85"),
+                    spent_monto_crc=limit * Decimal("0.85"),
                 )
                 session.add(budget)
 
@@ -266,25 +264,34 @@ def create_subscriptions(session, profile, categories):
 
     subscriptions = [
         {
-            "name": "Netflix",
-            "amount": Decimal("8500"),
-            "next_billing_date": today + timedelta(days=2),  # RENEWAL COMING
-            "recurrence_type": RecurrenceType.MONTHLY,
-            "category_id": entertainment.id if entertainment else None,
+            "comercio": "Netflix",
+            "monto_promedio": Decimal("8500"),
+            "monto_min": Decimal("8500"),
+            "monto_max": Decimal("8500"),
+            "frecuencia_dias": 30,
+            "primera_fecha_cobro": today - timedelta(days=60),
+            "ultima_fecha_cobro": today - timedelta(days=30),
+            "proxima_fecha_estimada": today + timedelta(days=2),  # RENEWAL COMING
         },
         {
-            "name": "Spotify",
-            "amount": Decimal("6000"),
-            "next_billing_date": today + timedelta(days=4),  # RENEWAL COMING
-            "recurrence_type": RecurrenceType.MONTHLY,
-            "category_id": entertainment.id if entertainment else None,
+            "comercio": "Spotify",
+            "monto_promedio": Decimal("6000"),
+            "monto_min": Decimal("6000"),
+            "monto_max": Decimal("6000"),
+            "frecuencia_dias": 30,
+            "primera_fecha_cobro": today - timedelta(days=60),
+            "ultima_fecha_cobro": today - timedelta(days=30),
+            "proxima_fecha_estimada": today + timedelta(days=4),  # RENEWAL COMING
         },
         {
-            "name": "Amazon Prime",
-            "amount": Decimal("15000"),
-            "next_billing_date": today + timedelta(days=20),
-            "recurrence_type": RecurrenceType.MONTHLY,
-            "category_id": entertainment.id if entertainment else None,
+            "comercio": "Amazon Prime",
+            "monto_promedio": Decimal("15000"),
+            "monto_min": Decimal("15000"),
+            "monto_max": Decimal("15000"),
+            "frecuencia_dias": 30,
+            "primera_fecha_cobro": today - timedelta(days=60),
+            "ultima_fecha_cobro": today - timedelta(days=30),
+            "proxima_fecha_estimada": today + timedelta(days=20),
         },
     ]
 
@@ -318,12 +325,11 @@ def create_transactions(session, profile, categories, cards):
     # 1. DUPLICATE_TRANSACTION: Dos transacciones idénticas el mismo día
     duplicate_tx = Transaction(
         profile_id=profile.id,
-        amount=Decimal("25000"),
-        description="McDonald's",
-        transaction_date=today,
-        transaction_type=TransactionType.EXPENSE,
-        payment_method=PaymentMethod.CREDIT_CARD,
-        merchant="McDonald's",
+        monto_crc=Decimal("25000"),
+        notas="McDonald's",
+        fecha_transaccion=today,
+        tipo_transaccion=TransactionType.EXPENSE,
+        comercio="McDonald's",
         category_id=comida_fuera.id if comida_fuera else None,
         card_id=cards[0].id if cards else None,
     )
@@ -331,12 +337,11 @@ def create_transactions(session, profile, categories, cards):
 
     duplicate_tx2 = Transaction(
         profile_id=profile.id,
-        amount=Decimal("25000"),
-        description="McDonald's",
-        transaction_date=today,
-        transaction_type=TransactionType.EXPENSE,
-        payment_method=PaymentMethod.CREDIT_CARD,
-        merchant="McDonald's",
+        monto_crc=Decimal("25000"),
+        notas="McDonald's",
+        fecha_transaccion=today,
+        tipo_transaccion=TransactionType.EXPENSE,
+        comercio="McDonald's",
         category_id=comida_fuera.id if comida_fuera else None,
         card_id=cards[0].id if cards else None,
     )
@@ -345,12 +350,11 @@ def create_transactions(session, profile, categories, cards):
     # 2. UNUSUALLY_HIGH_TRANSACTION: Transacción >₡500k
     high_tx = Transaction(
         profile_id=profile.id,
-        amount=Decimal("650000"),
-        description="MacBook Pro - Apple Store",
-        transaction_date=today - timedelta(days=1),
-        transaction_type=TransactionType.EXPENSE,
-        payment_method=PaymentMethod.CREDIT_CARD,
-        merchant="Apple Store",
+        monto_crc=Decimal("650000"),
+        notas="MacBook Pro - Apple Store",
+        fecha_transaccion=today - timedelta(days=1),
+        tipo_transaccion=TransactionType.EXPENSE,
+        comercio="Apple Store",
         category_id=tech_cat.id if tech_cat else None,
         card_id=cards[1].id if cards else None,
     )
@@ -359,12 +363,11 @@ def create_transactions(session, profile, categories, cards):
     # 3. UNCATEGORIZED_TRANSACTION: Sin categoría
     uncat_tx = Transaction(
         profile_id=profile.id,
-        amount=Decimal("45000"),
-        description="Compra misteriosa",
-        transaction_date=today - timedelta(days=2),
-        transaction_type=TransactionType.EXPENSE,
-        payment_method=PaymentMethod.CASH,
-        merchant="Comercio desconocido",
+        monto_crc=Decimal("45000"),
+        notas="Compra misteriosa",
+        fecha_transaccion=today - timedelta(days=2),
+        tipo_transaccion=TransactionType.EXPENSE,
+        comercio="Comercio desconocido",
         category_id=None,  # SIN CATEGORÍA
     )
     transactions.append(uncat_tx)
@@ -377,12 +380,11 @@ def create_transactions(session, profile, categories, cards):
     for i in range(8):  # 8 transacciones desconocidas
         unknown_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("15000") + Decimal(i * 1000),
-            description=f"Transacción desconocida {i+1}",
-            transaction_date=today - timedelta(days=i),
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.CASH,
-            merchant=f"Desconocido {i+1}",
+            monto_crc=Decimal("15000") + Decimal(i * 1000),
+            notas=f"Transacción desconocida {i+1}",
+            fecha_transaccion=today - timedelta(days=i),
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio=f"Desconocido {i+1}",
             category_id=None,
         )
         transactions.append(unknown_tx)
@@ -391,12 +393,11 @@ def create_transactions(session, profile, categories, cards):
     for hour in range(10):  # 10 transacciones en 1 día
         velocity_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("5000"),
-            description=f"Compra rápida {hour+1}",
-            transaction_date=today,
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.DEBIT_CARD,
-            merchant=f"Tienda {hour+1}",
+            monto_crc=Decimal("5000"),
+            notas=f"Compra rápida {hour+1}",
+            fecha_transaccion=today,
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio=f"Tienda {hour+1}",
             category_id=comida_fuera.id if comida_fuera else None,
         )
         transactions.append(velocity_tx)
@@ -409,12 +410,11 @@ def create_transactions(session, profile, categories, cards):
     for i in range(20):  # 20 transacciones grandes mes pasado
         prev_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("15000"),
-            description=f"Restaurante mes pasado {i+1}",
-            transaction_date=prev_month - timedelta(days=i),
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.CREDIT_CARD,
-            merchant=f"Restaurante {i+1}",
+            monto_crc=Decimal("15000"),
+            notas=f"Restaurante mes pasado {i+1}",
+            fecha_transaccion=prev_month - timedelta(days=i),
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio=f"Restaurante {i+1}",
             category_id=comida_fuera.id if comida_fuera else None,
         )
         transactions.append(prev_tx)
@@ -430,12 +430,11 @@ def create_transactions(session, profile, categories, cards):
     for i in range(10):
         old_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("15000"),
-            description=f"Supermercado {i+1}",
-            transaction_date=month_3_ago - timedelta(days=i),
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.DEBIT_CARD,
-            merchant="Supermercado",
+            monto_crc=Decimal("15000"),
+            notas=f"Supermercado {i+1}",
+            fecha_transaccion=month_3_ago - timedelta(days=i),
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio="Supermercado",
             category_id=super_cat.id if super_cat else None,
         )
         transactions.append(old_tx)
@@ -445,12 +444,11 @@ def create_transactions(session, profile, categories, cards):
     for i in range(8):
         mid_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("15000"),
-            description=f"Supermercado {i+1}",
-            transaction_date=month_2_ago - timedelta(days=i),
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.DEBIT_CARD,
-            merchant="Supermercado",
+            monto_crc=Decimal("15000"),
+            notas=f"Supermercado {i+1}",
+            fecha_transaccion=month_2_ago - timedelta(days=i),
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio="Supermercado",
             category_id=super_cat.id if super_cat else None,
         )
         transactions.append(mid_tx)
@@ -460,12 +458,11 @@ def create_transactions(session, profile, categories, cards):
     for i in range(6):
         recent_tx = Transaction(
             profile_id=profile.id,
-            amount=Decimal("15000"),
-            description=f"Supermercado {i+1}",
-            transaction_date=month_1_ago - timedelta(days=i),
-            transaction_type=TransactionType.EXPENSE,
-            payment_method=PaymentMethod.DEBIT_CARD,
-            merchant="Supermercado",
+            monto_crc=Decimal("15000"),
+            notas=f"Supermercado {i+1}",
+            fecha_transaccion=month_1_ago - timedelta(days=i),
+            tipo_transaccion=TransactionType.EXPENSE,
+            comercio="Supermercado",
             category_id=super_cat.id if super_cat else None,
         )
         transactions.append(recent_tx)
@@ -490,8 +487,8 @@ def create_income(session, profile):
     prev_month = (today.replace(day=1) - timedelta(days=30)).replace(day=15)
     income1 = Income(
         profile_id=profile.id,
-        amount=Decimal("1200000"),
-        description="Salario mes anterior",
+        monto_crc=Decimal("1200000"),
+        notas="Salario mes anterior",
         income_date=prev_month,
         source="Salario",
     )
@@ -501,8 +498,8 @@ def create_income(session, profile):
     prev_month_2 = (today.replace(day=1) - timedelta(days=60)).replace(day=15)
     income2 = Income(
         profile_id=profile.id,
-        amount=Decimal("1200000"),
-        description="Salario hace 2 meses",
+        monto_crc=Decimal("1200000"),
+        notas="Salario hace 2 meses",
         income_date=prev_month_2,
         source="Salario",
     )
