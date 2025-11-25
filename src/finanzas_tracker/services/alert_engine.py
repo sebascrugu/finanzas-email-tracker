@@ -30,7 +30,7 @@ from finanzas_tracker.models.alert import Alert
 from finanzas_tracker.models.bank_statement import BankStatement
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
-from finanzas_tracker.models.category import Category
+from finanzas_tracker.models.category import Category, Subcategory
 from finanzas_tracker.models.enums import AlertPriority, AlertStatus, AlertType, CardType
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.savings_goal import SavingsGoal
@@ -277,7 +277,7 @@ class AlertEngine:
         # Calcular gastos del mes actual
         stmt_spending = select(func.sum(Transaction.monto_crc)).where(
             Transaction.profile_id == profile_id,
-            Transaction.fecha >= month_start,
+            Transaction.fecha_transaccion >= month_start,
             Transaction.monto_crc < 0,  # Solo gastos (negativos)
         )
         total_spending = abs(
@@ -352,8 +352,8 @@ class AlertEngine:
             # Calcular gasto en esta categoría este mes
             stmt_spending = select(func.sum(Transaction.monto_crc)).where(
                 Transaction.profile_id == profile_id,
-                Transaction.category_id == budget.category_id,
-                Transaction.fecha >= month_start,
+                Transaction.subcategory_id == budget.category_id,
+                Transaction.fecha_transaccion >= month_start,
                 Transaction.monto_crc < 0,
             )
             spent = abs(
@@ -501,13 +501,13 @@ tan 7 días o menos para renovación
         stmt = select(Subscription).where(
             Subscription.profile_id == profile_id,
             Subscription.is_active == True,  # noqa: E712
-            Subscription.next_charge_date <= threshold_date,
-            Subscription.next_charge_date >= today,
+            Subscription.proxima_fecha_estimada <= threshold_date,
+            Subscription.proxima_fecha_estimada >= today,
         )
         subscriptions = self.session.execute(stmt).scalars().all()
 
         for subscription in subscriptions:
-            days_until = (subscription.next_charge_date - today).days
+            days_until = (subscription.proxima_fecha_estimada - today).days
 
             # Verificar si ya existe alerta pendiente
             if self._alert_already_exists(
@@ -528,18 +528,18 @@ tan 7 días o menos para renovación
                 alert_type=AlertType.SUBSCRIPTION_RENEWAL,
                 priority=priority,
                 status=AlertStatus.PENDING,
-                title=f"📅 Renovación: {subscription.name}",
+                title=f"📅 Renovación: {subscription.comercio}",
                 message=(
-                    f"Tu suscripción '{subscription.name}' se renueva en {days_until} día(s) "
-                    f"({subscription.next_charge_date.strftime('%d/%m/%Y')}). "
-                    f"Monto: ₡{subscription.amount_crc:,.0f}."
+                    f"Tu suscripción '{subscription.comercio}' se renueva en {days_until} día(s) "
+                    f"({subscription.proxima_fecha_estimada.strftime('%d/%m/%Y')}). "
+                    f"Monto: ₡{subscription.monto_promedio:,.0f}."
                 ),
                 action_url="/Suscripciones",
             )
 
             alerts.append(alert)
             logger.info(
-                f"Alerta generada: Subscription Renewal - {subscription.name}",
+                f"Alerta generada: Subscription Renewal - {subscription.comercio}",
                 extra={"profile_id": profile_id, "days": days_until},
             )
 
@@ -563,7 +563,7 @@ tan 7 días o menos para renovación
         # Buscar transacciones recientes
         stmt = select(Transaction).where(
             Transaction.profile_id == profile_id,
-            Transaction.fecha >= lookback_date,
+            Transaction.fecha_transaccion >= lookback_date,
         )
         recent_transactions = self.session.execute(stmt).scalars().all()
 
@@ -794,7 +794,7 @@ tan 7 días o menos para renovación
         # Contar transacciones sin categoría
         stmt = select(func.count(Transaction.id)).where(
             Transaction.profile_id == profile_id,
-            Transaction.category_id.is_(None),
+            Transaction.subcategory_id.is_(None),
         )
         uncategorized_count = self.session.execute(stmt).scalar_one()
 
@@ -844,8 +844,8 @@ tan 7 días o menos para renovación
         # Obtener ingresos del mes actual
         stmt = select(func.sum(Income.monto_crc)).where(
             Income.profile_id == profile_id,
-            func.extract("year", Income.fecha_ingreso) == today.year,
-            func.extract("month", Income.fecha_ingreso) == today.month,
+            func.extract("year", Income.fecha) == today.year,
+            func.extract("month", Income.fecha) == today.month,
         )
         total_income = self.session.execute(stmt).scalar_one() or Decimal("0")
 
@@ -1253,15 +1253,18 @@ tan 7 días o menos para renovación
         else:
             prev_month, prev_year = current_month - 1, current_year
 
-        # Obtener categorías del usuario
-        stmt = select(Category).where(Category.profile_id == profile_id)
-        categories = self.session.execute(stmt).scalars().all()
+        # Obtener subcategorías usadas por el usuario
+        stmt = select(Subcategory).join(Transaction).where(
+            Transaction.profile_id == profile_id,
+            Transaction.subcategory_id.is_not(None)
+        ).distinct()
+        subcategories = self.session.execute(stmt).scalars().all()
 
-        for category in categories:
+        for category in subcategories:
             # Gasto mes actual
             stmt = select(func.sum(Transaction.monto_crc)).where(
                 Transaction.profile_id == profile_id,
-                Transaction.category_id == category.id,
+                Transaction.subcategory_id == category.id,
                 func.extract("year", Transaction.fecha_transaccion) == current_year,
                 func.extract("month", Transaction.fecha_transaccion) == current_month,
             )
@@ -1270,7 +1273,7 @@ tan 7 días o menos para renovación
             # Gasto mes anterior
             stmt = select(func.sum(Transaction.monto_crc)).where(
                 Transaction.profile_id == profile_id,
-                Transaction.category_id == category.id,
+                Transaction.subcategory_id == category.id,
                 func.extract("year", Transaction.fecha_transaccion) == prev_year,
                 func.extract("month", Transaction.fecha_transaccion) == prev_month,
             )
@@ -1382,7 +1385,7 @@ tan 7 días o menos para renovación
             # Calcular gasto actual de la categoría
             stmt = select(func.sum(Transaction.monto_crc)).where(
                 Transaction.profile_id == profile_id,
-                Transaction.category_id == budget.category_id,
+                Transaction.subcategory_id == budget.category_id,
                 func.extract("year", Transaction.fecha_transaccion) == today.year,
                 func.extract("month", Transaction.fecha_transaccion) == today.month,
             )
@@ -1528,7 +1531,7 @@ tan 7 días o menos para renovación
                 # Calcular gasto real de la categoría en ese mes
                 stmt = select(func.sum(Transaction.monto_crc)).where(
                     Transaction.profile_id == profile_id,
-                    Transaction.category_id == budget.category_id,
+                    Transaction.subcategory_id == budget.category_id,
                     func.extract("year", Transaction.fecha_transaccion) == target_year,
                     func.extract("month", Transaction.fecha_transaccion) == target_month,
                 )
@@ -1592,7 +1595,7 @@ tan 7 días o menos para renovación
                 target_date = today - timedelta(days=30 * month_offset)
                 stmt = select(func.sum(Transaction.monto_crc)).where(
                     Transaction.profile_id == profile_id,
-                    Transaction.category_id == category.id,
+                    Transaction.subcategory_id == category.id,
                     func.extract("year", Transaction.fecha_transaccion) == target_date.year,
                     func.extract("month", Transaction.fecha_transaccion) == target_date.month,
                 )
@@ -1651,7 +1654,7 @@ tan 7 días o menos para renovación
         seven_days_ago = date.today() - timedelta(days=7)
         stmt = select(func.count(Transaction.id)).where(
             Transaction.profile_id == profile_id,
-            Transaction.category_id == eating_out_category.id,
+            Transaction.subcategory_id == eating_out_category.id,
             Transaction.fecha_transaccion >= seven_days_ago,
         )
         count = self.session.execute(stmt).scalar_one()
