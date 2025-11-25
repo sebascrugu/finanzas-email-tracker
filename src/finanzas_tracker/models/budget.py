@@ -1,4 +1,4 @@
-"""Modelo de presupuesto."""
+"""Modelo de presupuesto por categoría."""
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -12,10 +12,10 @@ from finanzas_tracker.core.database import Base
 
 class Budget(Base):
     """
-    Modelo para almacenar presupuestos de usuarios.
+    Modelo para almacenar presupuestos mensuales por categoría.
 
-    Permite tener múltiples presupuestos en el tiempo (historial).
-    Ejemplo: Nov-2025 con ₡280k, Ene-2026 con ₡400k, etc.
+    Cada registro representa un límite de gasto para una categoría específica
+    en un mes específico. Ejemplo: "Comida fuera - Nov 2025: ₡100,000"
     """
 
     __tablename__ = "budgets"
@@ -36,108 +36,77 @@ class Budget(Base):
         comment="ID del perfil al que pertenece este presupuesto",
     )
 
-    # Información del presupuesto
-    salario_mensual: Mapped[Decimal] = mapped_column(
+    # Categoría presupuestada
+    category_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("subcategories.id", ondelete="CASCADE"),
+        index=True,
+        comment="ID de la subcategoría presupuestada",
+    )
+
+    # Mes del presupuesto
+    mes: Mapped[date] = mapped_column(
+        Date,
+        index=True,
+        comment="Primer día del mes para este presupuesto (ej: 2025-11-01)",
+    )
+
+    # Límite de gasto
+    amount_crc: Mapped[Decimal] = mapped_column(
         Numeric(precision=15, scale=2),
-        comment="Salario o ingreso mensual neto en colones",
+        comment="Límite de gasto en colones para esta categoría este mes",
     )
 
-    # Vigencia del presupuesto
-    fecha_inicio: Mapped[date] = mapped_column(
-        Date,
-        index=True,
-        comment="Fecha de inicio de vigencia del presupuesto",
-    )
-    fecha_fin: Mapped[date | None] = mapped_column(
-        Date,
-        nullable=True,
-        index=True,
-        comment="Fecha de fin (None si es el presupuesto actual)",
-    )
-
-    # Distribución del presupuesto (porcentajes)
-    porcentaje_necesidades: Mapped[Decimal] = mapped_column(
-        Numeric(precision=5, scale=2),
-        default=Decimal("50.00"),
-        comment="% del salario para necesidades (ej: 50.00)",
-    )
-    porcentaje_gustos: Mapped[Decimal] = mapped_column(
-        Numeric(precision=5, scale=2),
-        default=Decimal("30.00"),
-        comment="% del salario para gustos (ej: 30.00)",
-    )
-    porcentaje_ahorros: Mapped[Decimal] = mapped_column(
-        Numeric(precision=5, scale=2),
-        default=Decimal("20.00"),
-        comment="% del salario para ahorros (ej: 20.00)",
+    # Alias para compatibilidad
+    monto_limite: Mapped[Decimal] = mapped_column(
+        Numeric(precision=15, scale=2),
+        comment="Alias de amount_crc para compatibilidad",
     )
 
     # Metadatos
     notas: Mapped[str | None] = mapped_column(
         String(500),
         nullable=True,
-        comment="Notas sobre este presupuesto (ej: 'Cambio por nuevo trabajo')",
+        comment="Notas sobre este presupuesto",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
+        index=True,
         comment="Fecha de creación del presupuesto",
     )
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="budgets")
+    category: Mapped["Subcategory"] = relationship("Subcategory")
     alerts: Mapped[list["Alert"]] = relationship(
         "Alert", back_populates="budget", cascade="all, delete-orphan"
     )
 
     # Constraints e índices
     __table_args__ = (
-        CheckConstraint("salario_mensual > 0", name="check_budget_salario_positive"),
-        CheckConstraint(
-            "porcentaje_necesidades + porcentaje_gustos + porcentaje_ahorros = 100",
-            name="check_budget_porcentajes_sum_100",
-        ),
-        CheckConstraint(
-            "fecha_fin IS NULL OR fecha_fin > fecha_inicio",
-            name="check_budget_fechas_validas",
-        ),
-        Index("ix_budgets_profile_fechas", "profile_id", "fecha_inicio", "fecha_fin"),
+        CheckConstraint("amount_crc > 0", name="check_budget_amount_positive"),
+        CheckConstraint("monto_limite > 0", name="check_budget_monto_positive"),
+        # Un solo presupuesto por categoría por mes por perfil
+        Index("ix_budgets_unique_category_month", "profile_id", "category_id", "mes", unique=True),
+        Index("ix_budgets_profile_mes", "profile_id", "mes"),
     )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""
         return (
             f"<Budget(profile_id={self.profile_id[:8]}..., "
-            f"salario=₡{self.salario_mensual:,.0f}, "
-            f"desde={self.fecha_inicio})>"
+            f"category_id={self.category_id[:8]}..., "
+            f"mes={self.mes.strftime('%Y-%m')}, "
+            f"limit=₡{self.amount_crc:,.0f})>"
         )
 
     @property
-    def monto_necesidades(self) -> Decimal:
-        """Calcula el monto para necesidades."""
-        return self.salario_mensual * (self.porcentaje_necesidades / 100)
-
-    @property
-    def monto_gustos(self) -> Decimal:
-        """Calcula el monto para gustos."""
-        return self.salario_mensual * (self.porcentaje_gustos / 100)
-
-    @property
-    def monto_ahorros(self) -> Decimal:
-        """Calcula el monto para ahorros."""
-        return self.salario_mensual * (self.porcentaje_ahorros / 100)
-
-    @property
-    def esta_activo(self) -> bool:
-        """Verifica si este presupuesto está activo actualmente."""
-        return self.fecha_fin is None
-
-    def validar_porcentajes(self) -> bool:
-        """
-        Valida que los porcentajes sumen 100%.
-
-        Returns:
-            bool: True si suman 100%, False si no
-        """
-        total = self.porcentaje_necesidades + self.porcentaje_gustos + self.porcentaje_ahorros
-        return abs(total - Decimal("100.00")) < Decimal("0.01")
+    def mes_nombre(self) -> str:
+        """Retorna el mes en formato legible."""
+        meses = {
+            1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+            5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+            9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+        }
+        return f"{meses[self.mes.month]} {self.mes.year}"

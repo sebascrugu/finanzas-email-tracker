@@ -1,49 +1,13 @@
 """Modelo de Alerta para notificaciones inteligentes."""
 
 from datetime import UTC, datetime
-from enum import Enum
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
-
-
-class AlertType(str, Enum):
-    """Tipos de alertas disponibles."""
-
-    ANOMALY_DETECTED = "anomaly_detected"  # Transacción anómala detectada
-    SUBSCRIPTION_DUE = "subscription_due"  # Suscripción próxima a vencerse
-    BUDGET_EXCEEDED = "budget_exceeded"  # Presupuesto excedido
-    CATEGORY_SPIKE = "category_spike"  # Gasto inusual en categoría
-    MULTIPLE_PURCHASES = "multiple_purchases"  # Múltiples compras en corto tiempo
-    HIGH_SPENDING_DAY = "high_spending_day"  # Día de gasto alto
-    UNUSUAL_TIME = "unusual_time"  # Compra en horario inusual
-    INTERNATIONAL_PURCHASE = "international_purchase"  # Compra internacional
-    CREDIT_CARD_CLOSING = "credit_card_closing"  # Tarjeta de crédito próxima a cerrar
-    MONTHLY_COMPARISON = "monthly_comparison"  # Comparación de gasto mensual
-    SAVINGS_GOAL_PROGRESS = "savings_goal_progress"  # Progreso hacia meta de ahorro
-    MONTHLY_SPENDING_FORECAST = "monthly_spending_forecast"  # Predicción de gasto mensual
-    BUDGET_FORECAST_WARNING = "budget_forecast_warning"  # Advertencia: excederá presupuesto
-    CATEGORY_TREND_ALERT = "category_trend_alert"  # Alerta de tendencia por categoría
-
-
-class AlertSeverity(str, Enum):
-    """Niveles de severidad de alertas."""
-
-    INFO = "info"  # Informativa
-    WARNING = "warning"  # Advertencia
-    CRITICAL = "critical"  # Crítica (requiere atención inmediata)
-
-
-class AlertStatus(str, Enum):
-    """Estados de una alerta."""
-
-    PENDING = "pending"  # Pendiente de revisar
-    READ = "read"  # Leída pero no resuelta
-    RESOLVED = "resolved"  # Resuelta/Atendida
-    DISMISSED = "dismissed"  # Descartada
+from finanzas_tracker.models.enums import AlertPriority, AlertStatus, AlertType
 
 
 class Alert(Base):
@@ -92,18 +56,32 @@ class Alert(Base):
         index=True,
         comment="ID del presupuesto relacionado (si aplica)",
     )
+    card_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID de la tarjeta relacionada (si aplica)",
+    )
+    savings_goal_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("savings_goals.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID de la meta de ahorro relacionada (si aplica)",
+    )
 
-    # Tipo y severidad
+    # Tipo y prioridad
     alert_type: Mapped[AlertType] = mapped_column(
         String(50),
         index=True,
         comment="Tipo de alerta",
     )
-    severity: Mapped[AlertSeverity] = mapped_column(
+    priority: Mapped[AlertPriority] = mapped_column(
         String(20),
         index=True,
-        default=AlertSeverity.INFO,
-        comment="Nivel de severidad (info, warning, critical)",
+        default=AlertPriority.LOW,
+        comment="Nivel de prioridad (critical, high, medium, low)",
     )
     status: Mapped[AlertStatus] = mapped_column(
         String(20),
@@ -159,12 +137,16 @@ class Alert(Base):
         "Subscription", back_populates="alerts"
     )
     budget: Mapped["Budget | None"] = relationship("Budget", back_populates="alerts")
+    card: Mapped["Card | None"] = relationship("Card", back_populates="alerts")
+    savings_goal: Mapped["SavingsGoal | None"] = relationship(
+        "SavingsGoal", back_populates="alerts"
+    )
 
     def __repr__(self) -> str:
         """Representación en string del objeto."""
         return (
             f"<Alert(id={self.id}, type={self.alert_type}, "
-            f"severity={self.severity}, status={self.status})>"
+            f"priority={self.priority}, status={self.status})>"
         )
 
     @property
@@ -180,32 +162,53 @@ class Alert(Base):
     @property
     def is_critical(self) -> bool:
         """Retorna True si la alerta es crítica."""
-        return self.severity == AlertSeverity.CRITICAL
+        return self.priority == AlertPriority.CRITICAL
 
     @property
     def emoji(self) -> str:
         """Retorna emoji apropiado según el tipo de alerta."""
         emoji_map = {
-            AlertType.ANOMALY_DETECTED: "⚠️",
-            AlertType.SUBSCRIPTION_DUE: "📅",
-            AlertType.BUDGET_EXCEEDED: "💰",
-            AlertType.CATEGORY_SPIKE: "📈",
-            AlertType.MULTIPLE_PURCHASES: "🛒",
-            AlertType.HIGH_SPENDING_DAY: "💸",
-            AlertType.UNUSUAL_TIME: "🕐",
-            AlertType.INTERNATIONAL_PURCHASE: "🌍",
+            # Fase 1 - MVP Critical Alerts
+            AlertType.STATEMENT_UPLOAD_REMINDER: "📄",
+            AlertType.CREDIT_CARD_PAYMENT_DUE: "💳",
+            AlertType.SPENDING_EXCEEDS_INCOME: "🚨",
+            AlertType.BUDGET_80_PERCENT: "⚠️",
+            AlertType.BUDGET_100_PERCENT: "🔴",
+            AlertType.SUBSCRIPTION_RENEWAL: "📅",
+            AlertType.DUPLICATE_TRANSACTION: "⚠️",
+            AlertType.HIGH_INTEREST_PROJECTION: "💰",
+            AlertType.CARD_EXPIRATION: "💳",
+            AlertType.UNCATEGORIZED_TRANSACTIONS: "📊",
+            # Fase 2 - Negative/Preventive Alerts
+            AlertType.OVERDRAFT_PROJECTION: "⛔",
+            AlertType.LOW_SAVINGS_WARNING: "📉",
+            AlertType.UNKNOWN_MERCHANT_HIGH: "❓",
+            AlertType.CREDIT_UTILIZATION_HIGH: "📊",
+            AlertType.SPENDING_VELOCITY_HIGH: "⚡",
+            AlertType.SEASONAL_SPENDING_WARNING: "🎄",
+            AlertType.GOAL_BEHIND_SCHEDULE: "⏰",
+            # Fase 2 - Positive Alerts (Gamification/Motivation)
+            AlertType.SPENDING_REDUCTION: "🎯",
+            AlertType.SAVINGS_MILESTONE: "🏆",
+            AlertType.BUDGET_UNDER_TARGET: "✨",
+            AlertType.DEBT_PAYMENT_PROGRESS: "💪",
+            AlertType.STREAK_ACHIEVEMENT: "🔥",
+            AlertType.CATEGORY_IMPROVEMENT: "📈",
+            AlertType.ZERO_EATING_OUT: "🥗",
+            AlertType.EMERGENCY_FUND_MILESTONE: "🛡️",
         }
         return emoji_map.get(self.alert_type, "🔔")
 
     @property
-    def severity_color(self) -> str:
-        """Retorna color apropiado según la severidad."""
+    def priority_color(self) -> str:
+        """Retorna color apropiado según la prioridad."""
         color_map = {
-            AlertSeverity.INFO: "blue",
-            AlertSeverity.WARNING: "orange",
-            AlertSeverity.CRITICAL: "red",
+            AlertPriority.CRITICAL: "red",
+            AlertPriority.HIGH: "orange",
+            AlertPriority.MEDIUM: "yellow",
+            AlertPriority.LOW: "blue",
         }
-        return color_map.get(self.severity, "gray")
+        return color_map.get(self.priority, "gray")
 
     def mark_as_read(self) -> None:
         """Marca la alerta como leída."""

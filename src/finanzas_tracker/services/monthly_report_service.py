@@ -250,7 +250,7 @@ class MonthlyReportService:
     # GENERACIÓN DE REPORTE CON CLAUDE AI
     # ========================================================================
 
-    @retry_on_anthropic_error(max_retries=2)
+    @retry_on_anthropic_error(max_attempts=2)
     def generate_monthly_report(
         self, profile_id: str, year: int, month: int
     ) -> dict[str, Any]:

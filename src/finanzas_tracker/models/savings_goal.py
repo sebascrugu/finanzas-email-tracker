@@ -159,6 +159,10 @@ class SavingsGoal(Base):
         cascade="all, delete-orphan",
         order_by="GoalMilestone.created_at.desc()",
     )
+    alerts: Mapped[list["Alert"]] = relationship(
+        "Alert",
+        back_populates="savings_goal",
+    )
 
     @property
     def progress_percentage(self) -> float:
