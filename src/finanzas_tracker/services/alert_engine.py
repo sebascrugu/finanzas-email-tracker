@@ -1584,11 +1584,14 @@ tan 7 días o menos para renovación
         alerts: list[Alert] = []
         today = date.today()
 
-        # Obtener categorías
-        stmt = select(Category).where(Category.profile_id == profile_id)
-        categories = self.session.execute(stmt).scalars().all()
+        # Obtener subcategorías usadas por el usuario
+        stmt = select(Subcategory).join(Transaction).where(
+            Transaction.profile_id == profile_id,
+            Transaction.subcategory_id.is_not(None)
+        ).distinct()
+        subcategories = self.session.execute(stmt).scalars().all()
 
-        for category in categories:
+        for category in subcategories:
             # Calcular gasto últimos 3 meses
             spending_by_month = []
             for month_offset in range(3):
@@ -1640,10 +1643,9 @@ tan 7 días o menos para renovación
         """
         alerts: list[Alert] = []
 
-        # Buscar categoría "Comer Afuera"
-        stmt = select(Category).where(
-            Category.profile_id == profile_id,
-            Category.nombre.ilike("%comer%afuera%"),
+        # Buscar subcategoría "Comer Afuera"
+        stmt = select(Subcategory).where(
+            Subcategory.nombre.ilike("%comer%afuera%"),
         )
         eating_out_category = self.session.execute(stmt).scalar_one_or_none()
 
