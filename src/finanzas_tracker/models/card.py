@@ -175,7 +175,8 @@ class Card(Base):
             return f"{self.alias} (****{self.ultimos_4_digitos})"
 
         tipo_display = "Débito" if self.tipo == CardType.DEBIT else "Crédito"
-        return f"{tipo_display} {self.banco.value.upper()} ****{self.ultimos_4_digitos}"
+        banco_display = self.banco.upper() if isinstance(self.banco, str) else self.banco.value.upper()
+        return f"{tipo_display} {banco_display} ****{self.ultimos_4_digitos}"
 
     @property
     def es_credito(self) -> bool:
