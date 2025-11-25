@@ -275,7 +275,6 @@ class Transaction(Base):
         Index("ix_transactions_profile_categoria", "profile_id", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
         Index("ix_transactions_desconocidas", "es_desconocida"),
-        Index("ix_transactions_created_at", "created_at"),
     )
 
     def __repr__(self) -> str:

@@ -265,7 +265,7 @@ class AlertEngine:
 
         # Obtener ingreso mensual total
         stmt_income = select(func.sum(Income.monto_crc)).where(
-            Income.profile_id == profile_id, Income.activo == True  # noqa: E712
+            Income.profile_id == profile_id
         )
         total_income = self.session.execute(stmt_income).scalar_one_or_none() or Decimal(
             0
@@ -344,8 +344,7 @@ class AlertEngine:
 
         # Obtener todos los presupuestos activos
         stmt = select(Budget).where(
-            Budget.profile_id == profile_id,
-            Budget.is_active == True,  # noqa: E712
+            Budget.profile_id == profile_id
         )
         budgets = self.session.execute(stmt).scalars().all()
 
