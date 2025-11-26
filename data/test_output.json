@@ -1,0 +1,524 @@
+{
+  "cuentas": [
+    {
+      "iban": "CR72010200009661539599",
+      "moneda": "CRC",
+      "saldo_final": 120000.42,
+      "total_debitos": 338642.91,
+      "total_creditos": 460242.82
+    },
+    {
+      "iban": "CR63010200009481986844",
+      "moneda": "CRC",
+      "saldo_final": 11503.29,
+      "total_debitos": 1281941.0,
+      "total_creditos": 1267080.0
+    }
+  ],
+  "transacciones": [
+    {
+      "numero_referencia": "093006688",
+      "fecha": "2025-09-27T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 150.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100106688",
+      "fecha": "2025-09-30T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 75.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100106688",
+      "fecha": "2025-10-01T00:00:00",
+      "concepto": "PARQUEO TERRAMALL COMPAS",
+      "monto": 600.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100206688",
+      "fecha": "2025-10-01T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 150.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406495639",
+      "fecha": "2025-10-03T00:00:00",
+      "concepto": "TEF DE: 948198684",
+      "monto": 7014.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100606688",
+      "fecha": "2025-10-03T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 75.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406418926",
+      "fecha": "2025-10-06T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 4000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406411253",
+      "fecha": "2025-10-08T00:00:00",
+      "concepto": "TEF DE: 948198684",
+      "monto": 2620.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406477701",
+      "fecha": "2025-10-09T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 300.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101306688",
+      "fecha": "2025-10-10T00:00:00",
+      "concepto": "DEBITO COMPASS",
+      "monto": 1240.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "966579848",
+      "fecha": "2025-10-11T00:00:00",
+      "concepto": "SINPE MOVIL Sin_Descripcion",
+      "monto": 2500.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406860674",
+      "fecha": "2025-10-12T00:00:00",
+      "concepto": "TEF DE: 948198684",
+      "monto": 20000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101306688",
+      "fecha": "2025-10-12T00:00:00",
+      "concepto": "CENTRO COMERCIAL CURRIDABAT",
+      "monto": 800.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101306688",
+      "fecha": "2025-10-12T00:00:00",
+      "concepto": "PARQUEO TERRAMALL COMPAS",
+      "monto": 600.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101300167",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "COBRO ADMINISTR ADM COMPASS OC",
+      "monto": 4859.91,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406423056",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 5324.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406430027",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 1000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406475650",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "010683840",
+      "fecha": "2025-10-14T00:00:00",
+      "concepto": "ROBERT BOSCH SERVICE SOLUTIONS",
+      "monto": 140694.75,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101506688",
+      "fecha": "2025-10-14T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 150.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101606688",
+      "fecha": "2025-10-15T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 75.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101706688",
+      "fecha": "2025-10-16T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 75.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "102006688",
+      "fecha": "2025-10-17T00:00:00",
+      "concepto": "COMPASS RUTA 32 RUTA 2",
+      "monto": 75.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "966973925",
+      "fecha": "2025-10-17T00:00:00",
+      "concepto": "SINPE MOVIL Sin_Descripcion",
+      "monto": 2500.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406427515",
+      "fecha": "2025-10-18T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406465098",
+      "fecha": "2025-10-18T00:00:00",
+      "concepto": "TEF A : 948198684",
+      "monto": 15000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR72010200009661539599",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "093000000",
+      "fecha": "2025-09-29T00:00:00",
+      "concepto": "SUBWAY AMERICA FREE ZONE HERED",
+      "monto": 5550.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100100248",
+      "fecha": "2025-09-30T00:00:00",
+      "concepto": "ARCOS DORADOS",
+      "monto": 7750.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100200000",
+      "fecha": "2025-09-30T00:00:00",
+      "concepto": "AUTO MERCADO TRES RIOS SAN J",
+      "monto": 2200.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100200000",
+      "fecha": "2025-09-30T00:00:00",
+      "concepto": "SUBWAY AUTO MERCADO TRES CARTA",
+      "monto": 3850.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406495639",
+      "fecha": "2025-10-03T00:00:00",
+      "concepto": "TEF A : 966153959",
+      "monto": 7014.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "970888768",
+      "fecha": "2025-10-04T00:00:00",
+      "concepto": "SINPE MOVIL sebas",
+      "monto": 10000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "301887148",
+      "fecha": "2025-10-05T00:00:00",
+      "concepto": "DTR SINPE SEBASTIAN,ERNESTO,CR",
+      "monto": 700000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "970471296",
+      "fecha": "2025-10-05T00:00:00",
+      "concepto": "SINPE MOVIL sebas",
+      "monto": 6000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100600000",
+      "fecha": "2025-10-05T00:00:00",
+      "concepto": "BET365 BET36",
+      "monto": 5130.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406843575",
+      "fecha": "2025-10-05T00:00:00",
+      "concepto": "TEF A : 917308306",
+      "monto": 700000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406418926",
+      "fecha": "2025-10-06T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 4000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100700000",
+      "fecha": "2025-10-06T00:00:00",
+      "concepto": "TROPICA BY EL GRILL HERED",
+      "monto": 4500.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100700000",
+      "fecha": "2025-10-06T00:00:00",
+      "concepto": "STARBUCKS ALESTE SAN J",
+      "monto": 4100.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "100800000",
+      "fecha": "2025-10-06T00:00:00",
+      "concepto": "SERVI INDOOR SAN J",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "970468616",
+      "fecha": "2025-10-08T00:00:00",
+      "concepto": "SINPE MOVIL pago",
+      "monto": 10000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101000000",
+      "fecha": "2025-10-08T00:00:00",
+      "concepto": "POPS TERRAMALL N.2 CARTA",
+      "monto": 5100.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101000000",
+      "fecha": "2025-10-08T00:00:00",
+      "concepto": "SUBWAY AUTO MERCADO TRES CARTA",
+      "monto": 3550.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406411253",
+      "fecha": "2025-10-08T00:00:00",
+      "concepto": "TEF A : 966153959",
+      "monto": 2620.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406477701",
+      "fecha": "2025-10-09T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 300.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "970469333",
+      "fecha": "2025-10-09T00:00:00",
+      "concepto": "SINPE MOVIL sebas",
+      "monto": 10000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101000248",
+      "fecha": "2025-10-09T00:00:00",
+      "concepto": "PAPA JOHNS WEB",
+      "monto": 10220.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "970414560",
+      "fecha": "2025-10-12T00:00:00",
+      "concepto": "SINPE MOVIL senas",
+      "monto": 20000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406860674",
+      "fecha": "2025-10-12T00:00:00",
+      "concepto": "TEF A : 966153959",
+      "monto": 20000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406423056",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 5324.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406430027",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 1000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406475650",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101400000",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "DELIMART AFZ HERED",
+      "monto": 600.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101500000",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "SERVI INDOOR SAN J",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "101500000",
+      "fecha": "2025-10-13T00:00:00",
+      "concepto": "SUBWAY AUTO MERCADO TRES CARTA",
+      "monto": 5150.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    },
+    {
+      "numero_referencia": "406427515",
+      "fecha": "2025-10-18T00:00:00",
+      "concepto": "TEF DE: 966153959",
+      "monto": 5000.0,
+      "tipo": "DEBITO",
+      "cuenta_iban": "CR63010200009481986844",
+      "moneda": "CRC"
+    }
+  ]
+}
