@@ -381,9 +381,9 @@ Responde ÚNICAMENTE con JSON:
 }}"""
 
         try:
-            # Usar SONNET para casos ambiguos (mejor razonamiento)
+            # Usar Haiku para análisis contextual (rápido y económico)
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Sonnet para análisis profundo
+                model=settings.claude_model,
                 max_tokens=800,
                 temperature=0.2,  # Más determinístico
                 messages=[{"role": "user", "content": prompt}],

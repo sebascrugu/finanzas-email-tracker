@@ -482,9 +482,9 @@ Responde ÚNICAMENTE con un JSON válido:
   ]
 }}"""
 
-            # Llamar a Claude Sonnet para mejor análisis
+            # Llamar a Claude Haiku para análisis
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Sonnet para insights profundos
+                model=settings.claude_model,
                 max_tokens=600,
                 temperature=0.3,
                 messages=[{"role": "user", "content": prompt}],
