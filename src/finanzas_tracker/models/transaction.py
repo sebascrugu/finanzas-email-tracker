@@ -250,16 +250,10 @@ class Transaction(Base):
         "Subcategory",
         back_populates="transactions",
     )
-    alerts: Mapped[list["Alert"]] = relationship(
-        "Alert", back_populates="transaction", cascade="all, delete-orphan"
-    )
     refund_of: Mapped["Transaction | None"] = relationship(
         "Transaction",
         remote_side="Transaction.id",
         foreign_keys=[refund_transaction_id],
-    )
-    income_splits: Mapped[list["IncomeSplit"]] = relationship(
-        "IncomeSplit", back_populates="transaction", cascade="all, delete-orphan"
     )
 
     # Constraints e índices

@@ -1,12 +1,33 @@
 """Dashboard components for Streamlit UI."""
 
-from finanzas_tracker.dashboard.components.alerts import render_alerts_widget
-from finanzas_tracker.dashboard.components.anomaly_status import render_anomaly_status_widget
-from finanzas_tracker.dashboard.components.subscriptions import render_subscriptions_widget
+from finanzas_tracker.dashboard.components.incomes import (
+    formulario_agregar_ingreso,
+    listar_ingresos,
+)
+from finanzas_tracker.dashboard.components.profiles import (
+    activar_perfil,
+    crear_perfil_nuevo,
+    editar_perfil,
+    mostrar_perfiles,
+)
+from finanzas_tracker.dashboard.components.transactions import (
+    mostrar_estado_vacio,
+    procesar_correos_bancarios,
+    revisar_transacciones,
+)
 
 
 __all__ = [
-    "render_alerts_widget",
-    "render_anomaly_status_widget",
-    "render_subscriptions_widget",
+    # Incomes
+    "formulario_agregar_ingreso",
+    "listar_ingresos",
+    # Profiles
+    "activar_perfil",
+    "crear_perfil_nuevo",
+    "editar_perfil",
+    "mostrar_perfiles",
+    # Transactions
+    "mostrar_estado_vacio",
+    "procesar_correos_bancarios",
+    "revisar_transacciones",
 ]

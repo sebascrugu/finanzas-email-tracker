@@ -1,35 +1,30 @@
-"""Servicios de lógica de negocio."""
+"""Servicios de lógica de negocio - Finanzas Tracker CR."""
 
 from finanzas_tracker.services.auth_manager import AuthManager, auth_manager
-from finanzas_tracker.services.card_detection_service import (
-    CardDetectionService,
-    card_detection_service,
-)
+from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.duplicate_detector import (
     DuplicateDetectorService,
     duplicate_detector_service,
 )
 from finanzas_tracker.services.email_fetcher import EmailFetcher
-from finanzas_tracker.services.goal_service import GoalService, goal_service
-from finanzas_tracker.services.monthly_report_service import (
-    MonthlyReportService,
-    monthly_report_service,
-)
-from finanzas_tracker.services.onboarding_service import OnboardingService, onboarding_service
+from finanzas_tracker.services.exchange_rate import ExchangeRateService, exchange_rate_service
+from finanzas_tracker.services.finance_chat import FinanceChatService
+from finanzas_tracker.services.insights import InsightsService
+from finanzas_tracker.services.merchant_service import MerchantNormalizationService
+from finanzas_tracker.services.transaction_processor import TransactionProcessor
 
 
 __all__ = [
     "AuthManager",
     "auth_manager",
-    "CardDetectionService",
-    "card_detection_service",
     "DuplicateDetectorService",
     "duplicate_detector_service",
     "EmailFetcher",
-    "GoalService",
-    "goal_service",
-    "MonthlyReportService",
-    "monthly_report_service",
-    "OnboardingService",
-    "onboarding_service",
+    "ExchangeRateService",
+    "exchange_rate_service",
+    "FinanceChatService",
+    "InsightsService",
+    "MerchantNormalizationService",
+    "TransactionCategorizer",
+    "TransactionProcessor",
 ]

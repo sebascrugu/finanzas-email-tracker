@@ -285,6 +285,13 @@ reports/*.pdf
 EjemplosDeEstadosDeCuenta/
 *.pdf
 
+# Datos raw (PDFs, SMS, información financiera personal)
+data/raw/
+data/processed/
+# Mantener estructura de carpetas pero no los archivos
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
 # === ARCHIVOS DE DESARROLLO TEMPORAL ===
 # Documentación temporal que no debe estar en repo
 FASE_*.md

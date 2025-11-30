@@ -192,9 +192,6 @@ class Income(Base):
 
     # Relaciones
     profile: Mapped["Profile"] = relationship("Profile", back_populates="incomes")
-    splits: Mapped[list["IncomeSplit"]] = relationship(
-        "IncomeSplit", back_populates="income", cascade="all, delete-orphan"
-    )
 
     # Constraints
     __table_args__ = (
