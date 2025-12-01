@@ -5,8 +5,8 @@ Proporciona componentes con mejor UX, validación en tiempo real,
 tooltips contextuales y microinteracciones.
 """
 
+from collections.abc import Callable
 from decimal import Decimal
-from typing import Any, Callable
 
 import streamlit as st
 
@@ -164,7 +164,8 @@ def progress_bar_with_label(
             Ejemplo: {0.5: "danger", 0.8: "warning", 1.0: "success"}
     """
     if format_fn is None:
-        format_fn = lambda x: f"₡{x:,.0f}"
+        def format_fn(x) -> str:
+            return f"₡{x:,.0f}"
 
     percentage = min((float(current) / float(target)) * 100, 100) if target > 0 else 0
 
@@ -302,7 +303,8 @@ def metric_comparison(
         reverse_colors: Si True, inversión es buena (para gastos)
     """
     if format_fn is None:
-        format_fn = lambda x: f"₡{x:,.0f}"
+        def format_fn(x) -> str:
+            return f"₡{x:,.0f}"
 
     current = float(current_value)
     previous = float(previous_value)
@@ -504,7 +506,7 @@ def loading_skeleton(count: int = 3) -> None:
     """
     for i in range(count):
         st.markdown(
-            f"""
+            """
             <div style='
                 background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
                 background-size: 200% 100%;

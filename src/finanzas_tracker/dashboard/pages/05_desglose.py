@@ -47,8 +47,8 @@ def main() -> None:
         perfil_activo = (
             session.query(Profile)
             .filter(
-                Profile.es_activo == True,  # noqa: E712
-                Profile.activo == True,  # noqa: E712
+                Profile.es_activo == True,
+                Profile.activo == True,
             )
             .first()
         )
@@ -82,8 +82,8 @@ def main() -> None:
                 session.query(Income)
                 .filter(
                     Income.profile_id == perfil_activo.id,
-                    Income.requiere_desglose == True,  # noqa: E712
-                    Income.es_dinero_ajeno == True,  # noqa: E712
+                    Income.requiere_desglose == True,
+                    Income.es_dinero_ajeno == True,
                     Income.deleted_at.is_(None),
                 )
                 .order_by(Income.fecha.desc())

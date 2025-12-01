@@ -1,0 +1,42 @@
+# =============================================================================
+# Dockerfile.dev - Desarrollo con Hot Reload
+# =============================================================================
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Instalar Poetry
+ENV POETRY_VERSION=1.8.2 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1
+
+RUN pip install --no-cache-dir poetry==$POETRY_VERSION
+ENV PATH="$POETRY_HOME/bin:$PATH"
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar archivos de dependencias
+COPY pyproject.toml poetry.lock ./
+
+# Instalar todas las dependencias (incluyendo dev)
+RUN poetry install --no-root
+
+# Variables de entorno para desarrollo
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
+
+# Copiar código (será sobreescrito por volumen en compose)
+COPY src/ src/
+COPY alembic/ alembic/
+COPY alembic.ini .
+
+EXPOSE 8000
+
+# Hot reload con watchfiles
+CMD ["uvicorn", "finanzas_tracker.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "src"]

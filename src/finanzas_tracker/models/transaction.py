@@ -4,9 +4,10 @@ __all__ = ["Transaction"]
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -34,6 +35,15 @@ class Transaction(Base):
         default=lambda: str(uuid4()),
         comment="UUID único de la transacción",
     )
+
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
+    )
+
     email_id: Mapped[str] = mapped_column(
         String(255),
         unique=True,
@@ -183,6 +193,25 @@ class Transaction(Base):
         index=True,
         comment="Si la transacción necesita revisión manual de categoría",
     )
+
+    # Comercios ambiguos (Walmart, Amazon, PriceSmart, etc.)
+    es_comercio_ambiguo: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si el comercio puede tener múltiples categorías (ej: Walmart)",
+    )
+    categorias_opciones: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="JSON con opciones de categoría para comercios ambiguos",
+    )
+    categoria_confirmada_usuario: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Categoría confirmada por el usuario para comercio ambiguo",
+    )
+
     confirmada: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
@@ -254,6 +283,14 @@ class Transaction(Base):
         "Transaction",
         remote_side="Transaction.id",
         foreign_keys=[refund_transaction_id],
+    )
+
+    # Embedding para búsqueda semántica (RAG)
+    embedding: Mapped["TransactionEmbedding | None"] = relationship(
+        "TransactionEmbedding",
+        back_populates="transaction",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
 
     # Constraints e índices

@@ -1,5 +1,9 @@
 """Servicios de lógica de negocio - Finanzas Tracker CR."""
 
+from finanzas_tracker.services.ambiguous_merchant_service import (
+    AmbiguousMerchantService,
+    listar_comercios_ambiguos,
+)
 from finanzas_tracker.services.auth_manager import AuthManager, auth_manager
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.duplicate_detector import (
@@ -15,6 +19,7 @@ from finanzas_tracker.services.transaction_processor import TransactionProcessor
 
 
 __all__ = [
+    "AmbiguousMerchantService",
     "AuthManager",
     "auth_manager",
     "DuplicateDetectorService",
@@ -24,6 +29,7 @@ __all__ = [
     "exchange_rate_service",
     "FinanceChatService",
     "InsightsService",
+    "listar_comercios_ambiguos",
     "MerchantNormalizationService",
     "TransactionCategorizer",
     "TransactionProcessor",

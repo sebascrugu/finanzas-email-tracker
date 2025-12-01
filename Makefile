@@ -123,6 +123,63 @@ setup: dev-install init-db ## Setup completo del proyecto
 	@echo "$(BLUE)¡Setup completado!$(NC)"
 	@echo "$(BLUE)Siguiente paso: Copia .env.example a .env y configura tus credenciales$(NC)"
 
+# =============================================================================
+# DOCKER / PostgreSQL
+# =============================================================================
+# Usar 'docker compose' (nuevo) como comando predeterminado
+DC := docker compose
+
+db-up: ## Levanta PostgreSQL con Docker (pgvector incluido)
+	@echo "$(BLUE)🐘 Levantando PostgreSQL...$(NC)"
+	$(DC) up -d db
+	@sleep 3
+	@echo "$(BLUE)✅ PostgreSQL corriendo en localhost:5432$(NC)"
+	@echo "$(BLUE)💡 Tip: Agrega USE_POSTGRES=true a tu .env$(NC)"
+
+db-down: ## Detiene los contenedores de Docker
+	@echo "$(BLUE)🛑 Deteniendo contenedores...$(NC)"
+	$(DC) down
+	@echo "$(BLUE)✅ Contenedores detenidos$(NC)"
+
+db-reset: ## Reinicia PostgreSQL (⚠️ BORRA TODOS LOS DATOS)
+	@echo "$(BLUE)⚠️  Esto borrará todos los datos. Ctrl+C para cancelar...$(NC)"
+	@sleep 3
+	$(DC) down -v
+	$(DC) up -d db
+	@sleep 5
+	poetry run alembic upgrade head
+	@echo "$(BLUE)✅ Base de datos reiniciada$(NC)"
+
+db-logs: ## Muestra logs de PostgreSQL
+	$(DC) logs -f db
+
+db-shell: ## Abre psql en el contenedor de PostgreSQL
+	$(DC) exec db psql -U finanzas -d finanzas_tracker
+
+db-admin: ## Levanta pgAdmin (interfaz web para PostgreSQL)
+	@echo "$(BLUE)🌐 Levantando pgAdmin...$(NC)"
+	$(DC) --profile tools up -d pgadmin
+	@echo "$(BLUE)✅ pgAdmin en http://localhost:5050$(NC)"
+	@echo "$(BLUE)   Email: admin@finanzas.local | Password: admin123$(NC)"
+
+# =============================================================================
+# API FastAPI
+# =============================================================================
+api: ## Levanta la API FastAPI en modo desarrollo
+	@echo "$(BLUE)🚀 Iniciando FastAPI en http://localhost:8000...$(NC)"
+	poetry run uvicorn finanzas_tracker.api.main:app --reload --host 0.0.0.0 --port 8000
+
+# =============================================================================
+# UTILIDADES
+# =============================================================================
+shell: ## Abre un shell de Python con el contexto del proyecto
+	@echo "$(BLUE)🐍 Abriendo shell interactivo...$(NC)"
+	poetry run python -i -c "from finanzas_tracker.core.database import get_session, Base, engine; from finanzas_tracker.models import *; print('✅ Modelos cargados. Usa get_session() para DB.')"
+
+parse-pdfs: ## Parsea todos los PDFs de BAC en data/raw/bac_pdf/
+	@echo "$(BLUE)📄 Parseando PDFs de BAC...$(NC)"
+	poetry run python -c "from finanzas_tracker.parsers import BACPDFParser; p = BACPDFParser(); results = p.parse_directory('data/raw/bac_pdf'); print(f'✅ {sum(len(r.transactions) for r in results)} transacciones extraídas')"
+
 all: format lint type-check test ## Ejecuta todas las verificaciones
 
 .DEFAULT_GOAL := help

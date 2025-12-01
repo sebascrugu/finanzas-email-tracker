@@ -1,8 +1,15 @@
 """Modelos de base de datos - Finanzas Tracker CR."""
 
+from finanzas_tracker.models.base import (
+    BaseModelMixin,
+    SoftDeleteMixin,
+    TenantMixin,
+    TimestampMixin,
+)
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
 from finanzas_tracker.models.category import Category, Subcategory
+from finanzas_tracker.models.embedding import TransactionEmbedding
 from finanzas_tracker.models.enums import (
     BankName,
     CardType,
@@ -20,6 +27,11 @@ from finanzas_tracker.models.transaction import Transaction
 
 
 __all__ = [
+    # Mixins
+    "BaseModelMixin",
+    "SoftDeleteMixin",
+    "TenantMixin",
+    "TimestampMixin",
     # Core Models
     "Budget",
     "Card",
@@ -31,6 +43,7 @@ __all__ = [
     "Profile",
     "Subcategory",
     "Transaction",
+    "TransactionEmbedding",
     # Enums
     "BankName",
     "CardType",

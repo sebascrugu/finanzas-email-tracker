@@ -22,8 +22,8 @@ def get_active_profile() -> Profile | None:
         return (
             session.query(Profile)
             .filter(
-                Profile.es_activo == True,  # noqa: E712
-                Profile.activo == True,  # noqa: E712
+                Profile.es_activo == True,
+                Profile.activo == True,
             )
             .first()
         )

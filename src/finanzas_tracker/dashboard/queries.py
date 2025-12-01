@@ -107,7 +107,7 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
                 Transaction.fecha_transaccion >= primer_dia,
                 Transaction.fecha_transaccion < proximo_mes,
                 Transaction.deleted_at.is_(None),
-                Transaction.excluir_de_presupuesto == False,  # noqa: E712
+                Transaction.excluir_de_presupuesto == False,
             )
             .all()
         )
@@ -119,7 +119,7 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
             session.query(Transaction)
             .filter(
                 Transaction.profile_id == profile_id,
-                Transaction.necesita_revision == True,  # noqa: E712
+                Transaction.necesita_revision == True,
                 Transaction.deleted_at.is_(None),
             )
             .count()
@@ -174,7 +174,7 @@ def get_accounts_breakdown(profile_id: str) -> dict[str, any]:
             session.query(Account)
             .filter(
                 Account.profile_id == profile_id,
-                Account.activa == True,  # noqa: E712
+                Account.activa == True,
                 Account.deleted_at.is_(None),
             )
             .all()

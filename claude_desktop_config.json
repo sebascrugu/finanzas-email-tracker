@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/model-context-protocol/main/schema.json",
+  "mcpServers": {
+    "finanzas-tracker": {
+      "command": "poetry",
+      "args": ["run", "mcp-server"],
+      "cwd": "/Users/sebastiancruz/Desktop/finanzas-email-tracker",
+      "env": {
+        "PYTHONPATH": "/Users/sebastiancruz/Desktop/finanzas-email-tracker/src"
+      }
+    }
+  }
+}

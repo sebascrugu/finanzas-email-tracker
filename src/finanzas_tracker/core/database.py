@@ -1,8 +1,10 @@
 """
 Configuración de SQLAlchemy y manejo de sesiones de base de datos.
 
-Este módulo configura la conexión a SQLite y proporciona utilidades
-para trabajar con la base de datos.
+Este módulo configura la conexión a PostgreSQL con pgvector
+y proporciona utilidades para trabajar con la base de datos.
+
+Requiere PostgreSQL 16+ con extensión pgvector instalada.
 """
 
 from collections.abc import Generator
@@ -21,13 +23,31 @@ logger = get_logger(__name__)
 # Base para modelos SQLAlchemy
 Base = declarative_base()
 
+
+def _create_engine(database_url: str | None = None):
+    """
+    Crea el engine de SQLAlchemy para PostgreSQL.
+
+    Args:
+        database_url: URL de conexión opcional (para testing con Testcontainers)
+
+    Returns:
+        Engine de SQLAlchemy configurado para PostgreSQL
+    """
+    url = database_url or settings.get_database_url()
+
+    logger.info("🐘 Conectando a PostgreSQL...")
+    return create_engine(
+        url,
+        echo=settings.is_development(),
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
+
+
 # Engine de SQLAlchemy
-engine = create_engine(
-    settings.get_database_url(),
-    echo=settings.is_development(),
-    connect_args={"check_same_thread": False},  # Necesario para SQLite
-    pool_pre_ping=True,
-)
+engine = _create_engine()
 
 # SessionLocal para crear sesiones de base de datos
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -88,15 +108,6 @@ def init_db() -> None:
     logger.info("Inicializando base de datos...")
 
     # Importar todos los modelos aquí para que SQLAlchemy los registre
-    from finanzas_tracker.models import (  # noqa: F401
-        Budget,
-        Card,
-        Category,
-        Income,
-        Profile,
-        Subcategory,
-        Transaction,
-    )
 
     Base.metadata.create_all(bind=engine)
     logger.success("Base de datos inicializada correctamente")

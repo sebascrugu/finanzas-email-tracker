@@ -3,9 +3,10 @@
 __all__ = ["Profile"]
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -37,6 +38,15 @@ class Profile(Base):
 
     # Identificadores
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
+    )
+
     email_outlook: Mapped[str] = mapped_column(
         String(255),
         unique=True,

@@ -10,9 +10,7 @@ Identifica posibles duplicados basándose en múltiples criterios:
 
 from dataclasses import dataclass
 from datetime import timedelta
-from decimal import Decimal
 
-from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
 from finanzas_tracker.core.database import get_session

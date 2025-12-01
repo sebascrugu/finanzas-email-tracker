@@ -321,7 +321,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
                     context_hints.append(f"Hora: almuerzo ({hora}h)")
                 elif 18 <= hora <= 22:
                     context_hints.append(f"Hora: noche ({hora}h) - posible cena")
-                elif 23 <= hora or hora <= 2:
+                elif hora >= 23 or hora <= 2:
                     context_hints.append(
                         f"Hora: madrugada ({hora}h) - posible entretenimiento nocturno"
                     )
@@ -511,7 +511,7 @@ Responde ÚNICAMENTE con JSON:
                         Transaction.profile_id == profile_id,
                         Transaction.comercio == comercio,
                         Transaction.subcategory_id.isnot(None),
-                        Transaction.necesita_revision == False,  # noqa: E712
+                        Transaction.necesita_revision == False,
                     )
                     .order_by(Transaction.fecha_transaccion.desc())
                     .first()

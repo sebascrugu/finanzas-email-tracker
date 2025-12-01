@@ -73,7 +73,7 @@ def main() -> None:
                 Transaction.fecha_transaccion >= primer_dia,
                 Transaction.fecha_transaccion < proximo_mes,
                 Transaction.deleted_at.is_(None),
-                Transaction.excluir_de_presupuesto == False,  # noqa: E712
+                Transaction.excluir_de_presupuesto == False,
             )
             .all()
         )

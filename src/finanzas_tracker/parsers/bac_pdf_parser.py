@@ -6,16 +6,17 @@ Más eficiente que Claude Vision para documentos estructurados.
 Usa posiciones de caracteres para distinguir columnas de débito/crédito.
 """
 
-import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import re
 from typing import Any
 
 import pdfplumber
 
 from finanzas_tracker.core.logging import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -139,7 +140,7 @@ class BACPDFParser:
                     # Primero extraer contexto (IBAN, moneda) del texto
                     page_text = page.extract_text() or ""
                     self._update_context_from_text(page_text)
-                    
+
                     # Luego extraer transacciones usando posiciones de caracteres
                     page_txns = self._extract_transactions_by_position(page, i + 1)
                     transactions.extend(page_txns)
@@ -175,17 +176,17 @@ class BACPDFParser:
     ) -> list[BACTransaction]:
         """
         Extrae transacciones usando posiciones de caracteres para detectar columnas.
-        
+
         El PDF tiene columnas fijas:
         - Referencia: x ~50-90
-        - Fecha: x ~140-175  
+        - Fecha: x ~140-175
         - Concepto: x ~190-480
         - Débitos: x ~480-550
         - Créditos: x >550
         """
         transactions: list[BACTransaction] = []
         chars = page.chars
-        
+
         if not chars:
             return transactions
 
@@ -196,14 +197,14 @@ class BACPDFParser:
             if y_key not in lines_by_y:
                 lines_by_y[y_key] = []
             lines_by_y[y_key].append(char)
-        
+
         # Procesar cada línea
         for y in sorted(lines_by_y.keys()):
             line_chars = sorted(lines_by_y[y], key=lambda c: c['x0'])
             txn = self._parse_line_by_position(line_chars)
             if txn:
                 transactions.append(txn)
-        
+
         return transactions
 
     def _parse_line_by_position(self, chars: list[dict]) -> BACTransaction | None:
@@ -221,7 +222,7 @@ class BACPDFParser:
         for c in chars:
             x = c['x0']
             text = c['text']
-            
+
             if x < COL_FECHA_START:
                 referencia_chars.append(text)
             elif x < COL_CONCEPTO_START:
@@ -467,9 +468,8 @@ class BACPDFParser:
         for part in parts[fecha_idx + 1:]:
             if re.match(r"^[\d,]+\.\d{2}$", part):
                 montos.append(part)
-            else:
-                if not montos:  # Solo agregar al concepto si no hemos visto montos
-                    concepto_parts.append(part)
+            elif not montos:  # Solo agregar al concepto si no hemos visto montos
+                concepto_parts.append(part)
 
         if not concepto_parts or not montos:
             return None

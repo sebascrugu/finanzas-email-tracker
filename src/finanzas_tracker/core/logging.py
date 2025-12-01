@@ -2,25 +2,70 @@
 Configuración centralizada de logging usando Loguru.
 
 Este módulo configura el sistema de logging para toda la aplicación,
-incluyendo rotación de archivos, niveles de log, y formato.
+incluyendo rotación de archivos, niveles de log, y formato JSON en producción.
 """
 
-from pathlib import Path
+import json
 import sys
+from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from finanzas_tracker.config.settings import settings
 
 
+# Nombre del servicio para observability
+SERVICE_NAME = "finanzas-tracker-api"
+
+
+def json_serializer(record: dict[str, Any]) -> str:
+    """
+    Serializa un record de log a JSON para producción.
+
+    Formato FAANG-style estructurado para parsing por ELK/Datadog/CloudWatch.
+    """
+    subset = {
+        "ts": record["time"].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "level": record["level"].name,
+        "service": SERVICE_NAME,
+        "msg": record["message"],
+        "module": record["name"],
+        "function": record["function"],
+        "line": record["line"],
+    }
+
+    # Agregar extra fields (correlation_id, trace_id, etc.)
+    if record.get("extra"):
+        # Renombrar correlation_id a trace_id para estándar
+        extra = record["extra"].copy()
+        if "correlation_id" in extra:
+            extra["trace_id"] = extra.pop("correlation_id")
+        subset.update(extra)
+
+    # Agregar exception si existe
+    if record["exception"]:
+        subset["error"] = {
+            "type": record["exception"].type.__name__ if record["exception"].type else None,
+            "message": str(record["exception"].value) if record["exception"].value else None,
+        }
+
+    return json.dumps(subset, default=str)
+
+
+def json_sink(message: Any) -> None:
+    """Sink que escribe JSON a stdout."""
+    record = message.record
+    print(json_serializer(record), flush=True)  # noqa: T201
+
+
 def setup_logging() -> None:
     """
     Configura el sistema de logging de la aplicación.
 
-    - Remueve el handler por defecto de loguru
-    - Configura logging a consola con colores
-    - Configura logging a archivo con rotación
-    - Configura niveles según el entorno
+    - Development: Formato colorizado legible
+    - Production: JSON estructurado para observability
+    - Archivos con rotación para auditoría
     """
     # Remover el handler por defecto
     logger.remove()
@@ -30,31 +75,30 @@ def setup_logging() -> None:
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     # === LOGGING A CONSOLA ===
-    # Formato colorizado para development
     if settings.is_development():
+        # Formato colorizado para development
         console_format = (
             "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
             "<level>{level: <8}</level> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
             "<level>{message}</level>"
         )
-    else:
-        # Formato más simple para producción
-        console_format = (
-            "{time:YYYY-MM-DD HH:mm:ss} | "
-            "{level: <8} | "
-            "{name}:{function}:{line} | "
-            "{message}"
+        logger.add(
+            sys.stdout,
+            format=console_format,
+            level=settings.log_level,
+            colorize=True,
+            backtrace=True,
+            diagnose=True,
         )
-
-    logger.add(
-        sys.stdout,
-        format=console_format,
-        level=settings.log_level,
-        colorize=settings.is_development(),
-        backtrace=settings.is_development(),
-        diagnose=settings.is_development(),
-    )
+    else:
+        # JSON estructurado para producción (ELK, Datadog, CloudWatch)
+        logger.add(
+            json_sink,
+            level=settings.log_level,
+            backtrace=False,
+            diagnose=False,
+        )
 
     # === LOGGING A ARCHIVO - LOGS GENERALES ===
     logger.add(
