@@ -112,6 +112,7 @@
 |------------|------------|---------|-----------|
 | SDK | FastMCP | 1.22.0 | Protocol implementation |
 | Transport | stdio | - | Claude Desktop integration |
+| Features | Tools, Resources, Prompts | - | Full MCP spec support |
 
 ---
 
@@ -127,9 +128,9 @@ El servidor MCP permite que Claude Desktop interactúe directamente con tus fina
 │                    │◄───────►│   (finanzas-tracker)           │
 │  "¿Cuánto gasté    │         │                                │
 │   en comida?"      │         │  ┌──────────────────────────┐  │
-│                    │         │  │   Tool: get_transactions │  │
-└────────────────────┘         │  │   Tool: budget_coaching  │  │
-                               │  │   Tool: savings_opps     │  │
+│                    │         │  │ 🔧 12 Tools              │  │
+└────────────────────┘         │  │ 📄 3 Resources           │  │
+                               │  │ 📝 4 Prompts             │  │
                                │  └────────────┬─────────────┘  │
                                │               │                 │
                                │               ▼                 │
@@ -140,7 +141,13 @@ El servidor MCP permite que Claude Desktop interactúe directamente con tus fina
                                └────────────────────────────────┘
 ```
 
-### Herramientas Disponibles (10 total)
+### Herramientas Disponibles (12 total)
+
+#### Configuración (REQUERIDO PRIMERO)
+| Herramienta | Descripción |
+|-------------|-------------|
+| `set_profile` | ⚙️ Establece el perfil activo (OBLIGATORIO antes de otras tools) |
+| `list_profiles` | 📋 Lista todos los perfiles disponibles |
 
 #### Nivel 1 - Consultas Básicas
 | Herramienta | Descripción |
@@ -163,6 +170,27 @@ El servidor MCP permite que Claude Desktop interactúe directamente con tus fina
 | `cashflow_prediction` | 🔮 | Predice flujo de efectivo y días de riesgo |
 | `spending_alert` | 🚨 | Detecta patrones problemáticos en tiempo real |
 | `goal_advisor` | 🎯 | Asesor de metas de ahorro con plan de acción |
+
+### MCP Resources (Contexto Automático)
+
+Los Resources proveen contexto que Claude puede leer automáticamente:
+
+| Resource URI | Descripción |
+|--------------|-------------|
+| `profile://current` | Información del perfil activo actual |
+| `finance://summary` | Resumen financiero rápido del mes actual |
+| `categories://list` | Lista de categorías disponibles |
+
+### MCP Prompts (Plantillas Predefinidas)
+
+Los Prompts son plantillas para casos de uso comunes:
+
+| Prompt | Descripción | Parámetros |
+|--------|-------------|------------|
+| `weekly_review` | Revisión semanal de finanzas | ninguno |
+| `monthly_checkup` | Chequeo mensual completo | ninguno |
+| `savings_plan` | Plan de ahorro para meta específica | goal, amount, months |
+| `quick_question` | Plantilla para preguntas rápidas | question |
 
 ### Configuración Claude Desktop
 
@@ -187,7 +215,7 @@ El servidor MCP permite que Claude Desktop interactúe directamente con tus fina
 
 ```
 Usuario: "¿Cómo van mis finanzas este mes?"
-→ Claude usa budget_coaching()
+→ Claude usa set_profile() + budget_coaching()
 → Retorna: Score de salud 78/100, 3 recomendaciones priorizadas
 
 Usuario: "¿Dónde puedo ahorrar dinero?"
