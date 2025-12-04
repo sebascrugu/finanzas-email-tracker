@@ -13,7 +13,7 @@ from datetime import date, datetime
 from decimal import Decimal
 import logging
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.models.account import Account
@@ -367,7 +367,10 @@ class PatrimonyService:
             saldo = account.saldo or Decimal("0")
             is_crc = account.moneda == Currency.CRC
 
-            if account.tipo == AccountType.CUENTA_CORRIENTE or account.tipo == AccountType.CUENTA_AHORRO:
+            if (
+                account.tipo == AccountType.CUENTA_CORRIENTE
+                or account.tipo == AccountType.CUENTA_AHORRO
+            ):
                 if is_crc:
                     saldo_cuentas_crc += saldo
                 else:
@@ -586,14 +589,10 @@ class PatrimonyService:
         snapshot_fin = self.db.execute(stmt_fin).scalar_one_or_none()
 
         if not snapshot_inicio:
-            raise ValueError(
-                f"No hay snapshots antes de {fecha_inicio} para profile {profile_id}"
-            )
+            raise ValueError(f"No hay snapshots antes de {fecha_inicio} para profile {profile_id}")
 
         if not snapshot_fin:
-            raise ValueError(
-                f"No hay snapshots antes de {fecha_fin} para profile {profile_id}"
-            )
+            raise ValueError(f"No hay snapshots antes de {fecha_fin} para profile {profile_id}")
 
         # Calcular cambios
         patrimonio_inicio = snapshot_inicio.patrimonio_neto_crc
@@ -649,11 +648,15 @@ class PatrimonyService:
         mes_inicio = date(today.year, today.month, 1)
 
         # Verificar si ya existe snapshot este mes
-        stmt = select(PatrimonioSnapshot).where(
-            PatrimonioSnapshot.profile_id == profile_id,
-            PatrimonioSnapshot.fecha_snapshot >= mes_inicio,
-            PatrimonioSnapshot.deleted_at.is_(None),
-        ).limit(1)
+        stmt = (
+            select(PatrimonioSnapshot)
+            .where(
+                PatrimonioSnapshot.profile_id == profile_id,
+                PatrimonioSnapshot.fecha_snapshot >= mes_inicio,
+                PatrimonioSnapshot.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
         existing = self.db.execute(stmt).scalar_one_or_none()
 
         if existing:

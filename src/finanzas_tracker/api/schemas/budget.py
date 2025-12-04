@@ -57,8 +57,7 @@ class CategoryBudgetSummary(BaseModel):
     restante: Decimal = Field(..., description="Diferencia (puede ser negativo)")
     porcentaje_usado: Decimal = Field(..., description="Porcentaje del presupuesto usado")
     status: str = Field(
-        ...,
-        description="bajo_presupuesto (<80%), en_limite (80-100%), sobre_presupuesto (>100%)"
+        ..., description="bajo_presupuesto (<80%), en_limite (80-100%), sobre_presupuesto (>100%)"
     )
 
 

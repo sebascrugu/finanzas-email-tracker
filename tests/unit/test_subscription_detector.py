@@ -164,9 +164,9 @@ class TestAnalizarGrupo:
             create_mock_transaction("NETFLIX", Decimal("10.99"), hoy - timedelta(days=30)),
             create_mock_transaction("NETFLIX", Decimal("10.99"), hoy),
         ]
-        
+
         result = detector._analizar_grupo("NETFLIX", txs)
-        
+
         assert result is not None
         assert result.frecuencia == SubscriptionFrequency.MONTHLY
         assert result.cantidad_cobros == 3
@@ -180,26 +180,26 @@ class TestAnalizarGrupo:
             create_mock_transaction("SPOTIFY", Decimal("6.49"), hoy - timedelta(days=30)),
             create_mock_transaction("SPOTIFY", Decimal("6.49"), hoy),
         ]
-        
+
         result = detector._analizar_grupo("SPOTIFY", txs)
-        
+
         assert result is not None
         assert result.variacion_monto < 10
 
     def test_no_detecta_con_pocas_transacciones(self, detector):
         """No detecta con menos de 2 transacciones."""
         txs = [create_mock_transaction("RANDOM", Decimal("50"), date.today())]
-        
+
         result = detector._analizar_grupo("RANDOM", txs)
-        
+
         assert result is None
 
     def test_detecta_conocida_con_una_transaccion(self, detector):
         """Detecta suscripción conocida con solo 1 transacción."""
         txs = [create_mock_transaction("NETFLIX", Decimal("10.99"), date.today())]
-        
+
         result = detector._analizar_grupo("NETFLIX", txs, es_conocida=True)
-        
+
         assert result is not None
 
 
@@ -209,7 +209,7 @@ class TestDetectarSuscripciones:
     def test_detecta_suscripciones_en_historial(self, detector, mock_db):
         """Detecta suscripciones en historial de transacciones."""
         hoy = date.today()
-        
+
         # Netflix mensual
         tx_netflix = [
             create_mock_transaction("NETFLIX COM", Decimal("10.99"), hoy - timedelta(days=90)),
@@ -217,25 +217,25 @@ class TestDetectarSuscripciones:
             create_mock_transaction("NETFLIX COM", Decimal("10.99"), hoy - timedelta(days=30)),
             create_mock_transaction("NETFLIX COM", Decimal("10.99"), hoy),
         ]
-        
+
         # Spotify mensual
         tx_spotify = [
             create_mock_transaction("SPOTIFY AB", Decimal("5.99"), hoy - timedelta(days=65)),
             create_mock_transaction("SPOTIFY AB", Decimal("5.99"), hoy - timedelta(days=35)),
             create_mock_transaction("SPOTIFY AB", Decimal("5.99"), hoy - timedelta(days=5)),
         ]
-        
+
         # Compra aleatoria (no suscripción)
         tx_random = [
             create_mock_transaction("WALMART", Decimal("150.00"), hoy - timedelta(days=45)),
         ]
-        
+
         mock_db.execute.return_value.scalars.return_value.all.return_value = (
             tx_netflix + tx_spotify + tx_random
         )
-        
+
         result = detector.detectar_suscripciones("profile-123")
-        
+
         assert len(result) >= 2
         comercios = [s.comercio_normalizado for s in result]
         assert any("NETFLIX" in c for c in comercios)
@@ -244,23 +244,23 @@ class TestDetectarSuscripciones:
     def test_ordena_por_confianza(self, detector, mock_db):
         """Ordena resultados por confianza descendente."""
         hoy = date.today()
-        
+
         # Suscripción con alta confianza (6 cobros)
         tx_alta = [
-            create_mock_transaction("SERVICIO_A", Decimal("10"), hoy - timedelta(days=i*30))
+            create_mock_transaction("SERVICIO_A", Decimal("10"), hoy - timedelta(days=i * 30))
             for i in range(6)
         ]
-        
+
         # Suscripción con baja confianza (2 cobros)
         tx_baja = [
             create_mock_transaction("SERVICIO_B", Decimal("20"), hoy - timedelta(days=30)),
             create_mock_transaction("SERVICIO_B", Decimal("20"), hoy),
         ]
-        
+
         mock_db.execute.return_value.scalars.return_value.all.return_value = tx_alta + tx_baja
-        
+
         result = detector.detectar_suscripciones("profile-123")
-        
+
         if len(result) >= 2:
             assert result[0].confianza >= result[-1].confianza
 
@@ -274,9 +274,9 @@ class TestDetectarConocidas:
             create_mock_transaction("NETFLIX.COM", Decimal("15.99"), date.today()),
         ]
         mock_db.execute.return_value.scalars.return_value.all.return_value = txs
-        
+
         result = detector.detectar_conocidas("profile-123")
-        
+
         assert len(result) == 1
         assert result[0].comercio_normalizado == "Netflix"
 
@@ -286,9 +286,9 @@ class TestDetectarConocidas:
             create_mock_transaction("SPOTIFY AB SWEDEN", Decimal("5.99"), date.today()),
         ]
         mock_db.execute.return_value.scalars.return_value.all.return_value = txs
-        
+
         result = detector.detectar_conocidas("profile-123")
-        
+
         assert len(result) == 1
         assert result[0].comercio_normalizado == "Spotify"
 
@@ -298,9 +298,9 @@ class TestDetectarConocidas:
             create_mock_transaction("AMAZON PRIME VIDEO", Decimal("8.99"), date.today()),
         ]
         mock_db.execute.return_value.scalars.return_value.all.return_value = txs
-        
+
         result = detector.detectar_conocidas("profile-123")
-        
+
         assert len(result) == 1
         assert result[0].comercio_normalizado == "Amazon Prime"
 
@@ -323,9 +323,9 @@ class TestGetProximoCobro:
             cantidad_cobros=4,
             confianza=85,
         )
-        
+
         proximo = detector.get_proximo_cobro(sub)
-        
+
         assert proximo == date(2025, 12, 15)
 
 
@@ -362,9 +362,9 @@ class TestGetGastoMensualSuscripciones:
                 confianza=80,
             ),
         ]
-        
+
         total = detector.get_gasto_mensual_suscripciones(subs)
-        
+
         assert total == Decimal("16.98")
 
     def test_convierte_anual_a_mensual(self, detector):
@@ -384,9 +384,9 @@ class TestGetGastoMensualSuscripciones:
                 confianza=70,
             ),
         ]
-        
+
         total = detector.get_gasto_mensual_suscripciones(subs)
-        
+
         assert total == Decimal("10.00")  # 120/12
 
     def test_convierte_semanal_a_mensual(self, detector):
@@ -406,9 +406,9 @@ class TestGetGastoMensualSuscripciones:
                 confianza=75,
             ),
         ]
-        
+
         total = detector.get_gasto_mensual_suscripciones(subs)
-        
+
         # 10 * 4.33 = 43.30
         assert total == Decimal("43.30")
 
@@ -432,9 +432,9 @@ class TestDetectedSubscriptionToDict:
             confianza=85,
             variacion_monto=1.5,
         )
-        
+
         result = sub.to_dict()
-        
+
         assert result["comercio"] == "Netflix"
         assert result["monto_promedio"] == 10.99
         assert result["frecuencia"] == "mensual"

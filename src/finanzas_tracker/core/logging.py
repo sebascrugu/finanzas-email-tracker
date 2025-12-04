@@ -6,8 +6,8 @@ incluyendo rotación de archivos, niveles de log, y formato JSON en producción.
 """
 
 import json
-import sys
 from pathlib import Path
+import sys
 from typing import Any
 
 from loguru import logger

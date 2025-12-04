@@ -231,11 +231,13 @@ async def validation_exception_handler(
 
     for error in errors:
         loc = ".".join(str(x) for x in error["loc"])
-        formatted_errors.append({
-            "field": loc,
-            "message": error["msg"],
-            "type": error["type"],
-        })
+        formatted_errors.append(
+            {
+                "field": loc,
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
 
     logger.warning(
         f"Validation error: {len(errors)} errors",

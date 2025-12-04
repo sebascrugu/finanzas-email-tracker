@@ -72,6 +72,7 @@ def mock_transaction() -> MagicMock:
 def reset_active_profile() -> None:
     """Reset active profile before each test."""
     import finanzas_tracker.mcp.server as server_module
+
     server_module._state.active_profile_id = None
 
 
@@ -109,7 +110,9 @@ class TestMCPServerSetup:
         }
 
         registered_tools = set(mcp._tool_manager._tools.keys())
-        assert expected_tools.issubset(registered_tools), f"Missing tools: {expected_tools - registered_tools}"
+        assert expected_tools.issubset(
+            registered_tools
+        ), f"Missing tools: {expected_tools - registered_tools}"
 
     def test_mcp_has_nivel_3_coaching_tools(self) -> None:
         """Verifica que las herramientas de coaching están presentes."""
@@ -147,9 +150,7 @@ class TestSetProfile:
         self, mock_session: MagicMock, mock_profile: MagicMock
     ) -> None:
         """Verifica que establece el perfil activo."""
-        mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.first.return_value = (
-            mock_profile
-        )
+        mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.first.return_value = mock_profile
 
         result = set_profile(mock_profile.id)
 
@@ -160,9 +161,7 @@ class TestSetProfile:
     @patch("finanzas_tracker.mcp.server.get_session")
     def test_returns_error_for_invalid_profile(self, mock_session: MagicMock) -> None:
         """Verifica error para perfil inexistente."""
-        mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.first.return_value = (
-            None
-        )
+        mock_session.return_value.__enter__.return_value.query.return_value.filter.return_value.first.return_value = None
 
         result = set_profile("invalid-uuid")
 
@@ -428,9 +427,7 @@ class TestSearchTransactions:
         """Verifica que retorna resultados de búsqueda."""
         mock_get_profile.return_value = mock_profile_id
         mock_ctx = MagicMock()
-        mock_ctx.execute.return_value.scalars.return_value.all.return_value = [
-            mock_transaction
-        ]
+        mock_ctx.execute.return_value.scalars.return_value.all.return_value = [mock_transaction]
         mock_session.return_value.__enter__.return_value = mock_ctx
 
         result = search_transactions(query="walmart")

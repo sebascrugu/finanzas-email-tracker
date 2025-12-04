@@ -24,6 +24,7 @@ from finanzas_tracker.core.database import get_db
 from finanzas_tracker.models.enums import CardPaymentType, CardType
 from finanzas_tracker.services.card_service import CardService
 
+
 router = APIRouter(prefix="/cards", tags=["Tarjetas"])
 
 

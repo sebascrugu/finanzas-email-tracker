@@ -11,10 +11,10 @@ permitiendo tracking de:
 
 from __future__ import annotations
 
-import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
+import uuid
 
 from sqlalchemy import (
     Date,
@@ -28,6 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import CardPaymentType
+
 
 if TYPE_CHECKING:
     from finanzas_tracker.models.billing_cycle import BillingCycle

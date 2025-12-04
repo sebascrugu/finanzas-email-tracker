@@ -3,11 +3,9 @@
 Tests del servicio de notificaciones de tarjetas de crédito.
 """
 
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -54,7 +52,7 @@ class TestNotification:
             title="Recordatorio de Pago",
             message="Tu pago vence en 3 días",
         )
-        
+
         assert notif.type == NotificationType.PAYMENT_REMINDER_3_DAYS
         assert notif.card_id == 1
         assert notif.card_name == "VISA ***1234"
@@ -72,7 +70,7 @@ class TestNotification:
             amount=Decimal("250000.00"),
             due_date=date(2024, 12, 15),
         )
-        
+
         assert notif.amount == Decimal("250000.00")
         assert notif.due_date == date(2024, 12, 15)
 
@@ -86,7 +84,7 @@ class TestNotification:
             message="Tu pago está vencido",
             priority="urgent",
         )
-        
+
         assert notif.priority == "urgent"
 
     def test_notification_created_at_default(self) -> None:
@@ -98,7 +96,7 @@ class TestNotification:
             title="Estado Recibido",
             message="Llegó tu estado de cuenta",
         )
-        
+
         assert notif.created_at is not None
         assert isinstance(notif.created_at, datetime)
 
@@ -116,9 +114,9 @@ class TestNotification:
             priority="high",
             action_url="/cards/1/pay",
         )
-        
+
         result = notif.to_dict()
-        
+
         assert result["type"] == "payment_reminder_3_days"
         assert result["card_id"] == 1
         assert result["card_name"] == "VISA ***1234"
@@ -140,9 +138,9 @@ class TestNotification:
             title="Test",
             message="Test message",
         )
-        
+
         result = notif.to_dict()
-        
+
         assert result["amount"] is None
         assert result["due_date"] is None
         assert result["days_until_due"] is None
@@ -156,7 +154,7 @@ class TestCardNotificationServiceInit:
         """Inicializa correctamente con sesión de BD."""
         mock_db = MagicMock(spec=Session)
         service = CardNotificationService(mock_db)
-        
+
         assert service.db == mock_db
 
 
@@ -189,7 +187,7 @@ class TestCardNotificationServiceGetPending:
         """Retorna lista vacía si no hay tarjetas."""
         with patch.object(service, "_get_credit_cards", return_value=[]):
             result = service.get_all_pending_notifications("profile-123")
-        
+
         assert result == []
 
     def test_get_pending_with_cards(
@@ -205,14 +203,20 @@ class TestCardNotificationServiceGetPending:
             title="Test",
             message="Test",
         )
-        
+
         with patch.object(service, "_get_credit_cards", return_value=[mock_card]):
             with patch.object(service, "_check_statement_for_card", return_value=None):
-                with patch.object(service, "_check_payment_reminders_for_card", return_value=[mock_notif]):
-                    with patch.object(service, "_check_payment_received_for_card", return_value=None):
-                        with patch.object(service, "_check_utilization_for_card", return_value=None):
+                with patch.object(
+                    service, "_check_payment_reminders_for_card", return_value=[mock_notif]
+                ):
+                    with patch.object(
+                        service, "_check_payment_received_for_card", return_value=None
+                    ):
+                        with patch.object(
+                            service, "_check_utilization_for_card", return_value=None
+                        ):
                             result = service.get_all_pending_notifications("profile-123")
-        
+
         assert len(result) == 1
         assert result[0].type == NotificationType.PAYMENT_REMINDER_3_DAYS
 
@@ -238,14 +242,20 @@ class TestCardNotificationServiceGetPending:
             message="Urgent priority",
             priority="urgent",
         )
-        
+
         with patch.object(service, "_get_credit_cards", return_value=[mock_card]):
             with patch.object(service, "_check_statement_for_card", return_value=normal_notif):
-                with patch.object(service, "_check_payment_reminders_for_card", return_value=[urgent_notif]):
-                    with patch.object(service, "_check_payment_received_for_card", return_value=None):
-                        with patch.object(service, "_check_utilization_for_card", return_value=None):
+                with patch.object(
+                    service, "_check_payment_reminders_for_card", return_value=[urgent_notif]
+                ):
+                    with patch.object(
+                        service, "_check_payment_received_for_card", return_value=None
+                    ):
+                        with patch.object(
+                            service, "_check_utilization_for_card", return_value=None
+                        ):
                             result = service.get_all_pending_notifications("profile-123")
-        
+
         assert len(result) == 2
         assert result[0].priority == "urgent"  # Primero
         assert result[1].priority == "normal"  # Después
@@ -267,7 +277,7 @@ class TestCardNotificationServiceStatementArrival:
         """Retorna lista vacía si no hay estados nuevos."""
         with patch.object(service, "_get_credit_cards", return_value=[]):
             result = service.check_statement_arrival("profile-123")
-        
+
         # Debería funcionar aunque no haya tarjetas
         assert isinstance(result, list)
 
@@ -295,7 +305,7 @@ class TestNotificationHelperMethods:
             "high_utilization",
             "approaching_limit",
         ]
-        
+
         for type_value in expected_types:
             found = False
             for nt in NotificationType:
@@ -311,7 +321,7 @@ class TestNotificationPriorityOrdering:
     def test_priority_order_values(self) -> None:
         """Verifica el orden esperado de prioridades."""
         priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
-        
+
         # urgent < high < normal < low
         assert priority_order["urgent"] < priority_order["high"]
         assert priority_order["high"] < priority_order["normal"]
@@ -353,13 +363,12 @@ class TestNotificationPriorityOrdering:
                 priority="high",
             ),
         ]
-        
+
         priority_order = {"urgent": 0, "high": 1, "normal": 2, "low": 3}
         sorted_notifications = sorted(
-            notifications,
-            key=lambda n: priority_order.get(n.priority, 2)
+            notifications, key=lambda n: priority_order.get(n.priority, 2)
         )
-        
+
         assert sorted_notifications[0].priority == "urgent"
         assert sorted_notifications[1].priority == "high"
         assert sorted_notifications[2].priority == "normal"
@@ -382,7 +391,7 @@ class TestNotificationCreation:
             days_until_due=3,
             priority="high",
         )
-        
+
         assert "250,000" in notif.message or "250000" in notif.message
         assert notif.days_until_due == 3
 
@@ -399,7 +408,7 @@ class TestNotificationCreation:
             days_until_due=-2,
             priority="urgent",
         )
-        
+
         assert notif.type == NotificationType.PAYMENT_OVERDUE
         assert notif.priority == "urgent"
         assert notif.days_until_due == -2  # Negativo = vencido
@@ -414,7 +423,7 @@ class TestNotificationCreation:
             message="Has usado el 85% de tu límite de crédito",
             priority="high",
         )
-        
+
         assert notif.type == NotificationType.HIGH_UTILIZATION
         assert "85%" in notif.message
 
@@ -429,7 +438,7 @@ class TestNotificationCreation:
             amount=Decimal("200000.00"),
             priority="low",
         )
-        
+
         assert notif.type == NotificationType.PAYMENT_RECEIVED
         assert notif.priority == "low"
 
@@ -447,9 +456,9 @@ class TestNotificationToDict:
             message="Test",
             amount=Decimal("123456.78"),
         )
-        
+
         result = notif.to_dict()
-        
+
         assert result["amount"] == 123456.78
         assert isinstance(result["amount"], float)
 
@@ -463,9 +472,9 @@ class TestNotificationToDict:
             message="Test",
             due_date=date(2024, 12, 25),
         )
-        
+
         result = notif.to_dict()
-        
+
         assert result["due_date"] == "2024-12-25"
 
     def test_to_dict_datetime_conversion(self) -> None:
@@ -479,8 +488,8 @@ class TestNotificationToDict:
             message="Test",
             created_at=fixed_time,
         )
-        
+
         result = notif.to_dict()
-        
+
         assert "2024-12-01" in result["created_at"]
         assert "10:30:45" in result["created_at"]

@@ -21,6 +21,7 @@ from finanzas_tracker.api.schemas.onboarding import (
 from finanzas_tracker.models.enums import BankName
 from finanzas_tracker.services.onboarding_service import OnboardingService
 
+
 router = APIRouter(prefix="/onboarding", tags=["Onboarding"])
 
 

@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from finanzas_tracker.core.database import Base
-from finanzas_tracker.models.enums import BankName, Currency, InvestmentType
+from finanzas_tracker.models.enums import Currency, InvestmentType
 
 
 class Investment(Base):

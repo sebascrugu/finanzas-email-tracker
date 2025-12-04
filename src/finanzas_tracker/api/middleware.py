@@ -7,15 +7,16 @@ Implementación FAANG-style con:
 - Timing de requests
 """
 
-import time
-import uuid
 from collections.abc import Callable
 from contextvars import ContextVar
+import time
 from typing import Any
+import uuid
 
 from fastapi import Request, Response
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
+
 
 # Context variable para correlation ID (thread-safe)
 correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")

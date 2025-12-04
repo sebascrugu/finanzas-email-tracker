@@ -11,8 +11,7 @@ rag = RAGService(db_session)
 
 # Chat con contexto
 response = rag.chat(
-    query="Cuánto gasté en comida este mes?",
-    profile_id="abc123"
+    query="Cuánto gasté en comida este mes?", profile_id="abc123"
 )
 print(response.answer)  # "Este mes gastaste ₡45,000 en comida..."
 print(response.sources)  # Transacciones usadas como contexto
@@ -263,26 +262,20 @@ class RAGService:
         month = month or now.month
 
         # Total gastado este mes
-        stmt = (
-            select(func.sum(Transaction.monto_crc))
-            .where(
-                Transaction.profile_id == profile_id,
-                Transaction.deleted_at.is_(None),
-                func.extract("year", Transaction.fecha_transaccion) == year,
-                func.extract("month", Transaction.fecha_transaccion) == month,
-            )
+        stmt = select(func.sum(Transaction.monto_crc)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.deleted_at.is_(None),
+            func.extract("year", Transaction.fecha_transaccion) == year,
+            func.extract("month", Transaction.fecha_transaccion) == month,
         )
         total_mes = self.db.execute(stmt).scalar() or Decimal("0")
 
         # Número de transacciones
-        stmt = (
-            select(func.count(Transaction.id))
-            .where(
-                Transaction.profile_id == profile_id,
-                Transaction.deleted_at.is_(None),
-                func.extract("year", Transaction.fecha_transaccion) == year,
-                func.extract("month", Transaction.fecha_transaccion) == month,
-            )
+        stmt = select(func.count(Transaction.id)).where(
+            Transaction.profile_id == profile_id,
+            Transaction.deleted_at.is_(None),
+            func.extract("year", Transaction.fecha_transaccion) == year,
+            func.extract("month", Transaction.fecha_transaccion) == month,
         )
         num_txns = self.db.execute(stmt).scalar() or 0
 
@@ -312,11 +305,7 @@ class RAGService:
         Returns:
             RAGResponse con la respuesta y fuentes
         """
-        model = model or getattr(
-            self.settings,
-            "claude_model",
-            "claude-haiku-4-5-20251001"
-        )
+        model = model or getattr(self.settings, "claude_model", "claude-haiku-4-5-20251001")
 
         # 1. Buscar transacciones relevantes
         relevant_txns = self._search_relevant_transactions(
@@ -349,9 +338,7 @@ class RAGService:
             model=model,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": user_prompt}
-            ],
+            messages=[{"role": "user", "content": user_prompt}],
         )
 
         # 6. Construir respuesta

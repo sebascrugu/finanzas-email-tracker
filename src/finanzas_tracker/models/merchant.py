@@ -19,26 +19,21 @@ COMERCIOS_AMBIGUOS: dict[str, list[str]] = {
     "pricesmart": ["Supermercado", "Electrónica", "Hogar", "Oficina"],
     "costco": ["Supermercado", "Electrónica", "Hogar", "Farmacia"],
     "amazon": ["Electrónica", "Libros", "Ropa y Calzado", "Hogar", "Suscripciones"],
-
     # Ferreterías / Mejoras del hogar
     "epa": ["Ferretería", "Hogar", "Jardín", "Electrónica"],
     "construplaza": ["Ferretería", "Hogar", "Jardín"],
     "home depot": ["Ferretería", "Hogar", "Jardín", "Electrónica"],
-
     # Tiendas por departamentos
     "el rey": ["Supermercado", "Hogar", "Ropa y Calzado"],
     "la curacao": ["Electrónica", "Hogar", "Electrodomésticos"],
     "gollo": ["Electrónica", "Hogar", "Electrodomésticos"],
-
     # Gasolineras (pueden tener tienda de conveniencia)
     "total": ["Gasolina", "Tienda de Conveniencia", "Comida"],
     "shell": ["Gasolina", "Tienda de Conveniencia", "Comida"],
     "uno": ["Gasolina", "Tienda de Conveniencia", "Comida"],
-
     # Farmacias que venden más
     "farmacia fischel": ["Farmacia", "Belleza", "Hogar"],
     "farmacia la bomba": ["Farmacia", "Belleza", "Supermercado"],
-
     # Tiendas de conveniencia
     "am pm": ["Tienda de Conveniencia", "Comida", "Bebidas"],
     "fresh market": ["Tienda de Conveniencia", "Comida", "Bebidas"],
@@ -48,10 +43,7 @@ COMERCIOS_AMBIGUOS: dict[str, list[str]] = {
 def es_comercio_ambiguo(nombre_comercio: str) -> bool:
     """Verifica si un comercio necesita confirmación de categoría."""
     nombre_lower = nombre_comercio.lower().strip()
-    return any(
-        ambiguo in nombre_lower or nombre_lower in ambiguo
-        for ambiguo in COMERCIOS_AMBIGUOS
-    )
+    return any(ambiguo in nombre_lower or nombre_lower in ambiguo for ambiguo in COMERCIOS_AMBIGUOS)
 
 
 def obtener_categorias_posibles(nombre_comercio: str) -> list[str]:
@@ -103,12 +95,15 @@ class Merchant(Base):
 
     # Comercios ambiguos (Walmart, Amazon, etc.)
     es_ambiguo: Mapped[bool] = mapped_column(
-        Boolean, default=False, index=True,
-        comment="True si el comercio puede tener múltiples categorías (ej: Walmart)"
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si el comercio puede tener múltiples categorías (ej: Walmart)",
     )
     categorias_posibles: Mapped[str | None] = mapped_column(
-        Text, nullable=True,
-        comment="Lista de categorías posibles para comercios ambiguos (JSON serializado)"
+        Text,
+        nullable=True,
+        comment="Lista de categorías posibles para comercios ambiguos (JSON serializado)",
     )
 
     # Metadata descriptiva

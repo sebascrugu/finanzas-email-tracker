@@ -6,7 +6,7 @@ and calculations for credit card management.
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -788,14 +788,14 @@ class TestGetCardSummary:
         """Should return complete card summary."""
         # Create mock that returns card first, then None for current cycle
         call_count = 0
-        
+
         def mock_scalar_one_or_none():
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 return sample_credit_card  # get_card
             return None  # get_current_cycle and others
-        
+
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.side_effect = mock_scalar_one_or_none
         mock_result.scalars.return_value.all.return_value = []

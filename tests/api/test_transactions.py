@@ -7,8 +7,8 @@ Prueba completa del CRUD de /api/v1/transactions.
 from datetime import datetime
 from decimal import Decimal
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.api.main import app

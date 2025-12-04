@@ -71,7 +71,9 @@ class InvestmentBase(BaseModel):
     fecha_vencimiento: date | None = Field(None, description="Fecha de vencimiento")
     notas: str | None = Field(None, max_length=500, description="Notas adicionales")
     activa: bool = Field(default=True, description="Si la inversión está activa")
-    incluir_en_patrimonio: bool = Field(default=True, description="Incluir en cálculo de patrimonio")
+    incluir_en_patrimonio: bool = Field(
+        default=True, description="Incluir en cálculo de patrimonio"
+    )
 
 
 class InvestmentCreate(InvestmentBase):
@@ -99,7 +101,9 @@ class InvestmentResponse(InvestmentBase):
 
     id: str
     profile_id: str
-    rendimiento_acumulado: Decimal = Field(default=Decimal("0"), description="Rendimiento acumulado")
+    rendimiento_acumulado: Decimal = Field(
+        default=Decimal("0"), description="Rendimiento acumulado"
+    )
     valor_actual: Decimal | None = None
     dias_para_vencimiento: int | None = None
     created_at: str | None = None

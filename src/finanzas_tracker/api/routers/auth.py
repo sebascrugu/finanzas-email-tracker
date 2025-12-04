@@ -5,13 +5,13 @@ from sqlalchemy.orm import Session
 
 from finanzas_tracker.api.dependencies import CurrentUser, get_db
 from finanzas_tracker.api.schemas.auth import (
-    MessageResponse,
     Token,
     UserLogin,
     UserRegister,
     UserResponse,
 )
 from finanzas_tracker.services.auth_service import auth_service
+
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

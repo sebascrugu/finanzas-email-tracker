@@ -49,7 +49,7 @@ def create_mock_subscription(
         SubscriptionFrequency.MONTHLY: 30,
         SubscriptionFrequency.ANNUAL: 365,
     }.get(frecuencia, 30)
-    
+
     return DetectedSubscription(
         comercio=comercio,
         comercio_normalizado=comercio.upper(),
@@ -162,9 +162,9 @@ class TestCalcularProximoCobro:
             Decimal("10.99"),
             hoy - timedelta(days=25),  # Hace 25 días
         )
-        
+
         proximo = predictor._calcular_proximo_cobro(sub, hoy)
-        
+
         assert proximo is not None
         assert proximo >= hoy
         # Debería ser en ~5 días (30 - 25)
@@ -178,9 +178,9 @@ class TestCalcularProximoCobro:
             Decimal("5.99"),
             hoy - timedelta(days=45),  # Hace 45 días
         )
-        
+
         proximo = predictor._calcular_proximo_cobro(sub, hoy)
-        
+
         assert proximo is not None
         assert proximo >= hoy
 
@@ -191,11 +191,11 @@ class TestPredecirGastos:
     def test_predice_suscripciones(self, predictor, mock_db):
         """Predice gastos de suscripciones."""
         hoy = date.today()
-        
+
         # Mock de suscripciones detectadas
         with patch.object(
             predictor.subscription_detector,
-            'detectar_suscripciones',
+            "detectar_suscripciones",
         ) as mock_detect:
             mock_detect.return_value = [
                 create_mock_subscription(
@@ -209,12 +209,12 @@ class TestPredecirGastos:
                     hoy - timedelta(days=20),
                 ),
             ]
-            
+
             # Mock de transacciones para gastos periódicos
             mock_db.execute.return_value.scalars.return_value.all.return_value = []
-            
+
             result = predictor.predecir_gastos("profile-123", dias_adelante=30)
-        
+
         assert len(result) == 2
         comercios = [r.comercio for r in result]
         assert "Netflix" in comercios
@@ -223,10 +223,10 @@ class TestPredecirGastos:
     def test_ordena_por_fecha(self, predictor, mock_db):
         """Ordena predicciones por fecha."""
         hoy = date.today()
-        
+
         with patch.object(
             predictor.subscription_detector,
-            'detectar_suscripciones',
+            "detectar_suscripciones",
         ) as mock_detect:
             # Crear suscripciones con fechas diferentes
             mock_detect.return_value = [
@@ -242,9 +242,9 @@ class TestPredecirGastos:
                 ),
             ]
             mock_db.execute.return_value.scalars.return_value.all.return_value = []
-            
+
             result = predictor.predecir_gastos("profile-123")
-        
+
         if len(result) >= 2:
             assert result[0].fecha_estimada <= result[1].fecha_estimada
 
@@ -255,8 +255,8 @@ class TestGetAlertasVencimiento:
     def test_filtra_solo_warning_y_urgent(self, predictor, mock_db):
         """Solo retorna alertas de warning y urgent."""
         hoy = date.today()
-        
-        with patch.object(predictor, 'predecir_gastos') as mock_predecir:
+
+        with patch.object(predictor, "predecir_gastos") as mock_predecir:
             mock_predecir.return_value = [
                 PredictedExpense(
                     comercio="Urgente",
@@ -286,9 +286,9 @@ class TestGetAlertasVencimiento:
                     nivel_alerta=AlertLevel.INFO,
                 ),
             ]
-            
+
             result = predictor.get_alertas_vencimiento("profile-123")
-        
+
         assert len(result) == 2
         niveles = [r.nivel_alerta for r in result]
         assert AlertLevel.INFO not in niveles
@@ -300,8 +300,8 @@ class TestGenerarResumenMensual:
     def test_genera_resumen(self, predictor, mock_db):
         """Genera resumen mensual correctamente."""
         hoy = date.today()
-        
-        with patch.object(predictor, 'predecir_gastos') as mock_predecir:
+
+        with patch.object(predictor, "predecir_gastos") as mock_predecir:
             mock_predecir.return_value = [
                 PredictedExpense(
                     comercio="Netflix",
@@ -322,9 +322,9 @@ class TestGenerarResumenMensual:
                     nivel_alerta=AlertLevel.INFO,
                 ),
             ]
-            
+
             result = predictor.generar_resumen_mensual("profile-123")
-        
+
         assert result.total_estimado > Decimal("0")
         assert ExpenseType.SUBSCRIPTION in result.por_tipo
         assert ExpenseType.UTILITY in result.por_tipo
@@ -332,8 +332,8 @@ class TestGenerarResumenMensual:
     def test_cuenta_alertas_urgentes(self, predictor, mock_db):
         """Cuenta alertas urgentes."""
         hoy = date.today()
-        
-        with patch.object(predictor, 'predecir_gastos') as mock_predecir:
+
+        with patch.object(predictor, "predecir_gastos") as mock_predecir:
             mock_predecir.return_value = [
                 PredictedExpense(
                     comercio="Urgente 1",
@@ -354,9 +354,9 @@ class TestGenerarResumenMensual:
                     nivel_alerta=AlertLevel.URGENT,
                 ),
             ]
-            
+
             result = predictor.generar_resumen_mensual("profile-123")
-        
+
         assert result.alertas_urgentes == 2
 
 
@@ -367,8 +367,8 @@ class TestEstimarFlujoCaja:
         """Calcula flujo de caja correctamente."""
         hoy = date.today()
         saldo_inicial = Decimal("100000")
-        
-        with patch.object(predictor, 'predecir_gastos') as mock_predecir:
+
+        with patch.object(predictor, "predecir_gastos") as mock_predecir:
             mock_predecir.return_value = [
                 PredictedExpense(
                     comercio="Gasto 1",
@@ -389,17 +389,17 @@ class TestEstimarFlujoCaja:
                     nivel_alerta=AlertLevel.INFO,
                 ),
             ]
-            
+
             result = predictor.estimar_flujo_caja(
                 "profile-123",
                 saldo_inicial,
                 dias=15,
             )
-        
+
         # El día 5 debería tener saldo - 10000
         fecha_dia_5 = hoy + timedelta(days=5)
         assert result[fecha_dia_5] == saldo_inicial - Decimal("10000")
-        
+
         # El día 10 debería tener saldo - 10000 - 25000
         fecha_dia_10 = hoy + timedelta(days=10)
         assert result[fecha_dia_10] == saldo_inicial - Decimal("35000")
@@ -411,7 +411,7 @@ class TestDetectarGastosPeriodicos:
     def test_detecta_pagos_utility_mensual(self, predictor, mock_db):
         """Detecta pagos de servicios mensuales."""
         hoy = date.today()
-        
+
         # Pagos de ICE mensuales
         txs = [
             create_mock_transaction(
@@ -430,18 +430,18 @@ class TestDetectarGastosPeriodicos:
                 hoy - timedelta(days=30),
             ),
         ]
-        
+
         mock_db.execute.return_value.scalars.return_value.all.return_value = txs
-        
+
         result = predictor._detectar_gastos_periodicos("profile-123", 30, 50)
-        
+
         assert len(result) >= 1
         assert any("ICE" in r.comercio.upper() for r in result)
 
     def test_ignora_transacciones_unicas(self, predictor, mock_db):
         """Ignora transacciones únicas."""
         hoy = date.today()
-        
+
         txs = [
             create_mock_transaction(
                 "COMPRA UNICA",
@@ -449,11 +449,11 @@ class TestDetectarGastosPeriodicos:
                 hoy - timedelta(days=30),
             ),
         ]
-        
+
         mock_db.execute.return_value.scalars.return_value.all.return_value = txs
-        
+
         result = predictor._detectar_gastos_periodicos("profile-123", 30, 50)
-        
+
         assert len(result) == 0
 
 
@@ -473,9 +473,9 @@ class TestPredictedExpenseToDict:
             monto_min=Decimal("10.99"),
             monto_max=Decimal("10.99"),
         )
-        
+
         result = expense.to_dict()
-        
+
         assert result["comercio"] == "Netflix"
         assert result["monto_estimado"] == 10.99
         assert result["fecha_estimada"] == "2025-12-15"
@@ -488,18 +488,21 @@ class TestGenerarReporteGastosProximos:
 
     def test_genera_reporte_completo(self, mock_db):
         """Genera reporte con estructura correcta."""
-        with patch.object(
-            RecurringExpensePredictor,
-            'predecir_gastos',
-        ) as mock_predecir, patch.object(
-            RecurringExpensePredictor,
-            'get_alertas_vencimiento',
-        ) as mock_alertas:
+        with (
+            patch.object(
+                RecurringExpensePredictor,
+                "predecir_gastos",
+            ) as mock_predecir,
+            patch.object(
+                RecurringExpensePredictor,
+                "get_alertas_vencimiento",
+            ) as mock_alertas,
+        ):
             mock_predecir.return_value = []
             mock_alertas.return_value = []
-            
+
             result = generar_reporte_gastos_proximos(mock_db, "profile-123")
-        
+
         assert "generado_en" in result
         assert "dias_proyectados" in result
         assert "total_gastos" in result
@@ -515,7 +518,7 @@ class TestExpenseSummaryToDict:
     def test_convierte_summary_a_dict(self):
         """Convierte resumen a diccionario."""
         from finanzas_tracker.services.recurring_expense_predictor import ExpenseSummary
-        
+
         summary = ExpenseSummary(
             periodo_inicio=date(2025, 12, 1),
             periodo_fin=date(2025, 12, 31),
@@ -524,9 +527,9 @@ class TestExpenseSummaryToDict:
             por_tipo={ExpenseType.SUBSCRIPTION: Decimal("10000")},
             alertas_urgentes=1,
         )
-        
+
         result = summary.to_dict()
-        
+
         assert result["periodo_inicio"] == "2025-12-01"
         assert result["periodo_fin"] == "2025-12-31"
         assert result["total_estimado"] == 50000.0

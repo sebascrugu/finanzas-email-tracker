@@ -3,17 +3,15 @@
 Tests del servicio que procesa estados de cuenta de tarjetas de crédito BAC.
 """
 
-from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
 from finanzas_tracker.services.credit_card_statement_service import (
-    CreditCardStatementService,
     ConsolidationResult,
+    CreditCardStatementService,
 )
 
 
@@ -31,7 +29,7 @@ class TestConsolidationResult:
             transactions_failed=0,
             total_compras=Decimal("150000.00"),
         )
-        
+
         assert result.success is True
         assert result.card_id == "card-123"
         assert result.billing_cycle_id == "cycle-456"
@@ -44,7 +42,7 @@ class TestConsolidationResult:
             success=False,
             errors=["PDF inválido", "Formato no reconocido"],
         )
-        
+
         assert result.success is False
         assert result.errors is not None
         assert len(result.errors) == 2
@@ -57,13 +55,13 @@ class TestConsolidationResult:
             transactions_skipped=5,
             transactions_failed=2,
         )
-        
+
         assert result.total_processed == 25
 
     def test_default_values(self) -> None:
         """Valores por defecto cuando no se especifican."""
         result = ConsolidationResult(success=True)
-        
+
         assert result.card_id is None
         assert result.billing_cycle_id is None
         assert result.transactions_created == 0
@@ -85,7 +83,7 @@ class TestCreditCardStatementServiceInit:
     ) -> None:
         """El servicio inicializa parser y categorizer."""
         service = CreditCardStatementService()
-        
+
         mock_parser.assert_called_once()
         mock_categorizer.assert_called_once()
         assert service.parser is not None
@@ -107,17 +105,17 @@ class TestCreditCardStatementServiceProcessPdf:
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = []
         mock_parser.return_value.parse.return_value = mock_statement
-        
+
         service = CreditCardStatementService()
-        
+
         with patch.object(service, "consolidate_statement") as mock_consolidate:
             mock_consolidate.return_value = ConsolidationResult(
                 success=True,
                 transactions_created=10,
             )
-            
+
             result = service.process_pdf("/path/to/card.pdf", "profile-123")
-            
+
             mock_parser.return_value.parse.assert_called_once_with("/path/to/card.pdf")
             mock_consolidate.assert_called_once()
             assert result.success is True
@@ -131,10 +129,10 @@ class TestCreditCardStatementServiceProcessPdf:
     ) -> None:
         """Maneja error de parsing."""
         mock_parser.return_value.parse.side_effect = Exception("PDF corrupto")
-        
+
         service = CreditCardStatementService()
         result = service.process_pdf("/bad/file.pdf", "profile-123")
-        
+
         assert result.success is False
         assert result.errors is not None
         assert "PDF corrupto" in result.errors[0]
@@ -182,15 +180,15 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = []
-        
+
         mock_session = MagicMock()
         # No existe tarjeta
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         # Verificar que se agregó la tarjeta
         assert mock_session.add.called
@@ -209,21 +207,21 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = []
-        
+
         existing_card = MagicMock()
         existing_card.id = "existing-card-id"
         existing_card.marca = "VISA"
         existing_card.ultimos_4_digitos = "1234"
-        
+
         mock_session = MagicMock()
         # Simular que la tarjeta existe y billing cycle no
         returns = [existing_card, None]
         mock_session.execute.return_value.scalar_one_or_none.side_effect = returns
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.card_id == "existing-card-id"
 
@@ -241,18 +239,18 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = []
-        
+
         mock_card = MagicMock()
         mock_card.id = "card-123"
-        
+
         mock_session = MagicMock()
         # Tarjeta existe, billing cycle no
         mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_card, None]
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.billing_cycle_id is not None
 
@@ -271,25 +269,23 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = [mock_transaction]
-        
+
         mock_card = MagicMock()
         mock_card.id = "card-123"
         mock_card.marca = "VISA"
         mock_card.ultimos_4_digitos = "1234"
-        
+
         mock_cycle = MagicMock()
         mock_cycle.id = "cycle-456"
-        
+
         mock_session = MagicMock()
         # tarjeta, billing cycle (None para crear), luego None para transacción (no duplicada)
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_card, None, None
-        ]
+        mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_card, None, None]
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
         assert result.total_compras == Decimal("5500.00")
@@ -309,21 +305,23 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = [mock_transaction]
-        
+
         mock_card = MagicMock()
         mock_card.id = "card-123"
-        
+
         existing_tx = MagicMock()
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_card, None, existing_tx  # Transacción ya existe
+            mock_card,
+            None,
+            existing_tx,  # Transacción ya existe
         ]
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 0
         assert result.transactions_skipped == 1
@@ -346,23 +344,21 @@ class TestCreditCardStatementServiceConsolidate:
         tx.monto_crc = Decimal("100000.00")
         tx.moneda = "CRC"
         tx.tipo = "pago"
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = [tx]
-        
+
         mock_card = MagicMock()
         mock_card.id = "card-123"
-        
+
         mock_session = MagicMock()
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_card, None, None
-        ]
+        mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_card, None, None]
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
         # Pagos no suman a total_compras
@@ -386,23 +382,21 @@ class TestCreditCardStatementServiceConsolidate:
         tx.monto_crc = Decimal("12500.00")
         tx.moneda = "CRC"
         tx.tipo = "interes"
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = [tx]
-        
+
         mock_card = MagicMock()
         mock_card.id = "card-123"
-        
+
         mock_session = MagicMock()
-        mock_session.execute.return_value.scalar_one_or_none.side_effect = [
-            mock_card, None, None
-        ]
+        mock_session.execute.return_value.scalar_one_or_none.side_effect = [mock_card, None, None]
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
 
@@ -420,14 +414,14 @@ class TestCreditCardStatementServiceConsolidate:
         mock_statement = MagicMock()
         mock_statement.metadata = mock_statement_metadata
         mock_statement.transactions = []
-        
+
         mock_session = MagicMock()
         mock_session.execute.side_effect = Exception("DB Connection Lost")
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = CreditCardStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is False
         mock_session.rollback.assert_called_once()
 
@@ -444,7 +438,7 @@ class TestCreditCardStatementServiceParseMarca:
     ) -> None:
         """Normaliza VISA."""
         service = CreditCardStatementService()
-        
+
         assert service._parse_marca("VISA") == "VISA"
         assert service._parse_marca("visa") == "VISA"
         assert service._parse_marca("Visa Gold") == "VISA"
@@ -458,7 +452,7 @@ class TestCreditCardStatementServiceParseMarca:
     ) -> None:
         """Normaliza MASTERCARD."""
         service = CreditCardStatementService()
-        
+
         assert service._parse_marca("MASTERCARD") == "MASTERCARD"
         assert service._parse_marca("mastercard") == "MASTERCARD"
         assert service._parse_marca("Master Black") == "MASTERCARD"
@@ -472,7 +466,7 @@ class TestCreditCardStatementServiceParseMarca:
     ) -> None:
         """Normaliza AMEX."""
         service = CreditCardStatementService()
-        
+
         assert service._parse_marca("AMEX") == "AMEX"
         assert service._parse_marca("American Express") == "AMEX"
 
@@ -485,7 +479,7 @@ class TestCreditCardStatementServiceParseMarca:
     ) -> None:
         """Retorna marca original si no reconoce."""
         service = CreditCardStatementService()
-        
+
         assert service._parse_marca("DISCOVER") == "DISCOVER"
         assert service._parse_marca("Custom Card") == "Custom Card"
 

@@ -10,11 +10,10 @@ Muestra:
 - Evolución histórica
 """
 
-import streamlit as st
-from decimal import Decimal
 import httpx
-from datetime import date, datetime, timedelta
 import pandas as pd
+import streamlit as st
+
 
 # Configuración de la página
 st.set_page_config(
@@ -184,7 +183,8 @@ def render_net_worth_card(summary: dict):
     debts_total = summary.get("deudas_total", 0)
 
     # Net Worth principal
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div style="
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 2rem;
@@ -197,7 +197,9 @@ def render_net_worth_card(summary: dict):
         <h1 style="margin: 0.5rem 0; font-size: 3rem;">₡{net_worth:,.0f}</h1>
         <p style="margin: 0; opacity: 0.8;">Actualizado hoy</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # Desglose
     col1, col2, col3 = st.columns(3)
@@ -317,8 +319,10 @@ def render_goals_section(goals: list):
         porcentaje = goal.get("porcentaje_completado", 0)
         prioridad = goal.get("prioridad", "media")
 
-        # Color según prioridad
-        color = "#28a745" if prioridad == "alta" else "#ffc107" if prioridad == "media" else "#6c757d"
+        # Color según prioridad (usado para estilo futuro)
+        _ = (
+            "#28a745" if prioridad == "alta" else "#ffc107" if prioridad == "media" else "#6c757d"
+        )
 
         col1, col2 = st.columns([3, 1])
 
@@ -342,7 +346,9 @@ def render_subscriptions_section(subscriptions: list):
     st.subheader("🔄 Suscripciones Detectadas")
 
     if not subscriptions:
-        st.info("No se detectaron suscripciones activas. Las detectaré cuando proceses más transacciones.")
+        st.info(
+            "No se detectaron suscripciones activas. Las detectaré cuando proceses más transacciones."
+        )
         return
 
     # Calcular total mensual
@@ -566,14 +572,16 @@ def main():
         st.info("Usando perfil de demostración...")
 
     # Tabs para organizar
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📊 Resumen",
-        "🏦 Cuentas",
-        "📈 Inversiones",
-        "🎯 Metas",
-        "🔄 Suscripciones",
-        "📅 Proyecciones",
-    ])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        [
+            "📊 Resumen",
+            "🏦 Cuentas",
+            "📈 Inversiones",
+            "🎯 Metas",
+            "🔄 Suscripciones",
+            "📅 Proyecciones",
+        ]
+    )
 
     with tab1:
         # Obtener datos

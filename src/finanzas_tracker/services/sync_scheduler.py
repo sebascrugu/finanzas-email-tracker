@@ -8,17 +8,17 @@ Ejecuta tareas periódicas:
 - Cerrar ciclos de facturación vencidos
 """
 
-from datetime import datetime, date, timedelta
-from typing import Callable
+from collections.abc import Callable
+from datetime import date, datetime
 import logging
 import threading
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from finanzas_tracker.core.database import SessionLocal
-from finanzas_tracker.models import Card, BillingCycle, Profile
-from finanzas_tracker.models.enums import BillingCycleStatus, CardType
+from finanzas_tracker.models import BillingCycle, Profile
+from finanzas_tracker.models.enums import BillingCycleStatus
+
 
 logger = logging.getLogger(__name__)
 
@@ -118,9 +118,7 @@ def sync_emails_task() -> None:
 
     with SessionLocal() as db:
         # Obtener perfiles con email conectado
-        profiles = db.execute(
-            select(Profile).where(Profile.deleted_at.is_(None))
-        ).scalars().all()
+        profiles = db.execute(select(Profile).where(Profile.deleted_at.is_(None))).scalars().all()
 
         for profile in profiles:
             try:
@@ -147,29 +145,39 @@ def check_billing_cycles_task() -> None:
 
     with SessionLocal() as db:
         # 1. Ciclos abiertos que pasaron fecha de corte → Cerrar
-        open_cycles = db.execute(
-            select(BillingCycle).where(
-                BillingCycle.status == BillingCycleStatus.OPEN,
-                BillingCycle.fecha_corte < today,
-                BillingCycle.deleted_at.is_(None),
+        open_cycles = (
+            db.execute(
+                select(BillingCycle).where(
+                    BillingCycle.status == BillingCycleStatus.OPEN,
+                    BillingCycle.fecha_corte < today,
+                    BillingCycle.deleted_at.is_(None),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         for cycle in open_cycles:
             cycle.cerrar_ciclo()
             logger.info(f"Ciclo {cycle.id[:8]} cerrado (corte: {cycle.fecha_corte})")
 
         # 2. Ciclos cerrados/parciales que pasaron fecha de pago → Vencidos
-        pending_cycles = db.execute(
-            select(BillingCycle).where(
-                BillingCycle.status.in_([
-                    BillingCycleStatus.CLOSED,
-                    BillingCycleStatus.PARTIAL,
-                ]),
-                BillingCycle.fecha_pago < today,
-                BillingCycle.deleted_at.is_(None),
+        pending_cycles = (
+            db.execute(
+                select(BillingCycle).where(
+                    BillingCycle.status.in_(
+                        [
+                            BillingCycleStatus.CLOSED,
+                            BillingCycleStatus.PARTIAL,
+                        ]
+                    ),
+                    BillingCycle.fecha_pago < today,
+                    BillingCycle.deleted_at.is_(None),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         for cycle in pending_cycles:
             if not cycle.esta_pagado:
@@ -197,15 +205,21 @@ def check_card_alerts_task() -> None:
 
     with SessionLocal() as db:
         # Obtener ciclos pendientes
-        pending = db.execute(
-            select(BillingCycle).where(
-                BillingCycle.status.in_([
-                    BillingCycleStatus.CLOSED,
-                    BillingCycleStatus.PARTIAL,
-                ]),
-                BillingCycle.deleted_at.is_(None),
+        pending = (
+            db.execute(
+                select(BillingCycle).where(
+                    BillingCycle.status.in_(
+                        [
+                            BillingCycleStatus.CLOSED,
+                            BillingCycleStatus.PARTIAL,
+                        ]
+                    ),
+                    BillingCycle.deleted_at.is_(None),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         alerts = []
         for cycle in pending:
@@ -256,32 +270,30 @@ def update_exchange_rate_task() -> None:
 def process_statement_emails_task() -> None:
     """
     Tarea: Buscar y procesar estados de cuenta de correos.
-    
+
     Busca correos con PDFs de estados de cuenta BAC,
     los descarga, parsea y guarda en la base de datos.
     """
     logger.info("📧 Buscando estados de cuenta por email...")
-    
+
     try:
         from finanzas_tracker.services.statement_email_service import statement_email_service
-        
+
         # Buscar estados de cuenta de los últimos 7 días
         results = statement_email_service.process_all_pending(
             days_back=7,
             save_pdfs=True,
         )
-        
+
         if results:
             successful = sum(1 for r in results if r.error is None)
-            logger.info(
-                f"📄 {successful}/{len(results)} estados de cuenta procesados"
-            )
+            logger.info(f"📄 {successful}/{len(results)} estados de cuenta procesados")
         else:
             logger.debug("No hay estados de cuenta nuevos")
-            
+
     except Exception as e:
         logger.error(f"Error procesando estados de cuenta: {e}")
-    
+
     logger.info("✅ Verificación de estados de cuenta completada")
 
 

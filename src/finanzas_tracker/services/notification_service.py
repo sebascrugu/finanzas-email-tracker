@@ -9,18 +9,18 @@ Sistema que monitorea:
 Costa Rica: Optimizado para BAC Credomatic y Banco Popular.
 """
 
-import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
+import logging
 from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finanzas_tracker.models import Card, Transaction, BillingCycle
-from finanzas_tracker.models.enums import BillingCycleStatus, CardType, TransactionType
+from finanzas_tracker.models import BillingCycle, Card
+from finanzas_tracker.models.enums import BillingCycleStatus, CardType
 
 
 logger = logging.getLogger(__name__)
@@ -169,16 +169,18 @@ class CardNotificationService:
                 cycle = self._get_latest_cycle(card.id)
 
                 if cycle and cycle.fecha_corte == cut_date:
-                    notifications.append(Notification(
-                        type=NotificationType.STATEMENT_RECEIVED,
-                        card_id=card.id,
-                        card_name=self._get_card_display_name(card),
-                        title="📄 Estado de cuenta recibido",
-                        message=f"Tu estado de cuenta llegó. Total a pagar: ₡{cycle.total_a_pagar:,.0f}",
-                        amount=cycle.total_a_pagar,
-                        due_date=cycle.fecha_pago,
-                        priority="normal",
-                    ))
+                    notifications.append(
+                        Notification(
+                            type=NotificationType.STATEMENT_RECEIVED,
+                            card_id=card.id,
+                            card_name=self._get_card_display_name(card),
+                            title="📄 Estado de cuenta recibido",
+                            message=f"Tu estado de cuenta llegó. Total a pagar: ₡{cycle.total_a_pagar:,.0f}",
+                            amount=cycle.total_a_pagar,
+                            due_date=cycle.fecha_pago,
+                            priority="normal",
+                        )
+                    )
 
         return notifications
 
@@ -233,17 +235,19 @@ class CardNotificationService:
             # Calcular pago mínimo
             min_payment = cycle.pago_minimo or (amount_pending * Decimal("0.10"))
 
-            notifications.append(Notification(
-                type=notif_type,
-                card_id=card.id,
-                card_name=self._get_card_display_name(card),
-                title=title,
-                message=f"Total: ₡{amount_pending:,.0f} | Mínimo: ₡{min_payment:,.0f}",
-                amount=amount_pending,
-                due_date=cycle.fecha_pago,
-                days_until_due=days_until,
-                priority=priority,
-            ))
+            notifications.append(
+                Notification(
+                    type=notif_type,
+                    card_id=card.id,
+                    card_name=self._get_card_display_name(card),
+                    title=title,
+                    message=f"Total: ₡{amount_pending:,.0f} | Mínimo: ₡{min_payment:,.0f}",
+                    amount=amount_pending,
+                    due_date=cycle.fecha_pago,
+                    days_until_due=days_until,
+                    priority=priority,
+                )
+            )
 
         return notifications
 
@@ -269,17 +273,19 @@ class CardNotificationService:
 
             # Si ya pasó la fecha de pago y no hay pago registrado
             if days_until < 0 and cycle.monto_pagado == 0:
-                notifications.append(Notification(
-                    type=NotificationType.PAYMENT_NOT_DETECTED,
-                    card_id=card.id,
-                    card_name=self._get_card_display_name(card),
-                    title="❓ No detectamos tu pago",
-                    message=f"Tu tarjeta venció el {cycle.fecha_pago}. ¿Ya pagaste?",
-                    amount=cycle.total_a_pagar,
-                    due_date=cycle.fecha_pago,
-                    days_until_due=days_until,
-                    priority="urgent",
-                ))
+                notifications.append(
+                    Notification(
+                        type=NotificationType.PAYMENT_NOT_DETECTED,
+                        card_id=card.id,
+                        card_name=self._get_card_display_name(card),
+                        title="❓ No detectamos tu pago",
+                        message=f"Tu tarjeta venció el {cycle.fecha_pago}. ¿Ya pagaste?",
+                        amount=cycle.total_a_pagar,
+                        due_date=cycle.fecha_pago,
+                        days_until_due=days_until,
+                        priority="urgent",
+                    )
+                )
 
             # Si se detectó un pago
             elif cycle.monto_pagado > 0:
@@ -290,15 +296,17 @@ class CardNotificationService:
                     status = f"⚠️ Pago parcial (₡{cycle.monto_pagado:,.0f})"
                     priority = "normal"
 
-                notifications.append(Notification(
-                    type=NotificationType.PAYMENT_RECEIVED,
-                    card_id=card.id,
-                    card_name=self._get_card_display_name(card),
-                    title=status,
-                    message=f"Pago detectado: ₡{cycle.monto_pagado:,.0f} de ₡{cycle.total_a_pagar:,.0f}",
-                    amount=cycle.monto_pagado,
-                    priority=priority,
-                ))
+                notifications.append(
+                    Notification(
+                        type=NotificationType.PAYMENT_RECEIVED,
+                        card_id=card.id,
+                        card_name=self._get_card_display_name(card),
+                        title=status,
+                        message=f"Pago detectado: ₡{cycle.monto_pagado:,.0f} de ₡{cycle.total_a_pagar:,.0f}",
+                        amount=cycle.monto_pagado,
+                        priority=priority,
+                    )
+                )
 
         return notifications
 
@@ -335,12 +343,14 @@ class CardNotificationService:
             select(BillingCycle)
             .where(
                 BillingCycle.card_id == card_id,
-                BillingCycle.status.in_([
-                    BillingCycleStatus.OPEN,
-                    BillingCycleStatus.CLOSED,
-                    BillingCycleStatus.PARTIAL,
-                    BillingCycleStatus.OVERDUE,
-                ]),
+                BillingCycle.status.in_(
+                    [
+                        BillingCycleStatus.OPEN,
+                        BillingCycleStatus.CLOSED,
+                        BillingCycleStatus.PARTIAL,
+                        BillingCycleStatus.OVERDUE,
+                    ]
+                ),
                 BillingCycle.deleted_at.is_(None),
             )
             .order_by(BillingCycle.fecha_pago.asc())
@@ -380,7 +390,7 @@ class CardNotificationService:
                 amount=card.current_balance,
                 priority="high",
             )
-        elif utilization >= 0.80:
+        if utilization >= 0.80:
             return Notification(
                 type=NotificationType.HIGH_UTILIZATION,
                 card_id=card.id,

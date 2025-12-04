@@ -66,7 +66,7 @@ class TransactionType(str, Enum):
 
 class TransactionStatus(str, Enum):
     """Estado del ciclo de vida de una transacción.
-    
+
     Flujo típico:
     - PENDING: Recién importada desde email/PDF
     - CONFIRMED: Usuario verificó que es válida
@@ -88,7 +88,7 @@ class TransactionStatus(str, Enum):
 
 class ReconciliationStatus(str, Enum):
     """Estado de un reporte de reconciliación.
-    
+
     - PENDIENTE: Reconciliación iniciada pero no completada
     - EN_PROCESO: Reconciliación en progreso
     - CON_DISCREPANCIAS: Encontradas discrepancias que requieren revisión

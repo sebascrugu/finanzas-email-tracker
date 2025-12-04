@@ -121,6 +121,7 @@ class VoyageEmbeddingProvider(BaseEmbeddingProvider):
         if self._client is None:
             try:
                 import voyageai
+
                 self._client = voyageai.Client(api_key=self._api_key)
             except ImportError as e:
                 msg = "voyageai no está instalado. Ejecuta: poetry add voyageai"
@@ -194,6 +195,7 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
         if self._client is None:
             try:
                 import openai
+
                 self._client = openai.OpenAI(api_key=self._api_key)
             except ImportError as e:
                 msg = "openai no está instalado. Ejecuta: poetry add openai"
@@ -264,6 +266,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self._model = SentenceTransformer(self._model_name)
             except ImportError as e:
                 msg = "sentence-transformers no está instalado. Ejecuta: poetry add sentence-transformers"
@@ -402,7 +405,9 @@ class EmbeddingService:
 
         # Categoría
         if transaction.subcategory:
-            parts.append(f"Categoría: {transaction.subcategory.category.nombre} > {transaction.subcategory.nombre}")
+            parts.append(
+                f"Categoría: {transaction.subcategory.category.nombre} > {transaction.subcategory.nombre}"
+            )
         elif transaction.categoria_sugerida_por_ia:
             parts.append(f"Categoría sugerida: {transaction.categoria_sugerida_por_ia}")
 
@@ -521,12 +526,9 @@ class EmbeddingService:
 
         # Query de transacciones sin embedding
         subquery = select(TransactionEmbedding.transaction_id)
-        stmt = (
-            select(Transaction)
-            .where(
-                Transaction.deleted_at.is_(None),
-                ~Transaction.id.in_(subquery),
-            )
+        stmt = select(Transaction).where(
+            Transaction.deleted_at.is_(None),
+            ~Transaction.id.in_(subquery),
         )
 
         if profile_id:
@@ -543,7 +545,7 @@ class EmbeddingService:
         # Procesar en batches
         count = 0
         for i in range(0, len(transactions), batch_size):
-            batch = transactions[i:i + batch_size]
+            batch = transactions[i : i + batch_size]
             texts = [self._build_transaction_text(t) for t in batch]
             embeddings = self._provider.get_embeddings_batch(texts)
 
@@ -629,9 +631,7 @@ class EmbeddingService:
 
         # Mantener orden por similitud
         return [
-            (transactions[tid], similarities[tid])
-            for tid in transaction_ids
-            if tid in transactions
+            (transactions[tid], similarities[tid]) for tid in transaction_ids if tid in transactions
         ]
 
     def delete_embedding(self, transaction_id: str) -> bool:

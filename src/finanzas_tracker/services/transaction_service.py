@@ -7,16 +7,15 @@ Maneja operaciones de alto nivel sobre transacciones:
 - Operaciones batch
 """
 
-import logging
 from datetime import date, datetime
 from decimal import Decimal
-from uuid import UUID
+import logging
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from finanzas_tracker.models.enums import TransactionStatus
 from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.models.enums import TransactionStatus, TransactionType
 
 
 logger = logging.getLogger(__name__)
@@ -90,11 +89,7 @@ class TransactionService:
         if solo_historicas is not None:
             stmt = stmt.where(Transaction.es_historica == solo_historicas)
 
-        stmt = (
-            stmt.order_by(Transaction.fecha_transaccion.desc())
-            .offset(skip)
-            .limit(limit)
-        )
+        stmt = stmt.order_by(Transaction.fecha_transaccion.desc()).offset(skip).limit(limit)
 
         return list(self.db.execute(stmt).scalars().all())
 

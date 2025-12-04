@@ -46,6 +46,7 @@ router = APIRouter(prefix="/ai", tags=["AI & RAG"])
 # Health Check
 # =============================================================================
 
+
 @router.get("/health")
 def ai_health_check(
     db: Session = Depends(get_db),
@@ -101,6 +102,7 @@ def ai_health_check(
 
     # Check Claude API
     import os
+
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     has_api_key = bool(api_key) and api_key.startswith("sk-ant-")
     health["components"]["claude_api"] = {
@@ -110,14 +112,13 @@ def ai_health_check(
 
     # Metrics
     try:
-        total_embeddings = db.execute(
-            select(func.count(TransactionEmbedding.id))
-        ).scalar() or 0
-        total_transactions = db.execute(
-            select(func.count(Transaction.id)).where(
-                Transaction.deleted_at.is_(None)
-            )
-        ).scalar() or 0
+        total_embeddings = db.execute(select(func.count(TransactionEmbedding.id))).scalar() or 0
+        total_transactions = (
+            db.execute(
+                select(func.count(Transaction.id)).where(Transaction.deleted_at.is_(None))
+            ).scalar()
+            or 0
+        )
         health["metrics"] = {
             "total_embeddings": total_embeddings,
             "total_transactions": total_transactions,
@@ -129,10 +130,7 @@ def ai_health_check(
         pass
 
     # Overall status
-    all_ok = all(
-        c.get("ok", False)
-        for c in health["components"].values()
-    )
+    all_ok = all(c.get("ok", False) for c in health["components"].values())
     health["status"] = "healthy" if all_ok else "degraded"
 
     return health
@@ -286,7 +284,9 @@ def semantic_search(
             )
 
         elapsed = time.time() - start_time
-        logger.debug(f"Búsqueda semántica completada en {elapsed:.3f}s, {len(search_results)} resultados")
+        logger.debug(
+            f"Búsqueda semántica completada en {elapsed:.3f}s, {len(search_results)} resultados"
+        )
 
         return SemanticSearchResponse(
             results=search_results,
@@ -335,9 +335,9 @@ def _fallback_text_search(
             Transaction.profile_id == profile_id,
             Transaction.deleted_at.is_(None),
             (
-                Transaction.comercio.ilike(search_term) |
-                Transaction.categoria_sugerida_por_ia.ilike(search_term) |
-                Transaction.notas.ilike(search_term)
+                Transaction.comercio.ilike(search_term)
+                | Transaction.categoria_sugerida_por_ia.ilike(search_term)
+                | Transaction.notas.ilike(search_term)
             ),
         )
         .order_by(Transaction.fecha_transaccion.desc())
@@ -387,12 +387,9 @@ def get_embedding_stats(
     total_embeddings = db.execute(stmt).scalar() or 0
 
     # Total transacciones del perfil
-    stmt = (
-        select(func.count(Transaction.id))
-        .where(
-            Transaction.profile_id == profile.id,
-            Transaction.deleted_at.is_(None),
-        )
+    stmt = select(func.count(Transaction.id)).where(
+        Transaction.profile_id == profile.id,
+        Transaction.deleted_at.is_(None),
     )
     total_transactions = db.execute(stmt).scalar() or 0
 
@@ -430,7 +427,8 @@ def generate_embeddings(
         )
 
         message = (
-            f"Se generaron {count} embeddings" if count > 0
+            f"Se generaron {count} embeddings"
+            if count > 0
             else "Todas las transacciones ya tienen embedding"
         )
 

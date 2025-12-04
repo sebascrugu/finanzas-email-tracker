@@ -62,10 +62,7 @@ class AmbiguousMerchantService:
         transaction.necesita_revision = True
         transaction.confirmada = False
 
-        logger.info(
-            f"Comercio ambiguo detectado: {comercio} - "
-            f"Opciones: {categorias}"
-        )
+        logger.info(f"Comercio ambiguo detectado: {comercio} - " f"Opciones: {categorias}")
 
         return True
 
@@ -132,12 +129,16 @@ class AmbiguousMerchantService:
         Returns:
             Lista de transacciones con sus opciones
         """
-        stmt = select(Transaction).where(
-            Transaction.profile_id == profile_id,
-            Transaction.es_comercio_ambiguo == True,
-            Transaction.confirmada == False,
-            Transaction.deleted_at.is_(None),
-        ).order_by(Transaction.fecha_transaccion.desc())
+        stmt = (
+            select(Transaction)
+            .where(
+                Transaction.profile_id == profile_id,
+                Transaction.es_comercio_ambiguo == True,
+                Transaction.confirmada == False,
+                Transaction.deleted_at.is_(None),
+            )
+            .order_by(Transaction.fecha_transaccion.desc())
+        )
 
         transactions = self.db.execute(stmt).scalars().all()
 
@@ -147,13 +148,15 @@ class AmbiguousMerchantService:
             if txn.categorias_opciones:
                 opciones = json.loads(txn.categorias_opciones)
 
-            resultado.append({
-                "id": txn.id,
-                "comercio": txn.comercio,
-                "monto_crc": float(txn.monto_crc),
-                "fecha": txn.fecha_transaccion.isoformat(),
-                "opciones_categoria": opciones,
-            })
+            resultado.append(
+                {
+                    "id": txn.id,
+                    "comercio": txn.comercio,
+                    "monto_crc": float(txn.monto_crc),
+                    "fecha": txn.fecha_transaccion.isoformat(),
+                    "opciones_categoria": opciones,
+                }
+            )
 
         return resultado
 

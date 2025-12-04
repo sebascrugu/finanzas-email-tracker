@@ -8,10 +8,11 @@ Wizard multi-paso que guía al usuario a través de:
 4. Resumen y próximos pasos
 """
 
-import streamlit as st
-from decimal import Decimal
-import httpx
 import time
+
+import httpx
+import streamlit as st
+
 
 # Configuración de la página
 st.set_page_config(
@@ -47,6 +48,7 @@ if "transactions_count" not in st.session_state:
 # Funciones de API
 # =============================================================================
 
+
 def start_onboarding(user_id: str) -> dict | None:
     """Inicia el onboarding para un usuario."""
     try:
@@ -76,8 +78,7 @@ def upload_pdf(user_id: str, file_content: bytes, banco: str) -> dict | None:
         )
         if response.status_code == 200:
             return response.json()
-        else:
-            st.error(f"Error: {response.json().get('detail', 'Error desconocido')}")
+        st.error(f"Error: {response.json().get('detail', 'Error desconocido')}")
         return None
     except Exception as e:
         st.error(f"Error de conexión: {e}")
@@ -135,13 +136,14 @@ def complete_onboarding(user_id: str) -> dict | None:
 # Componentes UI
 # =============================================================================
 
+
 def render_progress_bar():
     """Muestra la barra de progreso del wizard."""
     steps = ["📄 PDF", "🏦 Cuentas", "💳 Tarjetas", "✅ Listo"]
     current = st.session_state.onboarding_step
 
     cols = st.columns(len(steps))
-    for i, (col, step) in enumerate(zip(cols, steps)):
+    for i, (col, step) in enumerate(zip(cols, steps, strict=False)):
         with col:
             if i + 1 < current:
                 st.success(step)
@@ -275,26 +277,30 @@ def render_step_2():
                 key=f"acc_principal_{i}",
             )
 
-            confirmed_accounts.append({
-                "numero_cuenta": acc.get("numero_cuenta", "0000"),
-                "nombre": nombre,
-                "tipo": tipo,
-                "banco": acc.get("banco", "bac"),
-                "saldo": saldo,
-                "moneda": moneda,
-                "es_principal": es_principal,
-            })
+            confirmed_accounts.append(
+                {
+                    "numero_cuenta": acc.get("numero_cuenta", "0000"),
+                    "nombre": nombre,
+                    "tipo": tipo,
+                    "banco": acc.get("banco", "bac"),
+                    "saldo": saldo,
+                    "moneda": moneda,
+                    "es_principal": es_principal,
+                }
+            )
 
     # Agregar cuenta manual
     st.divider()
     if st.button("➕ Agregar otra cuenta"):
-        st.session_state.detected_accounts.append({
-            "numero_cuenta": "",
-            "tipo": "corriente",
-            "banco": "bac",
-            "saldo": 0,
-            "nombre_sugerido": f"Cuenta {len(accounts) + 1}",
-        })
+        st.session_state.detected_accounts.append(
+            {
+                "numero_cuenta": "",
+                "tipo": "corriente",
+                "banco": "bac",
+                "saldo": 0,
+                "nombre_sugerido": f"Cuenta {len(accounts) + 1}",
+            }
+        )
         st.rerun()
 
     # Navegación
@@ -403,26 +409,30 @@ def render_step_3():
                 fecha_pago = None
                 saldo = 0
 
-            confirmed_cards.append({
-                "ultimos_4_digitos": ultimos_4,
-                "tipo": tipo,
-                "banco": banco,
-                "marca": marca or None,
-                "limite_credito": limite,
-                "fecha_corte": fecha_corte,
-                "fecha_pago": fecha_pago,
-                "saldo_actual": saldo,
-                "tasa_interes": 52.0,  # Default BAC
-            })
+            confirmed_cards.append(
+                {
+                    "ultimos_4_digitos": ultimos_4,
+                    "tipo": tipo,
+                    "banco": banco,
+                    "marca": marca or None,
+                    "limite_credito": limite,
+                    "fecha_corte": fecha_corte,
+                    "fecha_pago": fecha_pago,
+                    "saldo_actual": saldo,
+                    "tasa_interes": 52.0,  # Default BAC
+                }
+            )
 
     # Agregar tarjeta manual
     st.divider()
     if st.button("➕ Agregar otra tarjeta"):
-        st.session_state.detected_cards.append({
-            "ultimos_4_digitos": "",
-            "tipo_sugerido": "credito",
-            "banco": "bac",
-        })
+        st.session_state.detected_cards.append(
+            {
+                "ultimos_4_digitos": "",
+                "tipo_sugerido": "credito",
+                "banco": "bac",
+            }
+        )
         st.rerun()
 
     # Navegación
@@ -490,6 +500,7 @@ def render_step_4():
 # Main
 # =============================================================================
 
+
 def main():
     """Renderiza la página de onboarding."""
     st.title("🚀 Configuración Inicial")
@@ -516,12 +527,14 @@ def main():
 
     # Debug info (oculto por defecto)
     with st.expander("🔧 Debug", expanded=False):
-        st.json({
-            "step": st.session_state.onboarding_step,
-            "user_id": st.session_state.user_id,
-            "accounts": len(st.session_state.detected_accounts),
-            "cards": len(st.session_state.detected_cards),
-        })
+        st.json(
+            {
+                "step": st.session_state.onboarding_step,
+                "user_id": st.session_state.user_id,
+                "accounts": len(st.session_state.detected_accounts),
+                "cards": len(st.session_state.detected_cards),
+            }
+        )
 
 
 if __name__ == "__main__":

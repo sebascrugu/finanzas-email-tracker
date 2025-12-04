@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
 import logging
 
 from sqlalchemy import select
@@ -23,16 +22,14 @@ from finanzas_tracker.models import (
     Account,
     BillingCycle,
     Card,
-    Profile,
-    User,
 )
 from finanzas_tracker.models.enums import (
     AccountType,
     BankName,
-    BillingCycleStatus,
     CardType,
     Currency,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -260,12 +257,12 @@ class OnboardingService:
         Returns:
             Diccionario con estadísticas de importación
         """
-        from finanzas_tracker.models.transaction import Transaction
         from finanzas_tracker.models.enums import TransactionStatus
+        from finanzas_tracker.models.transaction import Transaction
         from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 
         state = self._states.get(user_id)
-        if not state or not hasattr(state, '_pdf_transactions'):
+        if not state or not hasattr(state, "_pdf_transactions"):
             return {"error": "No hay PDF procesado para este usuario"}
 
         transactions = state._pdf_transactions
@@ -303,7 +300,9 @@ class OnboardingService:
                     moneda=tx_data.get("moneda", "CRC"),
                     fecha_transaccion=fecha_tx,
                     es_historica=es_historica,
-                    estado=TransactionStatus.CONFIRMED.value if es_historica else TransactionStatus.PENDING.value,
+                    estado=TransactionStatus.CONFIRMED.value
+                    if es_historica
+                    else TransactionStatus.PENDING.value,
                     referencia_banco=tx_data.get("referencia"),
                 )
 
@@ -350,15 +349,21 @@ class OnboardingService:
 
         if account_info:
             # Cuenta principal del estado
-            numero = account_info.get("account_number", "")[-4:] if account_info.get("account_number") else ""
+            numero = (
+                account_info.get("account_number", "")[-4:]
+                if account_info.get("account_number")
+                else ""
+            )
             if numero:
-                accounts.append(DetectedAccount(
-                    numero_cuenta=numero,
-                    tipo=AccountType.CHECKING,  # Asumir corriente por defecto
-                    banco=banco,
-                    saldo=Decimal(str(account_info.get("balance", 0))),
-                    nombre_sugerido=f"Cuenta {banco.value.upper()} ***{numero}",
-                ))
+                accounts.append(
+                    DetectedAccount(
+                        numero_cuenta=numero,
+                        tipo=AccountType.CHECKING,  # Asumir corriente por defecto
+                        banco=banco,
+                        saldo=Decimal(str(account_info.get("balance", 0))),
+                        nombre_sugerido=f"Cuenta {banco.value.upper()} ***{numero}",
+                    )
+                )
 
         # También buscar en transacciones si hay referencias a otras cuentas
         # TODO: Implementar detección más sofisticada
@@ -388,28 +393,36 @@ class OnboardingService:
                 tx_type = tx.get("tipo", "")
                 es_credito = tx_type in ["interes_cobrado", "pago_servicio"]
 
-                cards.append(DetectedCard(
-                    ultimos_4_digitos=card_digits,
-                    marca=None,  # El parser no siempre lo tiene
-                    banco=banco,
-                    tipo_sugerido=CardType.CREDIT if es_credito else None,
-                ))
+                cards.append(
+                    DetectedCard(
+                        ultimos_4_digitos=card_digits,
+                        marca=None,  # El parser no siempre lo tiene
+                        banco=banco,
+                        tipo_sugerido=CardType.CREDIT if es_credito else None,
+                    )
+                )
 
         # También buscar en info del estado de cuenta
         card_info = pdf_data.get("card_info", {})
         if card_info:
             card_number = card_info.get("card_number", "")[-4:]
             if card_number and card_number not in seen_cards:
-                cards.append(DetectedCard(
-                    ultimos_4_digitos=card_number,
-                    marca=card_info.get("brand"),
-                    banco=banco,
-                    tipo_sugerido=CardType.CREDIT,
-                    limite_credito=Decimal(str(card_info.get("credit_limit", 0))) if card_info.get("credit_limit") else None,
-                    saldo_actual=Decimal(str(card_info.get("balance", 0))) if card_info.get("balance") else None,
-                    fecha_corte=card_info.get("cut_day"),
-                    fecha_pago=card_info.get("due_day"),
-                ))
+                cards.append(
+                    DetectedCard(
+                        ultimos_4_digitos=card_number,
+                        marca=card_info.get("brand"),
+                        banco=banco,
+                        tipo_sugerido=CardType.CREDIT,
+                        limite_credito=Decimal(str(card_info.get("credit_limit", 0)))
+                        if card_info.get("credit_limit")
+                        else None,
+                        saldo_actual=Decimal(str(card_info.get("balance", 0)))
+                        if card_info.get("balance")
+                        else None,
+                        fecha_corte=card_info.get("cut_day"),
+                        fecha_pago=card_info.get("due_day"),
+                    )
+                )
 
         return cards
 
@@ -499,7 +512,9 @@ class OnboardingService:
                 tipo=CardType(card_data["tipo"]),
                 banco=BankName(card_data["banco"]),
                 marca=card_data.get("marca"),
-                limite_credito=Decimal(str(card_data["limite_credito"])) if card_data.get("limite_credito") else None,
+                limite_credito=Decimal(str(card_data["limite_credito"]))
+                if card_data.get("limite_credito")
+                else None,
                 fecha_corte=card_data.get("fecha_corte"),
                 fecha_vencimiento=card_data.get("fecha_pago"),
                 current_balance=Decimal(str(card_data.get("saldo_actual", 0))),
@@ -581,22 +596,30 @@ class OnboardingService:
         patrimony_service = PatrimonyService(self.db)
 
         # Obtener cuentas
-        accounts = self.db.execute(
-            select(Account).where(
-                Account.profile_id == profile_id,
-                Account.deleted_at.is_(None),
-                Account.incluir_en_patrimonio.is_(True),
+        accounts = (
+            self.db.execute(
+                select(Account).where(
+                    Account.profile_id == profile_id,
+                    Account.deleted_at.is_(None),
+                    Account.incluir_en_patrimonio.is_(True),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         # Obtener tarjetas de crédito con saldo
-        cards = self.db.execute(
-            select(Card).where(
-                Card.profile_id == profile_id,
-                Card.deleted_at.is_(None),
-                Card.tipo == CardType.CREDIT,
+        cards = (
+            self.db.execute(
+                select(Card).where(
+                    Card.profile_id == profile_id,
+                    Card.deleted_at.is_(None),
+                    Card.tipo == CardType.CREDIT,
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         # Preparar datos para el servicio de patrimonio
         saldos_cuentas = [
@@ -604,7 +627,7 @@ class OnboardingService:
                 "cuenta_id": acc.id,
                 "nombre": acc.nombre,
                 "saldo": acc.saldo,
-                "moneda": acc.moneda.value if hasattr(acc.moneda, 'value') else acc.moneda,
+                "moneda": acc.moneda.value if hasattr(acc.moneda, "value") else acc.moneda,
             }
             for acc in accounts
         ]
@@ -649,24 +672,34 @@ class OnboardingService:
             return {"error": "Onboarding no encontrado"}
 
         # Contar entidades creadas
-        accounts = self.db.execute(
-            select(Account).where(
-                Account.profile_id == state.profile_id,
-                Account.deleted_at.is_(None),
+        accounts = (
+            self.db.execute(
+                select(Account).where(
+                    Account.profile_id == state.profile_id,
+                    Account.deleted_at.is_(None),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
-        cards = self.db.execute(
-            select(Card).where(
-                Card.profile_id == state.profile_id,
-                Card.deleted_at.is_(None),
+        cards = (
+            self.db.execute(
+                select(Card).where(
+                    Card.profile_id == state.profile_id,
+                    Card.deleted_at.is_(None),
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
 
         credit_cards = [c for c in cards if c.es_credito]
 
         return {
-            "status": "completed" if state.current_step == OnboardingStep.COMPLETED else "in_progress",
+            "status": "completed"
+            if state.current_step == OnboardingStep.COMPLETED
+            else "in_progress",
             "progress_percent": state._calculate_progress(),
             "summary": {
                 "cuentas_creadas": len(accounts),

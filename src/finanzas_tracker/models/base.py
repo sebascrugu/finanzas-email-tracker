@@ -91,4 +91,5 @@ class BaseModelMixin(TenantMixin, TimestampMixin, SoftDeleteMixin):
         # ... otros campos
     ```
     """
+
     pass

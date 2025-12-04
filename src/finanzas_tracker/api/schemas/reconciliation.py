@@ -17,7 +17,9 @@ class ReconciliationReportBase(BaseModel):
     banco: str = Field(..., description="Banco del estado de cuenta: bac o popular")
     periodo_inicio: datetime = Field(..., description="Fecha de inicio del período")
     periodo_fin: datetime = Field(..., description="Fecha de fin del período")
-    es_tarjeta_credito: bool = Field(default=False, description="True si es estado de tarjeta de crédito")
+    es_tarjeta_credito: bool = Field(
+        default=False, description="True si es estado de tarjeta de crédito"
+    )
     card_id: str | None = Field(None, description="ID de la tarjeta de crédito (si aplica)")
     account_id: str | None = Field(None, description="ID de la cuenta bancaria (si aplica)")
 
@@ -34,7 +36,9 @@ class ReconciliationReportCreate(ReconciliationReportBase):
 class ReconciliationReportUpdate(BaseModel):
     """Schema para actualizar reporte de reconciliación."""
 
-    estado: str | None = Field(None, description="Estado: pendiente, en_proceso, completada, fallida")
+    estado: str | None = Field(
+        None, description="Estado: pendiente, en_proceso, completada, fallida"
+    )
     notas: str | None = Field(None, max_length=2000, description="Notas del usuario")
     transacciones_matched: int | None = None
     transacciones_discrepantes: int | None = None
@@ -94,7 +98,9 @@ class PatrimonioSnapshotBase(BaseModel):
     """Campos base de snapshot de patrimonio."""
 
     fecha_snapshot: datetime = Field(..., description="Fecha y hora del snapshot")
-    tipo: str = Field(default="automatico", description="Tipo: manual, automatico, onboarding, reconciliacion")
+    tipo: str = Field(
+        default="automatico", description="Tipo: manual, automatico, onboarding, reconciliacion"
+    )
     notas: str | None = Field(None, max_length=2000, description="Notas opcionales")
 
 
@@ -102,21 +108,39 @@ class PatrimonioSnapshotCreate(PatrimonioSnapshotBase):
     """Schema para crear snapshot de patrimonio."""
 
     # Cuentas bancarias
-    saldo_cuentas_crc: Decimal = Field(default=Decimal("0.00"), description="Total en cuentas bancarias (colones)")
-    saldo_cuentas_usd: Decimal = Field(default=Decimal("0.00"), description="Total en cuentas bancarias (dólares)")
+    saldo_cuentas_crc: Decimal = Field(
+        default=Decimal("0.00"), description="Total en cuentas bancarias (colones)"
+    )
+    saldo_cuentas_usd: Decimal = Field(
+        default=Decimal("0.00"), description="Total en cuentas bancarias (dólares)"
+    )
 
     # Inversiones
-    saldo_inversiones_crc: Decimal = Field(default=Decimal("0.00"), description="Total en inversiones (colones)")
-    saldo_inversiones_usd: Decimal = Field(default=Decimal("0.00"), description="Total en inversiones (dólares)")
+    saldo_inversiones_crc: Decimal = Field(
+        default=Decimal("0.00"), description="Total en inversiones (colones)"
+    )
+    saldo_inversiones_usd: Decimal = Field(
+        default=Decimal("0.00"), description="Total en inversiones (dólares)"
+    )
 
     # Deudas
-    deuda_tarjetas_crc: Decimal = Field(default=Decimal("0.00"), description="Deuda en tarjetas (colones)")
-    deuda_tarjetas_usd: Decimal = Field(default=Decimal("0.00"), description="Deuda en tarjetas (dólares)")
-    deuda_prestamos_crc: Decimal = Field(default=Decimal("0.00"), description="Deuda en préstamos (colones)")
-    deuda_prestamos_usd: Decimal = Field(default=Decimal("0.00"), description="Deuda en préstamos (dólares)")
+    deuda_tarjetas_crc: Decimal = Field(
+        default=Decimal("0.00"), description="Deuda en tarjetas (colones)"
+    )
+    deuda_tarjetas_usd: Decimal = Field(
+        default=Decimal("0.00"), description="Deuda en tarjetas (dólares)"
+    )
+    deuda_prestamos_crc: Decimal = Field(
+        default=Decimal("0.00"), description="Deuda en préstamos (colones)"
+    )
+    deuda_prestamos_usd: Decimal = Field(
+        default=Decimal("0.00"), description="Deuda en préstamos (dólares)"
+    )
 
     # Tipo de cambio
-    tipo_cambio_usd: Decimal = Field(default=Decimal("510.00"), description="Tipo de cambio USD/CRC")
+    tipo_cambio_usd: Decimal = Field(
+        default=Decimal("510.00"), description="Tipo de cambio USD/CRC"
+    )
 
     # Flags
     es_fecha_base: bool = Field(default=False, description="True si es el snapshot de FECHA_BASE")

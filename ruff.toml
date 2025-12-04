@@ -88,12 +88,33 @@ ignore = [
     "SIM117",  # Multiple with statements
     "N817",    # Camelcase imported as acronym
     "PLC2401", # Non-ASCII name (emojis en variables, OK para este proyecto)
+    "B008",    # Depends() in argument defaults - patrón estándar de FastAPI
+    "E712",    # Comparison to True/False - necesario para SQLAlchemy filters
+    "B904",    # raise ... from err - no siempre es necesario el chain
+    "N806",    # Variable name in function should be lowercase - MagicMock, etc.
+    "N803",    # Argument name should be lowercase - APIs externas
+    "N818",    # Exception name should end with Error - AppException es claro
+    "S112",    # try-except-continue - a veces necesario
+    "S324",    # hashlib insecure - no usado para seguridad
+    "ANN202",  # Missing return type for private function - tests
+    "RET504",  # Unnecessary assignment before return - claridad
+    "DTZ003",  # datetime.utcnow() - migración pendiente a timezone-aware
+    "SIM105",  # Use contextlib.suppress - preferencia de estilo
+    "SIM108",  # Use ternary operator - preferencia de legibilidad
+    "PLW0603", # Global statement - necesario para singletons
+    "PLR1714", # Merge comparisons - legibilidad en filtros complejos
+    "RUF001",  # Ambiguous unicode - emojis intencionales en UI
+    "ANN204",  # Missing return type for __post_init__ - dataclass
 ]
 
 # Permitir imports no utilizados en __init__.py
 [lint.per-file-ignores]
 "__init__.py" = ["F401", "F403"]
-"tests/*" = ["S101", "PLR2004", "ANN201", "ANN001"]  # Permitir asserts y magic numbers en tests
+"tests/*" = ["S101", "PLR2004", "ANN201", "ANN001", "F841", "W291", "W293"]  # tests pueden tener whitespace en strings
+"src/finanzas_tracker/dashboard/*" = ["ANN201", "W291", "W293"]  # Dashboard/Streamlit
+"src/finanzas_tracker/api/main.py" = ["ANN201"]  # FastAPI lifespan y endpoints root
+"src/finanzas_tracker/parsers/*" = ["PLW2901", "F841"]  # Parsers pueden reasignar variables de loop
+"src/finanzas_tracker/models/base.py" = ["N805"]  # declared_attr usa cls
 
 # === CONFIGURACIÓN DE ISORT (import sorting) ===
 [lint.isort]

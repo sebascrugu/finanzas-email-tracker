@@ -29,6 +29,7 @@ _shutdown_flag = threading.Event()
 def _get_embedding_service() -> "EmbeddingService":
     """Importación lazy para evitar imports circulares."""
     from finanzas_tracker.services.embedding_service import EmbeddingService
+
     return EmbeddingService()
 
 
@@ -77,7 +78,9 @@ def start_embedding_worker() -> None:
         return
 
     _shutdown_flag.clear()
-    _worker_thread = threading.Thread(target=_embedding_worker, daemon=True, name="embedding-worker")
+    _worker_thread = threading.Thread(
+        target=_embedding_worker, daemon=True, name="embedding-worker"
+    )
     _worker_thread.start()
     logger.info("🚀 Embedding worker iniciado")
 
@@ -105,6 +108,7 @@ def queue_embedding(transaction_id: str) -> None:
 # ============================================================================
 # SQLAlchemy Event Listeners
 # ============================================================================
+
 
 def _after_insert_transaction(mapper: object, connection: object, target: Transaction) -> None:
     """
@@ -163,6 +167,7 @@ def unregister_embedding_events() -> None:
 # ============================================================================
 # Función de utilidad para generar embeddings manualmente
 # ============================================================================
+
 
 def generate_all_embeddings_sync(batch_size: int = 50) -> dict[str, int]:
     """

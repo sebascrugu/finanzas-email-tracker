@@ -179,7 +179,11 @@ def get_budget_summary(
     budgets = db.execute(budgets_stmt).scalars().all()
 
     # Sumar presupuestos por categoría principal
-    budget_by_tipo: dict[str, Decimal] = {"necesidades": Decimal("0"), "gustos": Decimal("0"), "ahorros": Decimal("0")}
+    budget_by_tipo: dict[str, Decimal] = {
+        "necesidades": Decimal("0"),
+        "gustos": Decimal("0"),
+        "ahorros": Decimal("0"),
+    }
     for b in budgets:
         cat_id = subcat_to_cat.get(b.category_id)
         if cat_id:
@@ -198,7 +202,11 @@ def get_budget_summary(
     transactions = db.execute(gastos_stmt).scalars().all()
 
     # Sumar gastos por categoría principal
-    spent_by_tipo: dict[str, Decimal] = {"necesidades": Decimal("0"), "gustos": Decimal("0"), "ahorros": Decimal("0")}
+    spent_by_tipo: dict[str, Decimal] = {
+        "necesidades": Decimal("0"),
+        "gustos": Decimal("0"),
+        "ahorros": Decimal("0"),
+    }
     for t in transactions:
         if t.subcategory_id:
             cat_id = subcat_to_cat.get(t.subcategory_id)
@@ -222,14 +230,16 @@ def get_budget_summary(
         else:
             status = "sobre_presupuesto"
 
-        summaries.append(CategoryBudgetSummary(
-            categoria=tipo,
-            presupuestado=budgeted,
-            gastado=spent,
-            restante=remaining,
-            porcentaje_usado=percentage,
-            status=status,
-        ))
+        summaries.append(
+            CategoryBudgetSummary(
+                categoria=tipo,
+                presupuestado=budgeted,
+                gastado=spent,
+                restante=remaining,
+                porcentaje_usado=percentage,
+                status=status,
+            )
+        )
 
     total_presupuestado = sum(s.presupuestado for s in summaries)
     total_gastado = sum(s.gastado for s in summaries)

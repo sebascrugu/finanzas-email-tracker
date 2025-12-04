@@ -509,7 +509,11 @@ def render_hero_metric(
         subtitle: Subtítulo opcional
         gradient: Gradiente CSS para el fondo
     """
-    subtitle_html = f"<p style='margin: 0; font-size: 1.1rem; opacity: 0.95;'>{subtitle}</p>" if subtitle else ""
+    subtitle_html = (
+        f"<p style='margin: 0; font-size: 1.1rem; opacity: 0.95;'>{subtitle}</p>"
+        if subtitle
+        else ""
+    )
 
     st.markdown(
         f"""

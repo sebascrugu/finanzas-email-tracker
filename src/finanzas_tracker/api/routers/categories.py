@@ -52,9 +52,11 @@ def get_category(category_id: str, db: DBSession) -> CategoryResponse:
 @router.get("/{category_id}/subcategories", response_model=list[SubcategoryResponse])
 def list_subcategories(category_id: str, db: DBSession) -> list[SubcategoryResponse]:
     """Lista subcategorías de una categoría específica."""
-    stmt = select(Subcategory).where(
-        Subcategory.category_id == category_id
-    ).order_by(Subcategory.nombre)
+    stmt = (
+        select(Subcategory)
+        .where(Subcategory.category_id == category_id)
+        .order_by(Subcategory.nombre)
+    )
 
     subcategories = db.execute(stmt).scalars().all()
 

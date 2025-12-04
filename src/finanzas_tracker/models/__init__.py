@@ -1,12 +1,12 @@
 """Modelos de base de datos - Finanzas Tracker CR."""
 
+from finanzas_tracker.models.account import Account
 from finanzas_tracker.models.base import (
     BaseModelMixin,
     SoftDeleteMixin,
     TenantMixin,
     TimestampMixin,
 )
-from finanzas_tracker.models.account import Account
 from finanzas_tracker.models.billing_cycle import BillingCycle
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card

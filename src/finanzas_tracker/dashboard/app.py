@@ -204,11 +204,7 @@ def get_active_profile() -> Profile | None:
 def mostrar_sidebar_simple(perfil_actual: Profile) -> None:
     """Muestra sidebar minimalista - solo selector si hay múltiples perfiles."""
     with get_session() as session:
-        perfiles = (
-            session.query(Profile)
-            .filter(Profile.activo == True)
-            .all()
-        )
+        perfiles = session.query(Profile).filter(Profile.activo == True).all()
 
         # Selector solo si hay múltiples perfiles
         if len(perfiles) > 1:

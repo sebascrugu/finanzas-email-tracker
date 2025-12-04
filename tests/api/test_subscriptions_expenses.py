@@ -8,7 +8,6 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import pytest
 from fastapi.testclient import TestClient
 
 from finanzas_tracker.api.main import app
@@ -235,7 +234,7 @@ class TestExpensesRouter:
     def test_get_cash_flow(self, MockPredictor):
         """Test GET /expenses/cash-flow."""
         mock_predictor = MagicMock()
-        
+
         # Simular flujo de caja
         hoy = date.today()
         flujo = {
@@ -291,7 +290,7 @@ class TestPatrimonyHistoryEndpoint:
 
     def test_get_patrimony_history_empty(self):
         """Test GET /patrimony/history con historial vacío."""
-        # Este endpoint usa el service real, así que verificamos 
+        # Este endpoint usa el service real, así que verificamos
         # que responda correctamente aunque no haya datos
         response = client.get(
             "/api/v1/patrimony/history",

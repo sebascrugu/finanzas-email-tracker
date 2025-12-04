@@ -4,8 +4,8 @@ Tests del servicio que detecta y maneja comercios ambiguos
 (Walmart, Amazon, PriceSmart, etc.).
 """
 
-import json
 from decimal import Decimal
+import json
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -25,7 +25,7 @@ class TestAmbiguousMerchantServiceInit:
         """Inicializa correctamente con sesión de BD."""
         mock_db = MagicMock(spec=Session)
         service = AmbiguousMerchantService(mock_db)
-        
+
         assert service.db == mock_db
 
 
@@ -62,9 +62,9 @@ class TestAmbiguousMerchantServiceDetectar:
         """Detecta y marca comercio ambiguo."""
         mock_es_ambiguo.return_value = True
         mock_obtener_categorias.return_value = ["Supermercado", "Electrónica", "Hogar"]
-        
+
         result = service.detectar_y_marcar(mock_transaction)
-        
+
         assert result is True
         assert mock_transaction.es_comercio_ambiguo is True
         assert mock_transaction.necesita_revision is True
@@ -80,9 +80,9 @@ class TestAmbiguousMerchantServiceDetectar:
     ) -> None:
         """No marca comercio no ambiguo."""
         mock_es_ambiguo.return_value = False
-        
+
         result = service.detectar_y_marcar(mock_transaction)
-        
+
         assert result is False
         assert mock_transaction.es_comercio_ambiguo is False
 
@@ -98,9 +98,9 @@ class TestAmbiguousMerchantServiceDetectar:
         """No marca si no hay categorías posibles."""
         mock_es_ambiguo.return_value = True
         mock_obtener_categorias.return_value = []
-        
+
         result = service.detectar_y_marcar(mock_transaction)
-        
+
         assert result is False
 
     @patch("finanzas_tracker.services.ambiguous_merchant_service.es_comercio_ambiguo")
@@ -116,9 +116,9 @@ class TestAmbiguousMerchantServiceDetectar:
         mock_es_ambiguo.return_value = True
         categorias = ["Supermercado", "Ropa", "Electrónica"]
         mock_obtener_categorias.return_value = categorias
-        
+
         service.detectar_y_marcar(mock_transaction)
-        
+
         saved_json = mock_transaction.categorias_opciones
         parsed = json.loads(saved_json)
         assert parsed == categorias
@@ -140,14 +140,14 @@ class TestAmbiguousMerchantServiceConfirmar:
         """Confirma categoría correctamente."""
         tx = MagicMock()
         tx.categorias_opciones = json.dumps(["Supermercado", "Electrónica"])
-        
+
         service.db.execute.return_value.scalar_one_or_none.return_value = tx
-        
+
         result = service.confirmar_categoria(
             transaction_id="tx-123",
             categoria_seleccionada="Supermercado",
         )
-        
+
         assert result == tx
         assert tx.categoria_confirmada_usuario == "Supermercado"
         assert tx.categoria_sugerida_por_ia == "Supermercado"
@@ -162,15 +162,15 @@ class TestAmbiguousMerchantServiceConfirmar:
         """Confirma categoría con notas adicionales."""
         tx = MagicMock()
         tx.categorias_opciones = json.dumps(["Supermercado"])
-        
+
         service.db.execute.return_value.scalar_one_or_none.return_value = tx
-        
+
         result = service.confirmar_categoria(
             transaction_id="tx-123",
             categoria_seleccionada="Supermercado",
             notas="Compras de despensa mensual",
         )
-        
+
         assert result == tx
         assert tx.notas == "Compras de despensa mensual"
 
@@ -180,12 +180,12 @@ class TestAmbiguousMerchantServiceConfirmar:
     ) -> None:
         """Retorna None si transacción no existe."""
         service.db.execute.return_value.scalar_one_or_none.return_value = None
-        
+
         result = service.confirmar_categoria(
             transaction_id="tx-inexistente",
             categoria_seleccionada="Supermercado",
         )
-        
+
         assert result is None
         service.db.flush.assert_not_called()
 
@@ -196,14 +196,14 @@ class TestAmbiguousMerchantServiceConfirmar:
         """Permite categoría que no está en opciones (usuario sabe mejor)."""
         tx = MagicMock()
         tx.categorias_opciones = json.dumps(["Supermercado", "Electrónica"])
-        
+
         service.db.execute.return_value.scalar_one_or_none.return_value = tx
-        
+
         result = service.confirmar_categoria(
             transaction_id="tx-123",
             categoria_seleccionada="Regalo",  # No está en opciones
         )
-        
+
         assert result == tx
         assert tx.categoria_confirmada_usuario == "Regalo"
 
@@ -214,14 +214,14 @@ class TestAmbiguousMerchantServiceConfirmar:
         """Funciona aunque no tenga opciones previas."""
         tx = MagicMock()
         tx.categorias_opciones = None
-        
+
         service.db.execute.return_value.scalar_one_or_none.return_value = tx
-        
+
         result = service.confirmar_categoria(
             transaction_id="tx-123",
             categoria_seleccionada="Supermercado",
         )
-        
+
         assert result == tx
         assert tx.confirmada is True
 
@@ -241,9 +241,9 @@ class TestAmbiguousMerchantServicePendientes:
     ) -> None:
         """Retorna lista vacía si no hay pendientes."""
         service.db.execute.return_value.scalars.return_value.all.return_value = []
-        
+
         result = service.obtener_pendientes("profile-123")
-        
+
         assert result == []
 
     def test_obtener_pendientes_con_datos(
@@ -252,25 +252,25 @@ class TestAmbiguousMerchantServicePendientes:
     ) -> None:
         """Retorna transacciones pendientes formateadas."""
         from datetime import datetime
-        
+
         tx1 = MagicMock()
         tx1.id = "tx-1"
         tx1.comercio = "WALMART"
         tx1.monto_crc = Decimal("50000.00")
         tx1.fecha_transaccion = datetime(2024, 11, 15, 10, 30)
         tx1.categorias_opciones = json.dumps(["Supermercado", "Electrónica"])
-        
+
         tx2 = MagicMock()
         tx2.id = "tx-2"
         tx2.comercio = "AMAZON"
         tx2.monto_crc = Decimal("25000.00")
         tx2.fecha_transaccion = datetime(2024, 11, 20, 15, 45)
         tx2.categorias_opciones = json.dumps(["Electrónica", "Libros"])
-        
+
         service.db.execute.return_value.scalars.return_value.all.return_value = [tx1, tx2]
-        
+
         result = service.obtener_pendientes("profile-123")
-        
+
         assert len(result) == 2
         assert result[0]["id"] == "tx-1"
         assert result[0]["comercio"] == "WALMART"
@@ -285,18 +285,18 @@ class TestAmbiguousMerchantServicePendientes:
     ) -> None:
         """Maneja transacciones sin categorías_opciones."""
         from datetime import datetime
-        
+
         tx = MagicMock()
         tx.id = "tx-1"
         tx.comercio = "TIENDA"
         tx.monto_crc = Decimal("15000.00")
         tx.fecha_transaccion = datetime(2024, 11, 25)
         tx.categorias_opciones = None
-        
+
         service.db.execute.return_value.scalars.return_value.all.return_value = [tx]
-        
+
         result = service.obtener_pendientes("profile-123")
-        
+
         assert len(result) == 1
         assert result[0]["opciones_categoria"] == []
 
@@ -319,9 +319,9 @@ class TestAmbiguousMerchantServiceEstadisticas:
             [],  # total
             [],  # pendientes
         ]
-        
+
         result = service.obtener_estadisticas("profile-123")
-        
+
         assert result["total_ambiguos"] == 0
         assert result["pendientes_confirmacion"] == 0
         assert result["confirmados"] == 0
@@ -334,11 +334,11 @@ class TestAmbiguousMerchantServiceEstadisticas:
         """Estadísticas con comercios ambiguos."""
         service.db.execute.return_value.scalars.return_value.all.side_effect = [
             [MagicMock() for _ in range(10)],  # total = 10
-            [MagicMock() for _ in range(3)],   # pendientes = 3
+            [MagicMock() for _ in range(3)],  # pendientes = 3
         ]
-        
+
         result = service.obtener_estadisticas("profile-123")
-        
+
         assert result["total_ambiguos"] == 10
         assert result["pendientes_confirmacion"] == 3
         assert result["confirmados"] == 7
@@ -353,9 +353,9 @@ class TestAmbiguousMerchantServiceEstadisticas:
             [MagicMock() for _ in range(20)],  # total = 20
             [],  # pendientes = 0
         ]
-        
+
         result = service.obtener_estadisticas("profile-123")
-        
+
         assert result["total_ambiguos"] == 20
         assert result["pendientes_confirmacion"] == 0
         assert result["confirmados"] == 20
@@ -377,9 +377,9 @@ class TestAmbiguousMerchantServiceMarcarExistentes:
     ) -> None:
         """No marca nada si no hay transacciones."""
         service.db.execute.return_value.scalars.return_value.all.return_value = []
-        
+
         result = service.marcar_transacciones_existentes("profile-123")
-        
+
         assert result == 0
         service.db.flush.assert_not_called()
 
@@ -395,17 +395,17 @@ class TestAmbiguousMerchantServiceMarcarExistentes:
         tx1 = MagicMock()
         tx1.comercio = "WALMART"
         tx1.es_comercio_ambiguo = False
-        
+
         tx2 = MagicMock()
         tx2.comercio = "STARBUCKS"
         tx2.es_comercio_ambiguo = False
-        
+
         tx3 = MagicMock()
         tx3.comercio = "AMAZON"
         tx3.es_comercio_ambiguo = False
-        
+
         service.db.execute.return_value.scalars.return_value.all.return_value = [tx1, tx2, tx3]
-        
+
         # Solo WALMART y AMAZON son ambiguos
         # detectar_y_marcar llama a es_comercio_ambiguo y obtener_categorias_posibles internamente
         # para cada transacción, por lo que necesitamos más valores
@@ -414,9 +414,9 @@ class TestAmbiguousMerchantServiceMarcarExistentes:
             ["Supermercado", "Electrónica"],  # Para tx1 (WALMART)
             ["Electrónica", "Libros"],  # Para tx3 (AMAZON)
         ]
-        
+
         result = service.marcar_transacciones_existentes("profile-123")
-        
+
         assert result == 2
         service.db.flush.assert_called_once()
 
@@ -436,13 +436,16 @@ class TestListarComerciosAmbiguos:
         # dependiendo de la implementación
         assert isinstance(result, dict)
 
-    @patch("finanzas_tracker.services.ambiguous_merchant_service.COMERCIOS_AMBIGUOS", {"WALMART": ["Supermercado"]})
+    @patch(
+        "finanzas_tracker.services.ambiguous_merchant_service.COMERCIOS_AMBIGUOS",
+        {"WALMART": ["Supermercado"]},
+    )
     def test_retorna_copia(self) -> None:
         """Retorna una copia, no el original."""
         from finanzas_tracker.services.ambiguous_merchant_service import COMERCIOS_AMBIGUOS
-        
+
         result = listar_comercios_ambiguos()
         result["NUEVO"] = ["Test"]
-        
+
         # El original no debe cambiar
         assert "NUEVO" not in COMERCIOS_AMBIGUOS

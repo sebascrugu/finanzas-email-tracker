@@ -17,11 +17,6 @@ from finanzas_tracker.services.finance_chat import FinanceChatService
 from finanzas_tracker.services.insights import InsightsService
 from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
-from finanzas_tracker.services.subscription_detector import (
-    DetectedSubscription,
-    SubscriptionDetector,
-    SubscriptionFrequency,
-)
 from finanzas_tracker.services.notification_service import CardNotificationService
 from finanzas_tracker.services.onboarding_service import OnboardingService
 from finanzas_tracker.services.patrimony_service import PatrimonyService
@@ -36,6 +31,11 @@ from finanzas_tracker.services.recurring_expense_predictor import (
 from finanzas_tracker.services.statement_email_service import (
     StatementEmailService,
     statement_email_service,
+)
+from finanzas_tracker.services.subscription_detector import (
+    DetectedSubscription,
+    SubscriptionDetector,
+    SubscriptionFrequency,
 )
 from finanzas_tracker.services.sync_scheduler import (
     scheduler,

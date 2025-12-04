@@ -173,17 +173,12 @@ def get_finance_summary_resource() -> str:
         first_day = today.replace(day=1)
 
         # Total del mes
-        total = (
-            session.query(func.sum(Transaction.monto_crc))
-            .filter(
-                Transaction.profile_id == profile_id,
-                Transaction.fecha_transaccion >= first_day,
-                Transaction.deleted_at.is_(None),
-                Transaction.tipo_transaccion == "compra",
-            )
-            .scalar()
-            or Decimal("0")
-        )
+        total = session.query(func.sum(Transaction.monto_crc)).filter(
+            Transaction.profile_id == profile_id,
+            Transaction.fecha_transaccion >= first_day,
+            Transaction.deleted_at.is_(None),
+            Transaction.tipo_transaccion == "compra",
+        ).scalar() or Decimal("0")
 
         # Número de transacciones
         count = (
@@ -527,7 +522,9 @@ def get_spending_summary(
                     "nombre": r.grupo or "Sin categoría",
                     "total": _format_currency(r.total or 0),
                     "cantidad": r.cantidad,
-                    "porcentaje": round(float(_safe_divide(r.total or Decimal("0"), total_general) * 100), 1),
+                    "porcentaje": round(
+                        float(_safe_divide(r.total or Decimal("0"), total_general) * 100), 1
+                    ),
                 }
                 for r in results[:10]  # Top 10
             ],
@@ -581,7 +578,9 @@ def get_top_merchants(days: int = 30, limit: int = 10) -> dict[str, Any]:
                     "comercio": r.comercio,
                     "total": _format_currency(r.total),
                     "visitas": r.visitas,
-                    "promedio_visita": _format_currency(_safe_divide(r.total, Decimal(str(r.visitas)))),
+                    "promedio_visita": _format_currency(
+                        _safe_divide(r.total, Decimal(str(r.visitas)))
+                    ),
                 }
                 for i, r in enumerate(results)
             ],
@@ -700,31 +699,21 @@ def get_monthly_comparison() -> dict[str, Any]:
         fin_mes_anterior = inicio_mes_actual - timedelta(seconds=1)
 
         # Total mes actual
-        total_actual = (
-            session.query(func.sum(Transaction.monto_crc))
-            .filter(
-                Transaction.profile_id == profile_id,
-                Transaction.deleted_at.is_(None),
-                Transaction.fecha_transaccion >= inicio_mes_actual,
-                Transaction.tipo_transaccion == "compra",
-            )
-            .scalar()
-            or Decimal("0")
-        )
+        total_actual = session.query(func.sum(Transaction.monto_crc)).filter(
+            Transaction.profile_id == profile_id,
+            Transaction.deleted_at.is_(None),
+            Transaction.fecha_transaccion >= inicio_mes_actual,
+            Transaction.tipo_transaccion == "compra",
+        ).scalar() or Decimal("0")
 
         # Total mes anterior
-        total_anterior = (
-            session.query(func.sum(Transaction.monto_crc))
-            .filter(
-                Transaction.profile_id == profile_id,
-                Transaction.deleted_at.is_(None),
-                Transaction.fecha_transaccion >= inicio_mes_anterior,
-                Transaction.fecha_transaccion <= fin_mes_anterior,
-                Transaction.tipo_transaccion == "compra",
-            )
-            .scalar()
-            or Decimal("0")
-        )
+        total_anterior = session.query(func.sum(Transaction.monto_crc)).filter(
+            Transaction.profile_id == profile_id,
+            Transaction.deleted_at.is_(None),
+            Transaction.fecha_transaccion >= inicio_mes_anterior,
+            Transaction.fecha_transaccion <= fin_mes_anterior,
+            Transaction.tipo_transaccion == "compra",
+        ).scalar() or Decimal("0")
 
         diferencia = total_actual - total_anterior
         if total_anterior > 0:
@@ -815,7 +804,9 @@ def _get_analysis_data(session: Session, profile_id: str, days: int) -> dict[str
         by_category_last[cat] += t.monto_crc
 
     # Por comercio
-    by_merchant: dict[str, dict[str, Any]] = defaultdict(lambda: {"count": 0, "total": Decimal("0")})
+    by_merchant: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"count": 0, "total": Decimal("0")}
+    )
     for t in current_month_txns:
         by_merchant[t.comercio]["count"] += 1
         by_merchant[t.comercio]["total"] += t.monto_crc
@@ -879,59 +870,65 @@ def budget_coaching(days: int = 30) -> dict[str, Any]:
         if data["total_last"] > 0:
             change_pct = ((data["total_current"] - data["total_last"]) / data["total_last"]) * 100
             if change_pct > 20:
-                coaching_points.append({
-                    "tipo": "tendencia",
-                    "prioridad": "alta",
-                    "emoji": "📈",
-                    "titulo": "Gasto aumentando",
-                    "detalle": f"Llevas {change_pct:.0f}% más que el mes pasado",
-                    "accion": "Revisa las categorías que más aumentaron",
-                })
+                coaching_points.append(
+                    {
+                        "tipo": "tendencia",
+                        "prioridad": "alta",
+                        "emoji": "📈",
+                        "titulo": "Gasto aumentando",
+                        "detalle": f"Llevas {change_pct:.0f}% más que el mes pasado",
+                        "accion": "Revisa las categorías que más aumentaron",
+                    }
+                )
             elif change_pct < -20:
-                coaching_points.append({
-                    "tipo": "tendencia",
-                    "prioridad": "baja",
-                    "emoji": "✅",
-                    "titulo": "¡Excelente control!",
-                    "detalle": f"Llevas {abs(change_pct):.0f}% menos que el mes pasado",
-                    "accion": "Sigue así y considera invertir el ahorro",
-                })
+                coaching_points.append(
+                    {
+                        "tipo": "tendencia",
+                        "prioridad": "baja",
+                        "emoji": "✅",
+                        "titulo": "¡Excelente control!",
+                        "detalle": f"Llevas {abs(change_pct):.0f}% menos que el mes pasado",
+                        "accion": "Sigue así y considera invertir el ahorro",
+                    }
+                )
 
         # 2. Patrón de fin de semana
         weekend_total = sum(
-            t.monto_crc for t in data["current_month_txns"]
-            if t.fecha_transaccion.weekday() >= 5
+            t.monto_crc for t in data["current_month_txns"] if t.fecha_transaccion.weekday() >= 5
         )
         weekday_total = sum(
-            t.monto_crc for t in data["current_month_txns"]
-            if t.fecha_transaccion.weekday() < 5
+            t.monto_crc for t in data["current_month_txns"] if t.fecha_transaccion.weekday() < 5
         )
 
         if weekend_total > 0 and weekday_total > 0:
             weekend_avg = weekend_total / 8  # ~8 días de fin de semana al mes
             weekday_avg = weekday_total / 22  # ~22 días entre semana
             if weekend_avg > weekday_avg * Decimal("1.5"):
-                coaching_points.append({
-                    "tipo": "patron",
-                    "prioridad": "media",
-                    "emoji": "🎉",
-                    "titulo": "Gastas más en fines de semana",
-                    "detalle": f"Promedio fin de semana: {_format_currency(weekend_avg)} vs {_format_currency(weekday_avg)} entre semana",
-                    "accion": "Planifica actividades más económicas para el fin de semana",
-                })
+                coaching_points.append(
+                    {
+                        "tipo": "patron",
+                        "prioridad": "media",
+                        "emoji": "🎉",
+                        "titulo": "Gastas más en fines de semana",
+                        "detalle": f"Promedio fin de semana: {_format_currency(weekend_avg)} vs {_format_currency(weekday_avg)} entre semana",
+                        "accion": "Planifica actividades más económicas para el fin de semana",
+                    }
+                )
 
         # 3. Gastos pequeños
         small_txns = [t for t in data["current_month_txns"] if t.monto_crc < 5000]
         if len(small_txns) > 15:
             small_total = sum(t.monto_crc for t in small_txns)
-            coaching_points.append({
-                "tipo": "patron",
-                "prioridad": "media",
-                "emoji": "🪙",
-                "titulo": "Muchos gastos pequeños",
-                "detalle": f"{len(small_txns)} compras menores a ₡5,000 suman {_format_currency(small_total)}",
-                "accion": "Usa efectivo para gastos pequeños y establece un límite diario",
-            })
+            coaching_points.append(
+                {
+                    "tipo": "patron",
+                    "prioridad": "media",
+                    "emoji": "🪙",
+                    "titulo": "Muchos gastos pequeños",
+                    "detalle": f"{len(small_txns)} compras menores a ₡5,000 suman {_format_currency(small_total)}",
+                    "accion": "Usa efectivo para gastos pequeños y establece un límite diario",
+                }
+            )
 
         # 4. Categorías que aumentaron
         for cat, amount in data["by_category_current"].items():
@@ -939,14 +936,16 @@ def budget_coaching(days: int = 30) -> dict[str, Any]:
             if last_amount > 0:
                 increase_pct = ((amount - last_amount) / last_amount) * 100
                 if increase_pct > 50 and amount > 15000:
-                    coaching_points.append({
-                        "tipo": "categoria",
-                        "prioridad": "alta",
-                        "emoji": "⚠️",
-                        "titulo": f"{cat} aumentó {increase_pct:.0f}%",
-                        "detalle": f"De {_format_currency(last_amount)} a {_format_currency(amount)}",
-                        "accion": f"Revisa qué pasó en {cat} este mes",
-                    })
+                    coaching_points.append(
+                        {
+                            "tipo": "categoria",
+                            "prioridad": "alta",
+                            "emoji": "⚠️",
+                            "titulo": f"{cat} aumentó {increase_pct:.0f}%",
+                            "detalle": f"De {_format_currency(last_amount)} a {_format_currency(amount)}",
+                            "accion": f"Revisa qué pasó en {cat} este mes",
+                        }
+                    )
 
         # Calcular score de salud
         score = 100
@@ -979,10 +978,14 @@ def budget_coaching(days: int = 30) -> dict[str, Any]:
             "resumen": {
                 "total_gastado": _format_currency(data["total_current"]),
                 "transacciones": data["transaction_count"],
-                "promedio_diario": _format_currency(_safe_divide(data["total_current"], Decimal(str(days)))),
+                "promedio_diario": _format_currency(
+                    _safe_divide(data["total_current"], Decimal(str(days)))
+                ),
             },
             "coaching": coaching_points[:5],
-            "accion_principal": coaching_points[0] if coaching_points else {
+            "accion_principal": coaching_points[0]
+            if coaching_points
+            else {
                 "emoji": "✅",
                 "titulo": "Todo bien",
                 "detalle": "No hay alertas importantes",
@@ -1021,24 +1024,28 @@ def savings_opportunities() -> dict[str, Any]:
             if last > 0:
                 increase = amount - last
                 if increase > 10000:
-                    opportunities.append({
-                        "tipo": "categoria",
-                        "descripcion": f"{cat}: aumentó {_format_currency(increase)}",
-                        "ahorro_potencial": _format_currency(increase),
-                        "accion": f"Volver al nivel anterior ahorraría {_format_currency(increase)}",
-                    })
+                    opportunities.append(
+                        {
+                            "tipo": "categoria",
+                            "descripcion": f"{cat}: aumentó {_format_currency(increase)}",
+                            "ahorro_potencial": _format_currency(increase),
+                            "accion": f"Volver al nivel anterior ahorraría {_format_currency(increase)}",
+                        }
+                    )
                     total_potential += increase
 
         # 2. Comercios frecuentes
         for merchant, info in data["by_merchant"].items():
             if info["count"] >= 8:
                 potential = info["total"] * Decimal("0.3")
-                opportunities.append({
-                    "tipo": "frecuencia",
-                    "descripcion": f"{merchant}: {info['count']} visitas",
-                    "ahorro_potencial": _format_currency(potential),
-                    "accion": f"Reducir 30% de visitas ahorraría {_format_currency(potential)}",
-                })
+                opportunities.append(
+                    {
+                        "tipo": "frecuencia",
+                        "descripcion": f"{merchant}: {info['count']} visitas",
+                        "ahorro_potencial": _format_currency(potential),
+                        "accion": f"Reducir 30% de visitas ahorraría {_format_currency(potential)}",
+                    }
+                )
                 total_potential += potential
 
         # Ordenar por potencial
@@ -1104,12 +1111,14 @@ def cashflow_prediction(days_ahead: int = 15) -> dict[str, Any]:
             weekday = future_date.weekday()
             predicted = avg_by_weekday.get(weekday, Decimal("0"))
 
-            predictions.append({
-                "fecha": future_date.strftime("%Y-%m-%d"),
-                "dia": weekday_names[weekday],
-                "estimado": _format_currency(predicted),
-                "riesgo": "alto" if weekday >= 5 else "normal",
-            })
+            predictions.append(
+                {
+                    "fecha": future_date.strftime("%Y-%m-%d"),
+                    "dia": weekday_names[weekday],
+                    "estimado": _format_currency(predicted),
+                    "riesgo": "alto" if weekday >= 5 else "normal",
+                }
+            )
             total_predicted += predicted
 
         # Proyección mensual
@@ -1124,9 +1133,17 @@ def cashflow_prediction(days_ahead: int = 15) -> dict[str, Any]:
             elif ratio <= 1.2:
                 sostenible = {"nivel": "aceptable", "emoji": "👍", "mensaje": "Ritmo aceptable"}
             else:
-                sostenible = {"nivel": "alto", "emoji": "⚠️", "mensaje": f"Proyectas {(ratio - 1) * 100:.0f}% más que el mes pasado"}
+                sostenible = {
+                    "nivel": "alto",
+                    "emoji": "⚠️",
+                    "mensaje": f"Proyectas {(ratio - 1) * 100:.0f}% más que el mes pasado",
+                }
         else:
-            sostenible = {"nivel": "desconocido", "emoji": "❓", "mensaje": "Sin datos del mes anterior"}
+            sostenible = {
+                "nivel": "desconocido",
+                "emoji": "❓",
+                "mensaje": "Sin datos del mes anterior",
+            }
 
         return {
             "prediccion_7_dias": {
@@ -1168,13 +1185,15 @@ def spending_alert() -> dict[str, Any]:
 
             for t in data["current_month_txns"][:20]:  # Últimas 20
                 if t.monto_crc > avg_txn * 3 and t.monto_crc > 15000:
-                    alerts.append({
-                        "severidad": "alta",
-                        "emoji": "⚠️",
-                        "titulo": f"Gasto inusual: {t.comercio}",
-                        "detalle": f"{_format_currency(t.monto_crc)} es {t.monto_crc / avg_txn:.1f}x tu promedio",
-                        "fecha": t.fecha_transaccion.strftime("%Y-%m-%d"),
-                    })
+                    alerts.append(
+                        {
+                            "severidad": "alta",
+                            "emoji": "⚠️",
+                            "titulo": f"Gasto inusual: {t.comercio}",
+                            "detalle": f"{_format_currency(t.monto_crc)} es {t.monto_crc / avg_txn:.1f}x tu promedio",
+                            "fecha": t.fecha_transaccion.strftime("%Y-%m-%d"),
+                        }
+                    )
 
         # 2. Categorías descontroladas
         for cat, amount in data["by_category_current"].items():
@@ -1182,25 +1201,29 @@ def spending_alert() -> dict[str, Any]:
             if last > 0:
                 increase_pct = ((amount - last) / last) * 100
                 if increase_pct > 50 and amount > 20000:
-                    alerts.append({
-                        "severidad": "media",
-                        "emoji": "📈",
-                        "titulo": f"{cat} +{increase_pct:.0f}%",
-                        "detalle": f"De {_format_currency(last)} a {_format_currency(amount)}",
-                        "fecha": "Este mes",
-                    })
+                    alerts.append(
+                        {
+                            "severidad": "media",
+                            "emoji": "📈",
+                            "titulo": f"{cat} +{increase_pct:.0f}%",
+                            "detalle": f"De {_format_currency(last)} a {_format_currency(amount)}",
+                            "fecha": "Este mes",
+                        }
+                    )
 
         # 3. Ritmo insostenible
         if data["total_last"] > 0:
             ratio = data["total_current"] / data["total_last"]
             if ratio > 1.3:
-                alerts.append({
-                    "severidad": "alta",
-                    "emoji": "🔥",
-                    "titulo": "Ritmo de gasto alto",
-                    "detalle": f"Llevas {(ratio - 1) * 100:.0f}% más que el mes pasado",
-                    "fecha": "Tendencia actual",
-                })
+                alerts.append(
+                    {
+                        "severidad": "alta",
+                        "emoji": "🔥",
+                        "titulo": "Ritmo de gasto alto",
+                        "detalle": f"Llevas {(ratio - 1) * 100:.0f}% más que el mes pasado",
+                        "fecha": "Tendencia actual",
+                    }
+                )
 
         # Ordenar por severidad
         severity_order = {"alta": 0, "media": 1, "baja": 2}
@@ -1220,7 +1243,9 @@ def spending_alert() -> dict[str, Any]:
             "total_alertas": len(alerts),
             "alertas_altas": high_count,
             "alertas": alerts[:5],
-            "mensaje": f"{high_count} alerta(s) importantes" if high_count else "Sin alertas importantes",
+            "mensaje": f"{high_count} alerta(s) importantes"
+            if high_count
+            else "Sin alertas importantes",
         }
 
 
@@ -1253,9 +1278,13 @@ def goal_advisor(
 
     # Validar inputs
     if goal_amount <= 0:
-        return MCPError(code=ErrorCode.INVALID_INPUT, message="El monto debe ser mayor a 0").to_dict()
+        return MCPError(
+            code=ErrorCode.INVALID_INPUT, message="El monto debe ser mayor a 0"
+        ).to_dict()
     if goal_months <= 0:
-        return MCPError(code=ErrorCode.INVALID_INPUT, message="Los meses deben ser mayor a 0").to_dict()
+        return MCPError(
+            code=ErrorCode.INVALID_INPUT, message="Los meses deben ser mayor a 0"
+        ).to_dict()
 
     with get_session() as session:
         data = _get_analysis_data(session, profile_id, 30)
@@ -1272,12 +1301,14 @@ def goal_advisor(
             if any(r.lower() in cat.lower() for r in reducible_cats):
                 reduction = amount * Decimal("0.3")  # 30% reducible
                 reducible_total += reduction
-                plan.append({
-                    "categoria": cat,
-                    "actual": _format_currency(amount),
-                    "reduccion": _format_currency(reduction),
-                    "nuevo": _format_currency(amount - reduction),
-                })
+                plan.append(
+                    {
+                        "categoria": cat,
+                        "actual": _format_currency(amount),
+                        "reduccion": _format_currency(reduction),
+                        "nuevo": _format_currency(amount - reduction),
+                    }
+                )
 
         # Evaluar viabilidad
         is_achievable = reducible_total >= monthly_needed
@@ -1336,6 +1367,7 @@ async def run_server() -> None:
 def main() -> None:
     """Entry point CLI."""
     import asyncio
+
     asyncio.run(run_server())
 
 

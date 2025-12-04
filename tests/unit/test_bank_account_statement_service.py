@@ -3,11 +3,9 @@
 Tests del servicio que procesa estados de cuenta bancarias (cuentas corrientes/ahorro).
 """
 
-from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 
@@ -31,7 +29,7 @@ class TestBankConsolidationResult:
             total_debitos=Decimal("50000.00"),
             total_creditos=Decimal("75000.00"),
         )
-        
+
         assert result.success is True
         assert result.transactions_created == 10
         assert result.transactions_skipped == 2
@@ -45,7 +43,7 @@ class TestBankConsolidationResult:
             success=False,
             errors=["Error procesando PDF", "Formato inválido"],
         )
-        
+
         assert result.success is False
         assert result.errors is not None
         assert len(result.errors) == 2
@@ -58,13 +56,13 @@ class TestBankConsolidationResult:
             transactions_skipped=5,
             transactions_failed=2,
         )
-        
+
         assert result.total_processed == 20
 
     def test_default_values(self) -> None:
         """Valores por defecto cuando no se especifican."""
         result = BankConsolidationResult(success=True)
-        
+
         assert result.statement_date is None
         assert result.transactions_created == 0
         assert result.transactions_skipped == 0
@@ -77,31 +75,37 @@ class TestBankConsolidationResult:
 class TestBankAccountStatementServiceInit:
     """Tests de inicialización del servicio."""
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
     def test_init_creates_dependencies(
         self,
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
-        """El servicio inicializa parser y categorizer."""
+        """El servicio inicializa parser, categorizer y exchange rate service."""
         service = BankAccountStatementService()
-        
+
         mock_parser.assert_called_once()
         mock_categorizer.assert_called_once()
+        mock_exchange_rate.assert_called_once()
         assert service.parser is not None
         assert service.categorizer is not None
+        assert service.exchange_rate_service is not None
 
 
 class TestBankAccountStatementServiceProcessPdf:
     """Tests del método process_pdf."""
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
     def test_process_pdf_success(
         self,
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Procesa PDF correctamente."""
         # Setup mock
@@ -109,34 +113,36 @@ class TestBankAccountStatementServiceProcessPdf:
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = []
         mock_parser.return_value.parse.return_value = mock_statement
-        
+
         service = BankAccountStatementService()
-        
+
         with patch.object(service, "consolidate_statement") as mock_consolidate:
             mock_consolidate.return_value = BankConsolidationResult(
                 success=True,
                 transactions_created=5,
             )
-            
+
             result = service.process_pdf("/path/to/file.pdf", "profile-123")
-            
+
             mock_parser.return_value.parse.assert_called_once_with("/path/to/file.pdf")
             mock_consolidate.assert_called_once()
             assert result.success is True
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
     def test_process_pdf_parse_error(
         self,
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Maneja error de parsing."""
         mock_parser.return_value.parse.side_effect = Exception("PDF corrupto")
-        
+
         service = BankAccountStatementService()
         result = service.process_pdf("/bad/file.pdf", "profile-123")
-        
+
         assert result.success is False
         assert result.errors is not None
         assert "PDF corrupto" in result.errors[0]
@@ -162,6 +168,7 @@ class TestBankAccountStatementServiceConsolidate:
         tx.comercio_normalizado = "WALMART"
         return tx
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -170,22 +177,24 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Consolida estado de cuenta sin transacciones."""
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = []
-        
+
         mock_session = MagicMock()
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 0
         assert result.transactions_skipped == 0
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -194,24 +203,26 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
         mock_transaction: MagicMock,
     ) -> None:
         """Consolida estado de cuenta con transacciones."""
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [mock_transaction]
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None  # No duplicado
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
         assert result.total_debitos == Decimal("25000.00")
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -220,26 +231,28 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
         mock_transaction: MagicMock,
     ) -> None:
         """Omite transacciones duplicadas."""
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [mock_transaction]
-        
+
         # Simular que ya existe
         mock_session = MagicMock()
         existing_tx = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = existing_tx
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 0
         assert result.transactions_skipped == 1
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -248,6 +261,7 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Procesa transacciones de crédito (ingresos)."""
         tx = MagicMock()
@@ -262,22 +276,23 @@ class TestBankAccountStatementServiceConsolidate:
         tx.es_sinpe = False
         tx.es_interes = False
         tx.comercio_normalizado = None
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [tx]
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
         assert result.total_creditos == Decimal("100000.00")
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -286,8 +301,10 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
-        """Procesa transacciones en USD (verificando que detecta USD correctamente)."""
+        """Procesa transacciones en USD con conversión a CRC."""
+
         # Crear un objeto simple con todos los atributos necesarios
         class MockBACTransaction:
             def __init__(self) -> None:
@@ -302,30 +319,32 @@ class TestBankAccountStatementServiceConsolidate:
                 self.es_sinpe = False
                 self.es_interes = False
                 self.comercio_normalizado = "AMAZON"
-        
+
         tx = MockBACTransaction()
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [tx]
-        
+
         mock_session = MagicMock()
-        # Primera vez: no hay duplicado (retorna None), se intentará crear
-        # Pero fallará porque el modelo Transaction valida monto_crc para USD
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
+        # Mock del tipo de cambio
+        mock_exchange_rate.return_value.get_rate.return_value = 520.50
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
-        # El resultado debe ser "success" incluso si falla una transacción individual
-        assert result.success is True
-        # La transacción USD falla porque monto_crc es None (bug conocido del servicio)
-        # Este test documenta ese comportamiento
-        assert result.transactions_failed == 1
-        assert len(result.errors) == 1
-        # Verifica que el error menciona el problema
 
+        # Ahora debe funcionar porque convierte USD a CRC
+        assert result.success is True
+        assert result.transactions_created == 1
+        assert result.transactions_failed == 0
+
+        # Verificar que se añadió la transacción a la sesión
+        mock_session.add.assert_called_once()
+
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -334,6 +353,7 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Procesa transacciones SINPE."""
         tx = MagicMock()
@@ -348,21 +368,22 @@ class TestBankAccountStatementServiceConsolidate:
         tx.es_sinpe = True
         tx.es_interes = False
         tx.comercio_normalizado = None
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [tx]
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -371,6 +392,7 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Procesa transacciones de interés."""
         tx = MagicMock()
@@ -385,22 +407,23 @@ class TestBankAccountStatementServiceConsolidate:
         tx.es_sinpe = False
         tx.es_interes = True
         tx.comercio_normalizado = None
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [tx]
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is True
         assert result.transactions_created == 1
         assert result.total_creditos == Decimal("125.50")
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -409,22 +432,24 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Hace rollback en caso de error de base de datos."""
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = []
-        
+
         mock_session = MagicMock()
         mock_session.commit.side_effect = Exception("DB Error")
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         assert result.success is False
         mock_session.rollback.assert_called_once()
 
+    @patch("finanzas_tracker.services.bank_account_statement_service.ExchangeRateService")
     @patch("finanzas_tracker.services.bank_account_statement_service.get_session")
     @patch("finanzas_tracker.services.bank_account_statement_service.BACPDFParser")
     @patch("finanzas_tracker.services.bank_account_statement_service.TransactionCategorizer")
@@ -433,6 +458,7 @@ class TestBankAccountStatementServiceConsolidate:
         mock_categorizer: MagicMock,
         mock_parser: MagicMock,
         mock_get_session: MagicMock,
+        mock_exchange_rate: MagicMock,
     ) -> None:
         """Reporta errores parciales pero continúa."""
         tx1 = MagicMock()
@@ -447,23 +473,23 @@ class TestBankAccountStatementServiceConsolidate:
         tx1.es_sinpe = False
         tx1.es_interes = False
         tx1.comercio_normalizado = "TIENDA"
-        
+
         tx2 = MagicMock()
         tx2.concepto = "TRANSACCION PROBLEMATICA"
         # Este causará un error porque no tiene todos los campos
         tx2.cuenta_iban = None  # Esto causará error
-        
+
         mock_statement = MagicMock()
         mock_statement.metadata.fecha_corte = date(2024, 11, 30)
         mock_statement.transactions = [tx1, tx2]
-        
+
         mock_session = MagicMock()
         mock_session.execute.return_value.scalar_one_or_none.return_value = None
         mock_get_session.return_value.__enter__.return_value = mock_session
-        
+
         service = BankAccountStatementService()
         result = service.consolidate_statement(mock_statement, "profile-123")
-        
+
         # Debe reportar éxito general pero con errores individuales
         assert result.success is True
         assert result.transactions_created == 1

@@ -96,8 +96,18 @@ class BACPDFParser:
 
     # Meses en español
     MESES = {
-        "ENE": 1, "FEB": 2, "MAR": 3, "ABR": 4, "MAY": 5, "JUN": 6,
-        "JUL": 7, "AGO": 8, "SEP": 9, "OCT": 10, "NOV": 11, "DIC": 12,
+        "ENE": 1,
+        "FEB": 2,
+        "MAR": 3,
+        "ABR": 4,
+        "MAY": 5,
+        "JUN": 6,
+        "JUL": 7,
+        "AGO": 8,
+        "SEP": 9,
+        "OCT": 10,
+        "NOV": 11,
+        "DIC": 12,
     }
 
     def __init__(self) -> None:
@@ -171,9 +181,7 @@ class BACPDFParser:
             moneda_raw = moneda_match.group(1)
             self._current_moneda = "USD" if "DOLAR" in moneda_raw.upper() else "CRC"
 
-    def _extract_transactions_by_position(
-        self, page: Any, page_num: int
-    ) -> list[BACTransaction]:
+    def _extract_transactions_by_position(self, page: Any, page_num: int) -> list[BACTransaction]:
         """
         Extrae transacciones usando posiciones de caracteres para detectar columnas.
 
@@ -193,14 +201,14 @@ class BACPDFParser:
         # Agrupar caracteres por línea (posición Y)
         lines_by_y: dict[int, list[dict]] = {}
         for char in chars:
-            y_key = int(char['top'])
+            y_key = int(char["top"])
             if y_key not in lines_by_y:
                 lines_by_y[y_key] = []
             lines_by_y[y_key].append(char)
 
         # Procesar cada línea
         for y in sorted(lines_by_y.keys()):
-            line_chars = sorted(lines_by_y[y], key=lambda c: c['x0'])
+            line_chars = sorted(lines_by_y[y], key=lambda c: c["x0"])
             txn = self._parse_line_by_position(line_chars)
             if txn:
                 transactions.append(txn)
@@ -220,8 +228,8 @@ class BACPDFParser:
         monto_credito_chars = []
 
         for c in chars:
-            x = c['x0']
-            text = c['text']
+            x = c["x0"]
+            text = c["text"]
 
             if x < COL_FECHA_START:
                 referencia_chars.append(text)
@@ -234,18 +242,18 @@ class BACPDFParser:
             else:
                 monto_credito_chars.append(text)
 
-        referencia = ''.join(referencia_chars).strip()
-        fecha_str = ''.join(fecha_chars).strip()
-        concepto = ''.join(concepto_chars).strip()
-        monto_debito_str = ''.join(monto_debito_chars).strip()
-        monto_credito_str = ''.join(monto_credito_chars).strip()
+        referencia = "".join(referencia_chars).strip()
+        fecha_str = "".join(fecha_chars).strip()
+        concepto = "".join(concepto_chars).strip()
+        monto_debito_str = "".join(monto_debito_chars).strip()
+        monto_credito_str = "".join(monto_credito_chars).strip()
 
         # Validar que sea una transacción (referencia de 9 dígitos)
-        if not re.match(r'^\d{9}$', referencia):
+        if not re.match(r"^\d{9}$", referencia):
             return None
 
         # Validar fecha (formato MES/DIA)
-        if not re.match(r'^[A-Z]{3}/\d{2}$', fecha_str):
+        if not re.match(r"^[A-Z]{3}/\d{2}$", fecha_str):
             return None
 
         fecha = self._parse_fecha_transaccion(fecha_str)
@@ -373,10 +381,26 @@ class BACPDFParser:
             return None
 
         skip_patterns = [
-            "FECHA", "CONCEPTO", "DÉBITOS", "CRÉDITOS", "SERVICIO AL CLIENTE",
-            "SALDO", "TOTAL", "ÚLTIMA", "Cuenta IBAN", "Moneda:", "Tasas",
-            "Nombre:", "Nomenclatura", "CUADRO", "https://", "Banco BAC",
-            "ACTIVA", "Marca:", "SINPE Móvil", "No tiene celulares",
+            "FECHA",
+            "CONCEPTO",
+            "DÉBITOS",
+            "CRÉDITOS",
+            "SERVICIO AL CLIENTE",
+            "SALDO",
+            "TOTAL",
+            "ÚLTIMA",
+            "Cuenta IBAN",
+            "Moneda:",
+            "Tasas",
+            "Nombre:",
+            "Nomenclatura",
+            "CUADRO",
+            "https://",
+            "Banco BAC",
+            "ACTIVA",
+            "Marca:",
+            "SINPE Móvil",
+            "No tiene celulares",
         ]
         if any(skip in line for skip in skip_patterns):
             return None
@@ -465,7 +489,7 @@ class BACPDFParser:
         montos = []
         concepto_parts = []
 
-        for part in parts[fecha_idx + 1:]:
+        for part in parts[fecha_idx + 1 :]:
             if re.match(r"^[\d,]+\.\d{2}$", part):
                 montos.append(part)
             elif not montos:  # Solo agregar al concepto si no hemos visto montos

@@ -319,8 +319,8 @@ class PatrimonioSnapshot(Base):
 
         if snapshot_anterior.patrimonio_neto_crc != 0:
             self.cambio_porcentual = (
-                (self.cambio_vs_anterior / snapshot_anterior.patrimonio_neto_crc) * 100
-            )
+                self.cambio_vs_anterior / snapshot_anterior.patrimonio_neto_crc
+            ) * 100
         else:
             self.cambio_porcentual = None
 

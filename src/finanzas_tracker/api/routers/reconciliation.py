@@ -9,19 +9,19 @@ ya registradas en el sistema, identificando:
 Costa Rica: Soporta BAC y Banco Popular.
 """
 
-import logging
 from decimal import Decimal
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from finanzas_tracker.core.database import get_db
-from finanzas_tracker.models.enums import BankName, TransactionStatus
 from finanzas_tracker.api.schemas.reconciliation import (
     ReconciliationReportResponse,
 )
+from finanzas_tracker.core.database import get_db
+from finanzas_tracker.models.enums import BankName
 from finanzas_tracker.services.reconciliation_service import (
     MatchStatus,
     ReconciliationService,
@@ -252,9 +252,7 @@ async def import_new_transactions(
         # Filtrar solo los índices solicitados
         if request.indices:
             transactions_to_import = [
-                report.only_in_pdf[i]
-                for i in request.indices
-                if i < len(report.only_in_pdf)
+                report.only_in_pdf[i] for i in request.indices if i < len(report.only_in_pdf)
             ]
         else:
             # Importar todas las transacciones solo_en_pdf

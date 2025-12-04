@@ -4,13 +4,13 @@ Analiza transacciones para detectar patrones de pagos
 recurrentes como Netflix, Spotify, gimnasios, etc.
 """
 
-import logging
-import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
+import logging
+import re
 from statistics import mean, stdev
 
 from sqlalchemy import select
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class SubscriptionFrequency(str, Enum):
     """Frecuencia de suscripción."""
-    
+
     WEEKLY = "semanal"
     BIWEEKLY = "quincenal"
     MONTHLY = "mensual"
@@ -37,7 +37,7 @@ class SubscriptionFrequency(str, Enum):
 @dataclass
 class DetectedSubscription:
     """Suscripción detectada automáticamente."""
-    
+
     comercio: str
     comercio_normalizado: str
     monto_promedio: Decimal
@@ -51,7 +51,7 @@ class DetectedSubscription:
     confianza: int  # 0-100
     transaccion_ids: list[str] = field(default_factory=list)
     variacion_monto: float = 0.0  # Porcentaje de variación
-    
+
     def to_dict(self) -> dict:
         """Convierte a diccionario para JSON."""
         return {
@@ -149,20 +149,24 @@ class SubscriptionDetector:
             Lista de suscripciones detectadas ordenadas por confianza.
         """
         fecha_inicio = date.today() - timedelta(days=meses_atras * 30)
-        
+
         # Obtener transacciones del período
-        stmt = select(Transaction).where(
-            Transaction.profile_id == profile_id,
-            Transaction.fecha_transaccion >= fecha_inicio,
-            Transaction.deleted_at.is_(None),
-            Transaction.es_transferencia_interna.is_(False),
-        ).order_by(Transaction.fecha_transaccion)
-        
+        stmt = (
+            select(Transaction)
+            .where(
+                Transaction.profile_id == profile_id,
+                Transaction.fecha_transaccion >= fecha_inicio,
+                Transaction.deleted_at.is_(None),
+                Transaction.es_transferencia_interna.is_(False),
+            )
+            .order_by(Transaction.fecha_transaccion)
+        )
+
         transacciones = list(self.db.execute(stmt).scalars().all())
-        
+
         # Agrupar por comercio normalizado
         grupos = self._agrupar_por_comercio(transacciones)
-        
+
         # Analizar cada grupo
         suscripciones = []
         for comercio_norm, txs in grupos.items():
@@ -170,15 +174,15 @@ class SubscriptionDetector:
                 sub = self._analizar_grupo(comercio_norm, txs)
                 if sub and sub.confianza >= confianza_minima:
                     suscripciones.append(sub)
-        
+
         # Ordenar por confianza descendente
         suscripciones.sort(key=lambda x: x.confianza, reverse=True)
-        
+
         logger.info(
             f"Detectadas {len(suscripciones)} posibles suscripciones "
             f"para profile {profile_id[:8]}..."
         )
-        
+
         return suscripciones
 
     def detectar_conocidas(
@@ -199,25 +203,29 @@ class SubscriptionDetector:
             Lista de suscripciones conocidas encontradas.
         """
         fecha_inicio = date.today() - timedelta(days=meses_atras * 30)
-        
-        stmt = select(Transaction).where(
-            Transaction.profile_id == profile_id,
-            Transaction.fecha_transaccion >= fecha_inicio,
-            Transaction.deleted_at.is_(None),
-        ).order_by(Transaction.fecha_transaccion)
-        
+
+        stmt = (
+            select(Transaction)
+            .where(
+                Transaction.profile_id == profile_id,
+                Transaction.fecha_transaccion >= fecha_inicio,
+                Transaction.deleted_at.is_(None),
+            )
+            .order_by(Transaction.fecha_transaccion)
+        )
+
         transacciones = list(self.db.execute(stmt).scalars().all())
-        
+
         # Buscar patrones conocidos
         encontradas: dict[str, list[Transaction]] = defaultdict(list)
-        
+
         for tx in transacciones:
             comercio = tx.comercio.upper() if tx.comercio else ""
             for patron, nombre in self.KNOWN_SUBSCRIPTIONS.items():
                 if re.search(patron, comercio):
                     encontradas[nombre].append(tx)
                     break
-        
+
         # Convertir a DetectedSubscription
         suscripciones = []
         for nombre, txs in encontradas.items():
@@ -225,7 +233,7 @@ class SubscriptionDetector:
                 sub = self._analizar_grupo(nombre, txs, es_conocida=True)
                 if sub:
                     suscripciones.append(sub)
-        
+
         return suscripciones
 
     def get_proximo_cobro(
@@ -258,11 +266,11 @@ class SubscriptionDetector:
             Total mensual estimado.
         """
         total = Decimal("0")
-        
+
         for sub in suscripciones:
             # Convertir a mensual según frecuencia
             monto = sub.monto_promedio
-            
+
             if sub.frecuencia == SubscriptionFrequency.WEEKLY:
                 monto = monto * Decimal("4.33")  # ~4.33 semanas/mes
             elif sub.frecuencia == SubscriptionFrequency.BIWEEKLY:
@@ -275,9 +283,9 @@ class SubscriptionDetector:
                 monto = monto / Decimal("6")
             elif sub.frecuencia == SubscriptionFrequency.ANNUAL:
                 monto = monto / Decimal("12")
-            
+
             total += monto
-        
+
         return total.quantize(Decimal("0.01"))
 
     def _agrupar_por_comercio(
@@ -286,33 +294,33 @@ class SubscriptionDetector:
     ) -> dict[str, list[Transaction]]:
         """Agrupa transacciones por comercio normalizado."""
         grupos: dict[str, list[Transaction]] = defaultdict(list)
-        
+
         for tx in transacciones:
             comercio_norm = self._normalizar_comercio(tx.comercio or "")
             if comercio_norm:
                 grupos[comercio_norm].append(tx)
-        
+
         return grupos
 
     def _normalizar_comercio(self, comercio: str) -> str:
         """Normaliza nombre de comercio para agrupación."""
         if not comercio:
             return ""
-        
+
         # Mayúsculas
         norm = comercio.upper()
-        
+
         # Remover números de referencia comunes
         norm = re.sub(r"\d{6,}", "", norm)  # Números largos
         norm = re.sub(r"\*+\d+", "", norm)  # ***1234
         norm = re.sub(r"#\d+", "", norm)  # #12345
-        
+
         # Remover ubicaciones comunes
         norm = re.sub(r"\s+(SAN JOSE|HEREDIA|ALAJUELA|CARTAGO|CR|CRI|COSTA RICA)\b", "", norm)
-        
+
         # Limpiar espacios
         norm = re.sub(r"\s+", " ", norm).strip()
-        
+
         return norm
 
     def _analizar_grupo(
@@ -334,16 +342,16 @@ class SubscriptionDetector:
         """
         if len(transacciones) < 2 and not es_conocida:
             return None
-        
+
         # Ordenar por fecha
         txs = sorted(transacciones, key=lambda x: x.fecha_transaccion)
-        
+
         # Calcular montos
         montos = [tx.monto_original for tx in txs]
         monto_promedio = sum(montos) / len(montos)
         monto_min = min(montos)
         monto_max = max(montos)
-        
+
         # Calcular variación de monto
         if len(montos) > 1 and monto_promedio > 0:
             try:
@@ -352,30 +360,30 @@ class SubscriptionDetector:
                 variacion = 0.0
         else:
             variacion = 0.0
-        
+
         # Calcular días entre cobros
         if len(txs) >= 2:
             dias_entre = []
             for i in range(1, len(txs)):
-                dias = (txs[i].fecha_transaccion - txs[i-1].fecha_transaccion).days
+                dias = (txs[i].fecha_transaccion - txs[i - 1].fecha_transaccion).days
                 if dias > 0:
                     dias_entre.append(dias)
-            
+
             if not dias_entre:
                 return None
-            
+
             dias_promedio = mean(dias_entre)
         else:
             # Para suscripciones conocidas con solo 1 cobro, asumir mensual
             dias_promedio = 30.0
-        
+
         # Determinar frecuencia
         frecuencia = self._determinar_frecuencia(dias_promedio)
         if not frecuencia and not es_conocida:
             return None
-        
+
         frecuencia = frecuencia or SubscriptionFrequency.MONTHLY
-        
+
         # Calcular confianza
         confianza = self._calcular_confianza(
             cantidad_cobros=len(txs),
@@ -384,10 +392,10 @@ class SubscriptionDetector:
             frecuencia=frecuencia,
             es_conocida=es_conocida,
         )
-        
+
         if confianza < 40 and not es_conocida:
             return None
-        
+
         return DetectedSubscription(
             comercio=txs[0].comercio or comercio_norm,
             comercio_normalizado=comercio_norm,
@@ -424,7 +432,7 @@ class SubscriptionDetector:
     ) -> int:
         """Calcula score de confianza (0-100)."""
         score = 50  # Base
-        
+
         # Bonus por cantidad de cobros
         if cantidad_cobros >= 6:
             score += 20
@@ -434,7 +442,7 @@ class SubscriptionDetector:
             score += 10
         elif cantidad_cobros >= 2:
             score += 5
-        
+
         # Bonus/penalización por variación de monto
         if variacion_monto < 1:
             score += 15  # Monto muy consistente
@@ -444,14 +452,14 @@ class SubscriptionDetector:
             score += 5
         elif variacion_monto > 20:
             score -= 15  # Monto muy variable
-        
+
         # Bonus por frecuencia conocida
         if frecuencia in [SubscriptionFrequency.MONTHLY, SubscriptionFrequency.ANNUAL]:
             score += 10  # Frecuencias más comunes
-        
+
         # Bonus por ser suscripción conocida
         if es_conocida:
             score += 20
-        
+
         # Normalizar a 0-100
         return max(0, min(100, score))

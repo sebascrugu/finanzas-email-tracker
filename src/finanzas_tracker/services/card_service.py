@@ -13,8 +13,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 import logging
 
-from sqlalchemy import select, and_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from finanzas_tracker.models.billing_cycle import BillingCycle
 from finanzas_tracker.models.card import Card
@@ -24,6 +24,7 @@ from finanzas_tracker.models.enums import (
     CardPaymentType,
     CardType,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +122,13 @@ class CardService:
             select(BillingCycle)
             .where(
                 BillingCycle.card_id == card_id,
-                BillingCycle.status.in_([
-                    BillingCycleStatus.CLOSED,
-                    BillingCycleStatus.PARTIAL,
-                    BillingCycleStatus.OVERDUE,
-                ]),
+                BillingCycle.status.in_(
+                    [
+                        BillingCycleStatus.CLOSED,
+                        BillingCycleStatus.PARTIAL,
+                        BillingCycleStatus.OVERDUE,
+                    ]
+                ),
                 BillingCycle.deleted_at.is_(None),
             )
             .order_by(BillingCycle.fecha_pago.asc())
@@ -273,10 +276,7 @@ class CardService:
         self.db.commit()
         self.db.refresh(cycle)
 
-        logger.info(
-            f"Ciclo {cycle_id[:8]}... cerrado. "
-            f"Total: ₡{cycle.total_a_pagar:,.0f}"
-        )
+        logger.info(f"Ciclo {cycle_id[:8]}... cerrado. " f"Total: ₡{cycle.total_a_pagar:,.0f}")
         return cycle
 
     def add_purchase_to_cycle(
@@ -368,10 +368,7 @@ class CardService:
         self.db.commit()
         self.db.refresh(payment)
 
-        logger.info(
-            f"Pago registrado: ₡{monto:,.0f} a tarjeta {card_id[:8]}... "
-            f"({tipo.value})"
-        )
+        logger.info(f"Pago registrado: ₡{monto:,.0f} a tarjeta {card_id[:8]}... " f"({tipo.value})")
         return payment
 
     def get_payments_by_card(
@@ -461,13 +458,17 @@ class CardService:
             pago_minimo = (saldo * pago_minimo_pct / 100).quantize(Decimal("0.01"))
             saldo = saldo + interes - pago_minimo
 
-            historial.append({
-                "mes": mes,
-                "saldo_inicial": float(deuda_actual if mes == 1 else historial[-1]["saldo_final"]),
-                "interes": float(interes),
-                "pago_minimo": float(pago_minimo),
-                "saldo_final": float(saldo),
-            })
+            historial.append(
+                {
+                    "mes": mes,
+                    "saldo_inicial": float(
+                        deuda_actual if mes == 1 else historial[-1]["saldo_final"]
+                    ),
+                    "interes": float(interes),
+                    "pago_minimo": float(pago_minimo),
+                    "saldo_final": float(saldo),
+                }
+            )
 
         return {
             "deuda_inicial": float(deuda_actual),
@@ -507,16 +508,18 @@ class CardService:
             for cycle in pending:
                 if hoy <= cycle.fecha_pago <= limite:
                     dias_restantes = (cycle.fecha_pago - hoy).days
-                    alertas.append({
-                        "card_id": card.id,
-                        "card_nombre": card.nombre_display,
-                        "cycle_id": cycle.id,
-                        "fecha_pago": cycle.fecha_pago.isoformat(),
-                        "dias_restantes": dias_restantes,
-                        "monto_pendiente": float(cycle.saldo_pendiente),
-                        "pago_minimo": float(cycle.pago_minimo),
-                        "es_urgente": dias_restantes <= 3,
-                    })
+                    alertas.append(
+                        {
+                            "card_id": card.id,
+                            "card_nombre": card.nombre_display,
+                            "cycle_id": cycle.id,
+                            "fecha_pago": cycle.fecha_pago.isoformat(),
+                            "dias_restantes": dias_restantes,
+                            "monto_pendiente": float(cycle.saldo_pendiente),
+                            "pago_minimo": float(cycle.pago_minimo),
+                            "es_urgente": dias_restantes <= 3,
+                        }
+                    )
 
         return sorted(alertas, key=lambda x: x["dias_restantes"])
 
@@ -543,21 +546,23 @@ class CardService:
                         self.db.commit()
 
                     dias_vencido = (date.today() - cycle.fecha_pago).days
-                    vencidos.append({
-                        "card_id": card.id,
-                        "card_nombre": card.nombre_display,
-                        "cycle_id": cycle.id,
-                        "fecha_pago": cycle.fecha_pago.isoformat(),
-                        "dias_vencido": dias_vencido,
-                        "monto_pendiente": float(cycle.saldo_pendiente),
-                        "interes_estimado": float(
-                            cycle.saldo_pendiente *
-                            (card.interest_rate_annual or Decimal("52")) /
-                            Decimal("365") *
-                            dias_vencido /
-                            100
-                        ),
-                    })
+                    vencidos.append(
+                        {
+                            "card_id": card.id,
+                            "card_nombre": card.nombre_display,
+                            "cycle_id": cycle.id,
+                            "fecha_pago": cycle.fecha_pago.isoformat(),
+                            "dias_vencido": dias_vencido,
+                            "monto_pendiente": float(cycle.saldo_pendiente),
+                            "interes_estimado": float(
+                                cycle.saldo_pendiente
+                                * (card.interest_rate_annual or Decimal("52"))
+                                / Decimal("365")
+                                * dias_vencido
+                                / 100
+                            ),
+                        }
+                    )
 
         return sorted(vencidos, key=lambda x: x["dias_vencido"], reverse=True)
 
@@ -611,14 +616,15 @@ class CardService:
             "deuda_total": float(total_debt),
             "disponible": float(disponible) if disponible else None,
             "porcentaje_usado": (
-                float(total_debt / card.limite_credito * 100)
-                if card.limite_credito else None
+                float(total_debt / card.limite_credito * 100) if card.limite_credito else None
             ),
             "ciclo_actual": {
                 "id": current_cycle.id,
                 "periodo": f"{current_cycle.fecha_inicio} - {current_cycle.fecha_corte}",
                 "total_periodo": float(current_cycle.total_periodo),
-            } if current_cycle else None,
+            }
+            if current_cycle
+            else None,
             "proximo_pago": next_payment,
             "ciclos_pendientes": len(pending_cycles),
             "ultimos_pagos": [

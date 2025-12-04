@@ -347,9 +347,7 @@ class InsightsService:
                     )
 
             # Detectar concentración de gastos pequeños
-            small_transactions = [
-                t for t in data["current_month"] if float(t.monto_crc) < 5000
-            ]
+            small_transactions = [t for t in data["current_month"] if float(t.monto_crc) < 5000]
             if len(small_transactions) > 20:
                 total_small = sum(float(t.monto_crc) for t in small_transactions)
                 pct_of_total = (total_small / float(data["total_current"])) * 100
@@ -537,15 +535,11 @@ Responde ÚNICAMENTE con un JSON válido:
             "numero_transacciones": len(current_transactions),
             "promedio_por_transaccion": avg_transaction,
             "cambio_vs_mes_anterior": (
-                float(
-                    ((data["total_current"] - data["total_last"]) / data["total_last"]) * 100
-                )
+                float(((data["total_current"] - data["total_last"]) / data["total_last"]) * 100)
                 if data["total_last"] > 0
                 else 0
             ),
-            "top_categorias": [
-                {"nombre": cat, "monto": float(amt)} for cat, amt in top_categories
-            ],
+            "top_categorias": [{"nombre": cat, "monto": float(amt)} for cat, amt in top_categories],
             "top_comercios": [
                 {
                     "nombre": merchant,

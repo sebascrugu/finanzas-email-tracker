@@ -241,7 +241,7 @@ class TestE2EInternalTransferFlow:
         tx.deleted_at = None
 
         resultado = detector.es_pago_tarjeta(tx)
-        
+
         # Debe retornar un PagoTarjetaDetectado, no None
         assert resultado is not None
         assert resultado.ultimos_4_digitos == "1234"
@@ -259,7 +259,7 @@ class TestE2EInternalTransferFlow:
         tx1.fecha_transaccion = date.today()
         tx1.es_transferencia_interna = False
         tx1.deleted_at = None
-        
+
         resultado1 = detector.es_transferencia_interna(tx1)
         # Debe detectar como transferencia interna
         assert resultado1 is not None
@@ -276,7 +276,7 @@ class TestE2EInternalTransferFlow:
         tx.fecha_transaccion = date.today()
         tx.es_transferencia_interna = False
         tx.deleted_at = None
-        
+
         resultado = detector.es_transferencia_interna(tx)
         # No debe ser detectada como transferencia interna
         assert resultado is None
@@ -452,8 +452,6 @@ class TestE2EEdgeCases:
 
         # Debería detectar aunque el monto varíe
         # El tipo debería ser utility
-        utility_predictions = [
-            p for p in predicciones if p.tipo == ExpenseType.UTILITY
-        ]
+        utility_predictions = [p for p in predicciones if p.tipo == ExpenseType.UTILITY]
         # Puede o no detectarse dependiendo de la variación permitida
         assert len(predicciones) >= 0

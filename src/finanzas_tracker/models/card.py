@@ -192,7 +192,9 @@ class Card(Base):
             return f"{self.alias} (****{self.ultimos_4_digitos})"
 
         tipo_display = "Débito" if self.tipo == CardType.DEBIT else "Crédito"
-        banco_display = self.banco.upper() if isinstance(self.banco, str) else self.banco.value.upper()
+        banco_display = (
+            self.banco.upper() if isinstance(self.banco, str) else self.banco.value.upper()
+        )
         return f"{tipo_display} {banco_display} ****{self.ultimos_4_digitos}"
 
     @property

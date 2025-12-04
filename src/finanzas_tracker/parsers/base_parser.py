@@ -145,7 +145,7 @@ class BaseParser(ABC):
         if monto == Decimal("0.00") or monto == Decimal("0"):
             logger.info(f"Pre-autorización ignorada (monto $0): {subject}")
             return "SKIP"  # Return especial para indicar que debe ignorarse silenciosamente
-        
+
         if monto < MIN_TRANSACTION_AMOUNT:
             return f"Monto invalido (<{MIN_TRANSACTION_AMOUNT}): {monto} en correo: {subject}"
         if moneda not in SUPPORTED_CURRENCIES:

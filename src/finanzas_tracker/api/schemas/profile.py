@@ -8,7 +8,9 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class ProfileBase(BaseModel):
     """Campos base de perfil."""
 
-    email_outlook: EmailStr = Field(..., description="Email de Outlook para buscar correos bancarios")
+    email_outlook: EmailStr = Field(
+        ..., description="Email de Outlook para buscar correos bancarios"
+    )
     nombre: str = Field(..., min_length=1, max_length=100, description="Nombre del perfil")
 
 

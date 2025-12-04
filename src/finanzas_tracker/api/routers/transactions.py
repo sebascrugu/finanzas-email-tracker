@@ -259,6 +259,7 @@ def get_monthly_stats(
 
 # ============ Endpoints para Comercios Ambiguos ============
 
+
 @router.get("/ambiguous/pending", response_model=list[AmbiguousTransactionResponse])
 def get_pending_ambiguous(
     db: DBSession,

@@ -5,8 +5,6 @@ Estos tests usan formatos reales de correos de transferencias de BAC
 incluyendo SINPE Móvil y transferencias locales regulares.
 """
 
-from datetime import datetime
-
 import pytest
 
 from finanzas_tracker.parsers.bac_parser import BACParser
@@ -258,9 +256,7 @@ class TestBACParserTransferenciaEdgeCases:
         assert result is not None
         assert result["monto_original"] == 100.0
 
-    def test_no_detecta_transferencia_sin_keyword_en_subject(
-        self, parser: BACParser
-    ) -> None:
+    def test_no_detecta_transferencia_sin_keyword_en_subject(self, parser: BACParser) -> None:
         """Test que no se detecta transferencia si el subject no lo indica."""
         email_data = {
             "id": "test-edge-004",
@@ -316,9 +312,7 @@ class TestBACParserTransferenciaVsCompra:
         # No debe ser transferencia
         assert result.get("tipo_transaccion") != "transferencia"
 
-    def test_subject_transferencia_activa_parser_correcto(
-        self, parser: BACParser
-    ) -> None:
+    def test_subject_transferencia_activa_parser_correcto(self, parser: BACParser) -> None:
         """Test que el subject con 'Transferencia' activa el parser correcto."""
         # Con subject de transferencia
         email_transfer = {

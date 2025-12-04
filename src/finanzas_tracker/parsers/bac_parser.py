@@ -2,8 +2,8 @@
 
 from datetime import datetime
 import re
-import unicodedata
 from typing import Any
+import unicodedata
 
 from bs4 import BeautifulSoup
 
@@ -38,36 +38,44 @@ class BACParser(BaseParser):
         # Normalizar subject para manejar diferentes formas de Unicode (NFC vs NFD)
         subject = normalize_text(email_data.get("subject", "").lower())
         text = normalize_text(soup.get_text(separator=" ", strip=True).lower())
-        
+
         # PRIMERO: Skip avisos de configuración silenciosamente (no son transacciones)
         # Esto DEBE ir primero para evitar falsos positivos con "transferencia" en el subject
         config_keywords = [
-            "aviso bac", "activación", "activacion",
-            "afiliación sinpe", "desafiliación sinpe",
-            "afiliacion sinpe", "desafiliacion sinpe",
-            "afiliación", "afiliacion", "desafiliación", "desafiliacion",
-            "cambio de pin", "cambio de clave",
+            "aviso bac",
+            "activación",
+            "activacion",
+            "afiliación sinpe",
+            "desafiliación sinpe",
+            "afiliacion sinpe",
+            "desafiliacion sinpe",
+            "afiliación",
+            "afiliacion",
+            "desafiliación",
+            "desafiliacion",
+            "cambio de pin",
+            "cambio de clave",
         ]
         if any(kw in subject for kw in config_keywords):
             logger.info(f"Aviso de configuración ignorado: {email_data.get('subject', '')[:50]}")
             return "SKIP"
-        
+
         # Retiro sin tarjeta
         if "retiro sin tarjeta" in subject:
             return self._parse_retiro_sin_tarjeta(soup, email_data)
-        
+
         # Pago de tarjeta de crédito
         if "notificación de pago" in subject or "comprobante de pago" in text:
             return self._parse_pago_tarjeta(soup, email_data)
-        
+
         # Transferencia SINPE recibida (ingreso)
         if "sinpe" in subject and "recibió una transferencia" in text:
             return self._parse_transferencia_sinpe_recibida(soup, email_data)
-        
+
         # Transferencia enviada (gasto)
         if "transferencia" in subject and "realizó una transferencia" in text:
             return self._parse_transferencia(soup, email_data)
-        
+
         return None
 
     def _extract_comercio(self, soup: BeautifulSoup, subject: str) -> str:
@@ -322,9 +330,7 @@ class BACParser(BaseParser):
             },
         }
 
-    def _extract_fecha_transferencia(
-        self, text: str, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha_transferencia(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de una transferencia."""
         # Buscar patrón: "el día DD-MM-YYYY a las HH:MM:SS"
         fecha_match = re.search(
@@ -382,9 +388,7 @@ class BACParser(BaseParser):
             return match.group(1)
         return ""
 
-    def _build_comercio_transferencia(
-        self, destinatario: str, concepto: str
-    ) -> str:
+    def _build_comercio_transferencia(self, destinatario: str, concepto: str) -> str:
         """Construye la descripción del comercio para una transferencia."""
         if concepto:
             return f"TRANSFERENCIA A {destinatario} - {concepto}"
@@ -399,9 +403,9 @@ class BACParser(BaseParser):
         Parsea correos de transferencia SINPE recibida (ingresos).
 
         Formato esperado:
-            BAC Credomatic le comunica que recibió una transferencia SINPE 
-            con el número de referencia XXXX a su cuenta IBAN XXXX 
-            por un monto de X,XXX.XX Colones por concepto XXXX, 
+            BAC Credomatic le comunica que recibió una transferencia SINPE
+            con el número de referencia XXXX a su cuenta IBAN XXXX
+            por un monto de X,XXX.XX Colones por concepto XXXX,
             la cual se aplicó correctamente el día DD/MM/YYYY a las HH:MM PM.
 
         Args:
@@ -425,7 +429,7 @@ class BACParser(BaseParser):
 
         monto_str = monto_match.group(1)
         moneda_raw = monto_match.group(2)
-        
+
         # Normalizar moneda
         moneda = "CRC" if moneda_raw.lower() in ["colones", "crc"] else "USD"
 
@@ -472,9 +476,7 @@ class BACParser(BaseParser):
             },
         }
 
-    def _extract_fecha_sinpe_recibido(
-        self, text: str, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha_sinpe_recibido(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de un SINPE recibido."""
         # Buscar patrón: "el día DD/MM/YYYY a las HH:MM PM"
         fecha_match = re.search(
@@ -486,19 +488,19 @@ class BACParser(BaseParser):
             fecha_str = fecha_match.group(1)
             hora_str = fecha_match.group(2)
             am_pm = fecha_match.group(3)
-            
+
             try:
                 fecha = datetime.strptime(fecha_str, "%d/%m/%Y")
                 hora_parts = hora_str.split(":")
                 hora = int(hora_parts[0])
                 minutos = int(hora_parts[1])
-                
+
                 # Ajustar por AM/PM
                 if am_pm and am_pm.upper() == "PM" and hora < 12:
                     hora += 12
                 elif am_pm and am_pm.upper() == "AM" and hora == 12:
                     hora = 0
-                
+
                 return fecha.replace(hour=hora, minute=minutos)
             except ValueError:
                 pass
@@ -575,7 +577,7 @@ class BACParser(BaseParser):
                 text,
                 re.IGNORECASE,
             )
-        
+
         if not monto_match:
             logger.warning("No se pudo extraer monto de pago de tarjeta")
             return None
@@ -627,9 +629,7 @@ class BACParser(BaseParser):
             },
         }
 
-    def _extract_fecha_pago_tarjeta(
-        self, text: str, email_data: dict[str, Any]
-    ) -> datetime:
+    def _extract_fecha_pago_tarjeta(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de un pago de tarjeta."""
         # Buscar patrón: "Fecha de pago: YYYY/MM/DD HH:MM:SS"
         fecha_match = re.search(

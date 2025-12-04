@@ -5,18 +5,18 @@ del usuario, como pagos de tarjeta de crédito, transferencias
 entre cuentas, etc.
 """
 
-import logging
-import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
+import logging
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.models.card import Card
+from finanzas_tracker.models.enums import CardType
 from finanzas_tracker.models.transaction import Transaction
-from finanzas_tracker.models.enums import TransactionType, CardType
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PagoTarjetaDetectado:
     """Resultado de detección de pago de tarjeta."""
-    
+
     transaccion: Transaction
     tarjeta: Card | None
     monto: Decimal
@@ -37,7 +37,7 @@ class PagoTarjetaDetectado:
 @dataclass
 class TransferenciaInternaDetectada:
     """Resultado de detección de transferencia interna."""
-    
+
     transaccion_origen: Transaction
     transaccion_destino: Transaction | None
     monto: Decimal
@@ -93,22 +93,22 @@ class InternalTransferDetector:
             PagoTarjetaDetectado si es un pago, None si no.
         """
         descripcion = tx.comercio.upper() if tx.comercio else ""
-        
+
         for patron, confianza_base in self.PATRONES_PAGO_TARJETA:
             if re.search(patron, descripcion, re.IGNORECASE):
                 # Extraer últimos 4 dígitos si están presentes
                 ultimos_4 = self._extraer_ultimos_4(descripcion)
-                
+
                 # Buscar la tarjeta correspondiente
                 tarjeta = self._buscar_tarjeta(tx.profile_id, ultimos_4)
-                
+
                 # Ajustar confianza si encontramos la tarjeta
                 confianza = confianza_base
                 if tarjeta:
                     confianza = min(100, confianza + 5)
                 elif ultimos_4:
                     confianza = max(0, confianza - 10)
-                
+
                 logger.info(
                     "Pago de tarjeta detectado: txn=%s, monto=%s, tarjeta=%s, confianza=%d",
                     tx.id,
@@ -116,7 +116,7 @@ class InternalTransferDetector:
                     ultimos_4 or "desconocida",
                     confianza,
                 )
-                
+
                 return PagoTarjetaDetectado(
                     transaccion=tx,
                     tarjeta=tarjeta,
@@ -125,7 +125,7 @@ class InternalTransferDetector:
                     confianza=confianza,
                     patron_matched=patron,
                 )
-        
+
         return None
 
     def es_transferencia_interna(
@@ -150,15 +150,15 @@ class InternalTransferDetector:
                 tipo="pago_tarjeta",
                 confianza=pago_tarjeta.confianza,
             )
-        
+
         # Buscar otros patrones de transferencia interna
         descripcion = tx.comercio.upper() if tx.comercio else ""
-        
+
         for patron, confianza in self.PATRONES_TRANSFERENCIA_INTERNA:
             if re.search(patron, descripcion, re.IGNORECASE):
                 # Buscar transacción de contrapartida
                 contrapartida = self._buscar_contrapartida(tx)
-                
+
                 return TransferenciaInternaDetectada(
                     transaccion_origen=tx,
                     transaccion_destino=contrapartida,
@@ -166,7 +166,7 @@ class InternalTransferDetector:
                     tipo="entre_cuentas" if contrapartida else "ahorro",
                     confianza=confianza if contrapartida else max(0, confianza - 15),
                 )
-        
+
         return None
 
     def procesar_pago_tarjeta(
@@ -186,31 +186,31 @@ class InternalTransferDetector:
         pago = self.es_pago_tarjeta(tx)
         if not pago:
             return tx, None
-        
+
         # Marcar la transacción como transferencia interna
         tx.es_transferencia_interna = True
         tx.tipo_especial = "pago_tarjeta"
         tx.excluir_de_presupuesto = True
-        
+
         # Si encontramos la tarjeta, actualizar su saldo
         if pago.tarjeta:
             if pago.tarjeta.current_balance:
                 pago.tarjeta.current_balance -= pago.monto
                 if pago.tarjeta.current_balance < 0:
                     pago.tarjeta.current_balance = Decimal("0.00")
-            
+
             tx.card_id = pago.tarjeta.id
-            
+
             logger.info(
                 "Procesado pago de tarjeta: txn=%s, tarjeta=****%s, nuevo_saldo=%s",
                 tx.id,
                 pago.tarjeta.ultimos_4_digitos,
                 pago.tarjeta.current_balance,
             )
-        
+
         self.db.commit()
         self.db.refresh(tx)
-        
+
         return tx, pago.tarjeta
 
     def vincular_pago_con_tarjeta(
@@ -229,12 +229,12 @@ class InternalTransferDetector:
         """
         descripcion = tx.comercio.upper() if tx.comercio else ""
         ultimos_4 = self._extraer_ultimos_4(descripcion)
-        
+
         if ultimos_4:
             for tarjeta in tarjetas:
                 if tarjeta.ultimos_4_digitos == ultimos_4:
                     return tarjeta
-        
+
         # Si no hay dígitos, buscar por monto similar en saldo de tarjeta
         # (heurística: el pago suele ser igual o cercano al saldo)
         for tarjeta in tarjetas:
@@ -242,7 +242,7 @@ class InternalTransferDetector:
                 diferencia = abs(tarjeta.current_balance - tx.monto_original)
                 if diferencia < Decimal("1000"):  # Tolerancia de ₡1000
                     return tarjeta
-        
+
         return None
 
     def detectar_y_marcar_transferencias(
@@ -265,33 +265,33 @@ class InternalTransferDetector:
             "ahorro": 0,
             "total_marcadas": 0,
         }
-        
+
         for tx in transacciones:
             if tx.es_transferencia_interna:
                 # Ya fue marcada
                 continue
-            
+
             deteccion = self.es_transferencia_interna(tx)
             if deteccion:
                 tx.es_transferencia_interna = True
                 tx.excluir_de_presupuesto = True
                 tx.tipo_especial = deteccion.tipo
-                
+
                 conteo[deteccion.tipo] = conteo.get(deteccion.tipo, 0) + 1
                 conteo["total_marcadas"] += 1
-                
+
                 # Si es pago de tarjeta, procesar
                 if deteccion.tipo == "pago_tarjeta":
                     self.procesar_pago_tarjeta(tx, profile_id)
-        
+
         self.db.commit()
-        
+
         logger.info(
             "Transferencias internas detectadas para profile %s: %s",
             profile_id,
             conteo,
         )
-        
+
         return conteo
 
     def _extraer_ultimos_4(self, texto: str) -> str | None:
@@ -306,12 +306,12 @@ class InternalTransferDetector:
         match = self.REGEX_ULTIMOS_4.search(texto)
         if match:
             return match.group(1)
-        
+
         # Buscar 4 dígitos al final
         match_simple = re.search(r"(\d{4})\s*$", texto)
         if match_simple:
             return match_simple.group(1)
-        
+
         return None
 
     def _buscar_tarjeta(
@@ -330,14 +330,14 @@ class InternalTransferDetector:
         """
         if not ultimos_4:
             return None
-        
+
         stmt = select(Card).where(
             Card.profile_id == profile_id,
             Card.ultimos_4_digitos == ultimos_4,
             Card.tipo == CardType.CREDIT,
             Card.deleted_at.is_(None),
         )
-        
+
         return self.db.execute(stmt).scalar_one_or_none()
 
     def _buscar_contrapartida(
@@ -358,7 +358,7 @@ class InternalTransferDetector:
         """
         fecha_inicio = tx.fecha_transaccion
         fecha_fin = fecha_inicio + timedelta(days=1)
-        
+
         stmt = select(Transaction).where(
             Transaction.profile_id == tx.profile_id,
             Transaction.id != tx.id,
@@ -369,7 +369,7 @@ class InternalTransferDetector:
             # Buscar tipo opuesto (si uno es gasto, el otro es ingreso)
             Transaction.tipo_transaccion != tx.tipo_transaccion,
         )
-        
+
         return self.db.execute(stmt).scalar_one_or_none()
 
     def get_resumen_transferencias(
@@ -393,23 +393,23 @@ class InternalTransferDetector:
             Transaction.es_transferencia_interna.is_(True),
             Transaction.deleted_at.is_(None),
         )
-        
+
         if fecha_inicio:
             stmt = stmt.where(Transaction.fecha_transaccion >= fecha_inicio)
         if fecha_fin:
             stmt = stmt.where(Transaction.fecha_transaccion <= fecha_fin)
-        
+
         transacciones = list(self.db.execute(stmt).scalars().all())
-        
+
         resumen = {
             "total": len(transacciones),
             "por_tipo": {},
             "monto_total": Decimal("0.00"),
         }
-        
+
         for tx in transacciones:
             tipo = tx.tipo_especial or "otro"
             resumen["por_tipo"][tipo] = resumen["por_tipo"].get(tipo, 0) + 1
             resumen["monto_total"] += tx.monto_original
-        
+
         return resumen

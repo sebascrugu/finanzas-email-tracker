@@ -15,16 +15,16 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 import logging
-from typing import Any
 
-from sqlalchemy import select, and_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from finanzas_tracker.models import Transaction, Card
-from finanzas_tracker.models.enums import BankName, TransactionStatus, ReconciliationStatus
+from finanzas_tracker.models import Transaction
+from finanzas_tracker.models.enums import BankName, ReconciliationStatus, TransactionStatus
 from finanzas_tracker.models.reconciliation_report import (
     ReconciliationReport as ReconciliationReportModel,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -167,9 +167,7 @@ class ReconciliationService:
             ReconciliationResult con resultados
         """
         # Obtener transacciones del sistema en el período
-        system_txns = self._get_system_transactions(
-            profile_id, periodo_inicio, periodo_fin
-        )
+        system_txns = self._get_system_transactions(profile_id, periodo_inicio, periodo_fin)
 
         report = ReconciliationResult(
             periodo_inicio=periodo_inicio,
@@ -185,8 +183,7 @@ class ReconciliationService:
         # Intentar matchear cada transacción del PDF
         for i, pdf_tx in enumerate(pdf_transactions):
             best_match = self._find_best_match(
-                pdf_tx, system_txns, matched_system_ids,
-                tolerance_days, tolerance_amount
+                pdf_tx, system_txns, matched_system_ids, tolerance_days, tolerance_amount
             )
 
             if best_match:
@@ -194,38 +191,46 @@ class ReconciliationService:
 
                 if amount_diff and abs(amount_diff) > tolerance_amount:
                     # Monto diferente
-                    report.amount_mismatches.append(ReconciliationMatch(
-                        status=MatchStatus.AMOUNT_MISMATCH,
-                        pdf_transaction=pdf_tx,
-                        system_transaction=sys_tx,
-                        amount_difference=amount_diff,
-                        confidence=confidence,
-                    ))
+                    report.amount_mismatches.append(
+                        ReconciliationMatch(
+                            status=MatchStatus.AMOUNT_MISMATCH,
+                            pdf_transaction=pdf_tx,
+                            system_transaction=sys_tx,
+                            amount_difference=amount_diff,
+                            confidence=confidence,
+                        )
+                    )
                 else:
                     # Match perfecto o dentro de tolerancia
-                    report.matched.append(ReconciliationMatch(
-                        status=MatchStatus.MATCHED,
-                        pdf_transaction=pdf_tx,
-                        system_transaction=sys_tx,
-                        confidence=confidence,
-                    ))
+                    report.matched.append(
+                        ReconciliationMatch(
+                            status=MatchStatus.MATCHED,
+                            pdf_transaction=pdf_tx,
+                            system_transaction=sys_tx,
+                            confidence=confidence,
+                        )
+                    )
 
                 matched_pdf_indices.add(i)
                 matched_system_ids.add(sys_tx.id)
             else:
                 # No hay match - transacción solo en PDF
-                report.only_in_pdf.append(ReconciliationMatch(
-                    status=MatchStatus.ONLY_IN_PDF,
-                    pdf_transaction=pdf_tx,
-                ))
+                report.only_in_pdf.append(
+                    ReconciliationMatch(
+                        status=MatchStatus.ONLY_IN_PDF,
+                        pdf_transaction=pdf_tx,
+                    )
+                )
 
         # Transacciones del sistema sin match
         for sys_tx in system_txns:
             if sys_tx.id not in matched_system_ids:
-                report.only_in_system.append(ReconciliationMatch(
-                    status=MatchStatus.ONLY_IN_SYSTEM,
-                    system_transaction=sys_tx,
-                ))
+                report.only_in_system.append(
+                    ReconciliationMatch(
+                        status=MatchStatus.ONLY_IN_SYSTEM,
+                        system_transaction=sys_tx,
+                    )
+                )
 
         logger.info(
             f"Reconciliación completada: {len(report.matched)} matches, "
@@ -242,12 +247,16 @@ class ReconciliationService:
         fecha_fin: date,
     ) -> list[Transaction]:
         """Obtiene transacciones del sistema en el período."""
-        stmt = select(Transaction).where(
-            Transaction.profile_id == profile_id,
-            Transaction.fecha_transaccion >= fecha_inicio,
-            Transaction.fecha_transaccion <= fecha_fin,
-            Transaction.deleted_at.is_(None),
-        ).order_by(Transaction.fecha_transaccion)
+        stmt = (
+            select(Transaction)
+            .where(
+                Transaction.profile_id == profile_id,
+                Transaction.fecha_transaccion >= fecha_inicio,
+                Transaction.fecha_transaccion <= fecha_fin,
+                Transaction.deleted_at.is_(None),
+            )
+            .order_by(Transaction.fecha_transaccion)
+        )
 
         return list(self.db.execute(stmt).scalars().all())
 
@@ -386,7 +395,9 @@ class ReconciliationService:
             tx = Transaction(
                 profile_id=profile_id,
                 card_id=default_card_id,
-                fecha_transaccion=date.fromisoformat(str(pdf_tx["fecha"])) if isinstance(pdf_tx["fecha"], str) else pdf_tx["fecha"],
+                fecha_transaccion=date.fromisoformat(str(pdf_tx["fecha"]))
+                if isinstance(pdf_tx["fecha"], str)
+                else pdf_tx["fecha"],
                 comercio_original=pdf_tx.get("comercio", "Transacción importada"),
                 monto_original=Decimal(str(pdf_tx.get("monto", 0))),
                 moneda_original=pdf_tx.get("moneda", "CRC"),
@@ -486,8 +497,7 @@ class ReconciliationService:
                 periodo_inicio=fecha_inicio,
                 periodo_fin=fecha_fin,
             )
-        else:
-            raise ValueError(f"Banco {banco} no soportado para reconciliación")
+        raise ValueError(f"Banco {banco} no soportado para reconciliación")
 
     # =========================================================================
     # Persistencia de Reportes de Reconciliación
@@ -530,20 +540,12 @@ class ReconciliationService:
         )
 
         # Extraer IDs de transacciones del sistema
-        ids_coincidentes = [
-            m.system_transaction.id
-            for m in result.matched
-            if m.system_transaction
-        ]
+        ids_coincidentes = [m.system_transaction.id for m in result.matched if m.system_transaction]
         ids_discrepantes = [
-            m.system_transaction.id
-            for m in result.amount_mismatches
-            if m.system_transaction
+            m.system_transaction.id for m in result.amount_mismatches if m.system_transaction
         ]
         ids_huerfanas = [
-            m.system_transaction.id
-            for m in result.only_in_system
-            if m.system_transaction
+            m.system_transaction.id for m in result.only_in_system if m.system_transaction
         ]
 
         reporte = ReconciliationReportModel(

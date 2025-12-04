@@ -4,17 +4,14 @@ Endpoints para detectar y listar suscripciones recurrentes.
 """
 
 from datetime import date
-from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.api.dependencies import get_db
 from finanzas_tracker.services.subscription_detector import (
-    DetectedSubscription,
     SubscriptionDetector,
-    SubscriptionFrequency,
 )
 
 
@@ -50,14 +47,18 @@ class SubscriptionListResponse(BaseModel):
 
     suscripciones: list[SubscriptionResponse]
     total: int = Field(..., description="Total de suscripciones detectadas")
-    gasto_mensual_estimado: float = Field(..., description="Gasto mensual estimado en suscripciones")
+    gasto_mensual_estimado: float = Field(
+        ..., description="Gasto mensual estimado en suscripciones"
+    )
 
 
 class SubscriptionDetectRequest(BaseModel):
     """Request para detectar suscripciones."""
 
     meses_atras: int = Field(6, ge=1, le=24, description="Meses de historial a analizar")
-    min_ocurrencias: int = Field(2, ge=2, le=12, description="Mínimo de cobros para considerar suscripción")
+    min_ocurrencias: int = Field(
+        2, ge=2, le=12, description="Mínimo de cobros para considerar suscripción"
+    )
     confianza_minima: int = Field(50, ge=0, le=100, description="Confianza mínima requerida")
 
 
@@ -79,16 +80,16 @@ def list_subscriptions(
     como Netflix, Spotify, servicios, etc.
     """
     detector = SubscriptionDetector(db)
-    
+
     suscripciones = detector.detectar_suscripciones(
         profile_id=profile_id,
         meses_atras=meses_atras,
         confianza_minima=confianza_minima,
     )
-    
+
     # Calcular gasto mensual
     gasto_mensual = detector.get_gasto_mensual_suscripciones(suscripciones)
-    
+
     # Convertir a response
     responses = []
     for sub in suscripciones:
@@ -109,7 +110,7 @@ def list_subscriptions(
                 proximo_cobro=proximo,
             )
         )
-    
+
     return SubscriptionListResponse(
         suscripciones=responses,
         total=len(responses),
@@ -129,18 +130,18 @@ def detect_subscriptions(
     """
     if request is None:
         request = SubscriptionDetectRequest()
-    
+
     detector = SubscriptionDetector(db)
-    
+
     suscripciones = detector.detectar_suscripciones(
         profile_id=profile_id,
         meses_atras=request.meses_atras,
         min_ocurrencias=request.min_ocurrencias,
         confianza_minima=request.confianza_minima,
     )
-    
+
     gasto_mensual = detector.get_gasto_mensual_suscripciones(suscripciones)
-    
+
     responses = []
     for sub in suscripciones:
         proximo = detector.get_proximo_cobro(sub)
@@ -160,7 +161,7 @@ def detect_subscriptions(
                 proximo_cobro=proximo,
             )
         )
-    
+
     return SubscriptionListResponse(
         suscripciones=responses,
         total=len(responses),
@@ -180,14 +181,14 @@ def list_known_subscriptions(
     con alta precisión usando patrones específicos.
     """
     detector = SubscriptionDetector(db)
-    
+
     suscripciones = detector.detectar_conocidas(
         profile_id=profile_id,
         meses_atras=meses_atras,
     )
-    
+
     gasto_mensual = detector.get_gasto_mensual_suscripciones(suscripciones)
-    
+
     responses = []
     for sub in suscripciones:
         proximo = detector.get_proximo_cobro(sub)
@@ -207,7 +208,7 @@ def list_known_subscriptions(
                 proximo_cobro=proximo,
             )
         )
-    
+
     return SubscriptionListResponse(
         suscripciones=responses,
         total=len(responses),
@@ -225,14 +226,14 @@ def get_monthly_subscription_total(
     Retorna un resumen rápido del gasto mensual estimado.
     """
     detector = SubscriptionDetector(db)
-    
+
     suscripciones = detector.detectar_suscripciones(
         profile_id=profile_id,
         confianza_minima=60,
     )
-    
+
     gasto_mensual = detector.get_gasto_mensual_suscripciones(suscripciones)
-    
+
     return {
         "profile_id": profile_id,
         "gasto_mensual_estimado": float(gasto_mensual),

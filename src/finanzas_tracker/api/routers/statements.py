@@ -6,15 +6,12 @@ Endpoints para:
 - Procesar todos los pendientes
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 
-from finanzas_tracker.core.database import get_db
 from finanzas_tracker.services.statement_email_service import (
-    StatementEmailService,
     StatementEmailInfo,
-    ProcessedStatement,
+    StatementEmailService,
 )
 
 
@@ -25,27 +22,28 @@ router = APIRouter(prefix="/statements", tags=["Statements - Email"])
 # Schemas
 # ============================================================================
 
+
 class StatementEmailResponse(BaseModel):
     """Respuesta con información de un estado de cuenta por email."""
-    
+
     email_id: str
     subject: str
     sender: str
     received_date: str
     attachment_name: str
     attachment_size_kb: float
-    
+
     model_config = {"from_attributes": True}
 
 
 class ProcessedStatementResponse(BaseModel):
     """Respuesta de un estado de cuenta procesado."""
-    
+
     email_subject: str
     attachment_name: str
     success: bool
     error: str | None = None
-    
+
     # Datos del estado si fue exitoso
     titular: str | None = None
     fecha_corte: str | None = None
@@ -55,7 +53,7 @@ class ProcessedStatementResponse(BaseModel):
 
 class ProcessAllResponse(BaseModel):
     """Respuesta del procesamiento masivo."""
-    
+
     total_encontrados: int
     procesados_exitosos: int
     procesados_fallidos: int
@@ -65,6 +63,7 @@ class ProcessAllResponse(BaseModel):
 # ============================================================================
 # Endpoints
 # ============================================================================
+
 
 @router.get(
     "/email/search",
@@ -76,15 +75,15 @@ def search_statement_emails(
 ) -> list[StatementEmailResponse]:
     """
     Busca correos con estados de cuenta PDF adjuntos.
-    
+
     Busca en los últimos N días correos de BAC Credomatic que contengan
     estados de cuenta en formato PDF.
     """
     service = StatementEmailService()
-    
+
     try:
         statements = service.fetch_statement_emails(days_back=days_back)
-        
+
         return [
             StatementEmailResponse(
                 email_id=stmt.email_id,
@@ -96,7 +95,7 @@ def search_statement_emails(
             )
             for stmt in statements
         ]
-        
+
     except RuntimeError as e:
         raise HTTPException(
             status_code=401,
@@ -121,11 +120,11 @@ def process_single_statement(
 ) -> ProcessedStatementResponse:
     """
     Procesa un estado de cuenta específico.
-    
+
     Descarga el PDF adjunto, lo parsea y extrae las transacciones.
     """
     service = StatementEmailService()
-    
+
     # Crear StatementEmailInfo mínimo para procesar
     stmt_info = StatementEmailInfo(
         email_id=email_id,
@@ -136,10 +135,10 @@ def process_single_statement(
         attachment_name="statement.pdf",
         attachment_size=0,
     )
-    
+
     try:
         result = service.process_statement(stmt_info, save_pdf=save_pdf)
-        
+
         if result.error:
             return ProcessedStatementResponse(
                 email_subject=stmt_info.subject,
@@ -147,7 +146,7 @@ def process_single_statement(
                 success=False,
                 error=result.error,
             )
-        
+
         return ProcessedStatementResponse(
             email_subject=stmt_info.subject,
             attachment_name=stmt_info.attachment_name,
@@ -157,7 +156,7 @@ def process_single_statement(
             total_transacciones=len(result.statement_result.transactions),
             cuentas_encontradas=len(result.statement_result.metadata.cuentas),
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -176,7 +175,7 @@ def process_all_statements(
 ) -> ProcessAllResponse:
     """
     Busca y procesa todos los estados de cuenta de los últimos N días.
-    
+
     Este endpoint:
     1. Busca correos con estados de cuenta
     2. Descarga cada PDF
@@ -184,37 +183,41 @@ def process_all_statements(
     4. Retorna resumen del procesamiento
     """
     service = StatementEmailService()
-    
+
     try:
         results = service.process_all_pending(days_back=days_back, save_pdfs=save_pdfs)
-        
+
         detalles = []
         for result in results:
             if result.error:
-                detalles.append(ProcessedStatementResponse(
-                    email_subject=result.email_info.subject,
-                    attachment_name=result.email_info.attachment_name,
-                    success=False,
-                    error=result.error,
-                ))
+                detalles.append(
+                    ProcessedStatementResponse(
+                        email_subject=result.email_info.subject,
+                        attachment_name=result.email_info.attachment_name,
+                        success=False,
+                        error=result.error,
+                    )
+                )
             else:
-                detalles.append(ProcessedStatementResponse(
-                    email_subject=result.email_info.subject,
-                    attachment_name=result.email_info.attachment_name,
-                    success=True,
-                    titular=result.statement_result.metadata.nombre_titular,
-                    fecha_corte=result.statement_result.metadata.fecha_corte.isoformat(),
-                    total_transacciones=len(result.statement_result.transactions),
-                    cuentas_encontradas=len(result.statement_result.metadata.cuentas),
-                ))
-        
+                detalles.append(
+                    ProcessedStatementResponse(
+                        email_subject=result.email_info.subject,
+                        attachment_name=result.email_info.attachment_name,
+                        success=True,
+                        titular=result.statement_result.metadata.nombre_titular,
+                        fecha_corte=result.statement_result.metadata.fecha_corte.isoformat(),
+                        total_transacciones=len(result.statement_result.transactions),
+                        cuentas_encontradas=len(result.statement_result.metadata.cuentas),
+                    )
+                )
+
         return ProcessAllResponse(
             total_encontrados=len(results),
             procesados_exitosos=sum(1 for r in results if r.error is None),
             procesados_fallidos=sum(1 for r in results if r.error is not None),
             detalles=detalles,
         )
-        
+
     except RuntimeError as e:
         raise HTTPException(
             status_code=401,

@@ -22,6 +22,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+
 # Configurar logging
 logging.getLogger("testcontainers").setLevel(logging.WARNING)
 
@@ -50,13 +51,13 @@ _test_engine = None
 def get_test_database_url() -> str:
     """
     Obtiene la URL de la base de datos para tests.
-    
+
     Usa el container PostgreSQL local (finanzas_postgres).
     Para CI/CD, se puede configurar con TEST_DATABASE_URL.
     """
     return os.environ.get(
         "TEST_DATABASE_URL",
-        "postgresql+psycopg://finanzas:finanzas_dev_2024@localhost:5432/finanzas_test"
+        "postgresql+psycopg://finanzas:finanzas_dev_2024@localhost:5432/finanzas_test",
     )
 
 
@@ -66,7 +67,7 @@ def get_test_engine():
     if _test_engine is None:
         connection_url = get_test_database_url()
         _test_engine = create_engine(connection_url, echo=False)
-        
+
         # Crear extensión pgvector si no existe
         with _test_engine.connect() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -78,12 +79,12 @@ def get_test_engine():
 def setup_test_database():
     """
     Fixture que configura la base de datos para toda la sesión de tests.
-    
+
     Se ejecuta automáticamente al inicio de la sesión de tests.
     Crea todas las tablas necesarias.
     """
     engine = get_test_engine()
-    
+
     # Importar todos los modelos para registrarlos con Base.metadata
     from finanzas_tracker.core.database import Base
     from finanzas_tracker.models import (  # noqa: F401
@@ -95,25 +96,25 @@ def setup_test_database():
         Subcategory,
         Transaction,
     )
+    from finanzas_tracker.models.account import Account  # noqa: F401
+    from finanzas_tracker.models.billing_cycle import BillingCycle  # noqa: F401
     from finanzas_tracker.models.embedding import TransactionEmbedding  # noqa: F401
-    from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
     from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache  # noqa: F401
+    from finanzas_tracker.models.goal import Goal  # noqa: F401
+    from finanzas_tracker.models.investment import Investment  # noqa: F401
+    from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
     from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot  # noqa: F401
     from finanzas_tracker.models.reconciliation_report import ReconciliationReport  # noqa: F401
-    from finanzas_tracker.models.account import Account  # noqa: F401
-    from finanzas_tracker.models.investment import Investment  # noqa: F401
-    from finanzas_tracker.models.goal import Goal  # noqa: F401
-    from finanzas_tracker.models.billing_cycle import BillingCycle  # noqa: F401
-    
+
     # Drop y crear todas las tablas (limpia cualquier estado previo)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    
+
     yield engine
-    
+
     # Cleanup al final de la sesión - drop all tables
     Base.metadata.drop_all(engine)
-    
+
     global _test_engine
     if _test_engine:
         _test_engine.dispose()
@@ -124,22 +125,22 @@ def setup_test_database():
 def session(setup_test_database):
     """
     Fixture de sesión de base de datos para tests.
-    
+
     Usa PostgreSQL real.
     Cada test obtiene una sesión limpia con rollback automático.
     """
     engine = setup_test_database
-    
+
     # Crear conexión con transacción
     connection = engine.connect()
     transaction = connection.begin()
-    
+
     # Crear session vinculada a esta conexión
     Session = sessionmaker(bind=connection)
     db_session = Session()
-    
+
     yield db_session
-    
+
     # Rollback para limpiar cambios del test
     db_session.close()
     transaction.rollback()

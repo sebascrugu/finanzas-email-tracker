@@ -9,7 +9,7 @@ Endpoints para:
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -79,7 +79,9 @@ class NotificationPreferences(BaseModel):
 )
 async def get_notifications(
     profile_id: str = Query(..., description="ID del perfil"),
-    include_low_priority: bool = Query(True, description="Incluir notificaciones de baja prioridad"),
+    include_low_priority: bool = Query(
+        True, description="Incluir notificaciones de baja prioridad"
+    ),
     db: Session = Depends(get_db),
 ) -> NotificationsListResponse:
     """Obtiene todas las notificaciones pendientes.
@@ -174,8 +176,10 @@ async def get_upcoming_payments(
     Retorna una lista de tarjetas con sus fechas de pago próximas.
     """
     from datetime import date, timedelta
+
     from sqlalchemy import select
-    from finanzas_tracker.models import Card, BillingCycle
+
+    from finanzas_tracker.models import BillingCycle, Card
     from finanzas_tracker.models.enums import BillingCycleStatus
 
     today = date.today()
@@ -189,11 +193,13 @@ async def get_upcoming_payments(
             Card.profile_id == profile_id,
             BillingCycle.fecha_pago >= today,
             BillingCycle.fecha_pago <= future_date,
-            BillingCycle.status.in_([
-                BillingCycleStatus.OPEN,
-                BillingCycleStatus.CLOSED,
-                BillingCycleStatus.PARTIAL,
-            ]),
+            BillingCycle.status.in_(
+                [
+                    BillingCycleStatus.OPEN,
+                    BillingCycleStatus.CLOSED,
+                    BillingCycleStatus.PARTIAL,
+                ]
+            ),
             BillingCycle.deleted_at.is_(None),
         )
         .order_by(BillingCycle.fecha_pago)

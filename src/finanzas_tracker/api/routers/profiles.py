@@ -1,6 +1,5 @@
 """Router de Perfiles - CRUD + switch activo."""
 
-
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 

@@ -153,7 +153,9 @@ class DuplicateDetectorService:
         """
         # Por ahora, simplemente logueamos
         # En el futuro se podría agregar una tabla de reconciliaciones
-        logger.info(f"Transacciones {transaction_id_1} y {transaction_id_2} marcadas como reconciliadas")
+        logger.info(
+            f"Transacciones {transaction_id_1} y {transaction_id_2} marcadas como reconciliadas"
+        )
         return True
 
     def _get_transactions_for_analysis(
@@ -249,8 +251,16 @@ class DuplicateDetectorService:
                 return None
 
         # 3. Comparar fechas
-        date_1 = trans_1.fecha_transaccion.date() if hasattr(trans_1.fecha_transaccion, "date") else trans_1.fecha_transaccion
-        date_2 = trans_2.fecha_transaccion.date() if hasattr(trans_2.fecha_transaccion, "date") else trans_2.fecha_transaccion
+        date_1 = (
+            trans_1.fecha_transaccion.date()
+            if hasattr(trans_1.fecha_transaccion, "date")
+            else trans_1.fecha_transaccion
+        )
+        date_2 = (
+            trans_2.fecha_transaccion.date()
+            if hasattr(trans_2.fecha_transaccion, "date")
+            else trans_2.fecha_transaccion
+        )
 
         days_diff = abs((date_1 - date_2).days)
 

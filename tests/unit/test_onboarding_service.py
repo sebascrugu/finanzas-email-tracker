@@ -4,7 +4,6 @@ Coverage target: Core onboarding flow, state management,
 account/card confirmation methods.
 """
 
-from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -12,7 +11,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from finanzas_tracker.models import Account, Card
+from finanzas_tracker.models import Card
 from finanzas_tracker.models.enums import (
     AccountType,
     BankName,
@@ -352,10 +351,10 @@ class TestConfirmAccounts:
         """Should set profile_id on state when calling confirm_accounts."""
         onboarding_service.start_onboarding(sample_user_id)
         mock_db.refresh = MagicMock()
-        
+
         # Mock the Account creation to avoid attribute errors
-        with patch.object(onboarding_service.db, 'add'):
-            with patch.object(onboarding_service.db, 'commit'):
+        with patch.object(onboarding_service.db, "add"):
+            with patch.object(onboarding_service.db, "commit"):
                 try:
                     onboarding_service.confirm_accounts(
                         user_id=sample_user_id,

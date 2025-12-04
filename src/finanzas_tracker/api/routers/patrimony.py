@@ -28,7 +28,6 @@ from finanzas_tracker.api.schemas.patrimony import (
     NetWorthResponse,
 )
 from finanzas_tracker.api.schemas.reconciliation import (
-    PatrimonioSnapshotCreate,
     PatrimonioSnapshotResponse,
 )
 from finanzas_tracker.models.account import Account
@@ -99,32 +98,34 @@ def get_patrimony_history(
     para graficar la evolución.
     """
     from datetime import date, timedelta
-    
+
     service = PatrimonyService(db)
-    
+
     # Calcular rango de fechas
     fecha_fin = date.today()
     fecha_inicio = fecha_fin - timedelta(days=meses * 30)
-    
+
     snapshots = service.obtener_historial(
         profile_id=profile_id,
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin,
         limite=meses * 4,  # Aproximadamente 4 snapshots por mes
     )
-    
+
     history = []
     for snapshot in snapshots:
-        history.append({
-            "fecha": snapshot.fecha_snapshot.isoformat(),
-            "net_worth": float(snapshot.patrimonio_neto_crc),
-            "activos": float(snapshot.total_activos_crc),
-            "pasivos": float(snapshot.total_pasivos_crc),
-        })
-    
+        history.append(
+            {
+                "fecha": snapshot.fecha_snapshot.isoformat(),
+                "net_worth": float(snapshot.patrimonio_neto_crc),
+                "activos": float(snapshot.total_activos_crc),
+                "pasivos": float(snapshot.total_pasivos_crc),
+            }
+        )
+
     # Ordenar por fecha ascendente
     history.sort(key=lambda x: x["fecha"])
-    
+
     return history
 
 
@@ -161,10 +162,14 @@ def list_accounts(
     db: Session = Depends(get_db),
 ) -> list[AccountResponse]:
     """Lista todas las cuentas de un perfil."""
-    stmt = select(Account).where(
-        Account.profile_id == profile_id,
-        Account.deleted_at.is_(None),
-    ).order_by(Account.es_cuenta_principal.desc(), Account.nombre)
+    stmt = (
+        select(Account)
+        .where(
+            Account.profile_id == profile_id,
+            Account.deleted_at.is_(None),
+        )
+        .order_by(Account.es_cuenta_principal.desc(), Account.nombre)
+    )
 
     result = db.execute(stmt)
     return [AccountResponse.model_validate(a) for a in result.scalars().all()]

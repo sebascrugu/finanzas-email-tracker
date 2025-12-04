@@ -3,20 +3,18 @@
 Tests del servicio de reconciliación de estados de cuenta.
 """
 
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.services.reconciliation_service import (
-    ReconciliationService,
-    ReconciliationResult,
-    ReconciliationMatch,
     MatchStatus,
+    ReconciliationMatch,
+    ReconciliationResult,
+    ReconciliationService,
 )
 
 
@@ -46,7 +44,7 @@ class TestReconciliationMatch:
             system_transaction=MagicMock(),
             confidence=0.95,
         )
-        
+
         assert match.status == MatchStatus.MATCHED
         assert match.confidence == 0.95
         assert match.amount_difference is None
@@ -60,7 +58,7 @@ class TestReconciliationMatch:
             amount_difference=Decimal("500.00"),
             confidence=0.8,
         )
-        
+
         assert match.status == MatchStatus.AMOUNT_MISMATCH
         assert match.amount_difference == Decimal("500.00")
 
@@ -70,7 +68,7 @@ class TestReconciliationMatch:
             status=MatchStatus.ONLY_IN_PDF,
             pdf_transaction={"fecha": "2024-11-20", "comercio": "EFECTIVO", "monto": 10000},
         )
-        
+
         assert match.status == MatchStatus.ONLY_IN_PDF
         assert match.system_transaction is None
 
@@ -80,7 +78,7 @@ class TestReconciliationMatch:
             status=MatchStatus.ONLY_IN_SYSTEM,
             system_transaction=MagicMock(),
         )
-        
+
         assert match.status == MatchStatus.ONLY_IN_SYSTEM
         assert match.pdf_transaction is None
 
@@ -91,16 +89,16 @@ class TestReconciliationMatch:
         sys_tx.fecha_transaccion = date(2024, 11, 15)
         sys_tx.comercio_original = "STARBUCKS"
         sys_tx.monto_original = Decimal("5000.00")
-        
+
         match = ReconciliationMatch(
             status=MatchStatus.MATCHED,
             pdf_transaction={"fecha": "2024-11-15", "comercio": "STARBUCKS", "monto": 5000},
             system_transaction=sys_tx,
             confidence=0.95,
         )
-        
+
         result = match.to_dict()
-        
+
         assert result["status"] == "matched"
         assert result["confidence"] == 0.95
         assert result["pdf"]["comercio"] == "STARBUCKS"
@@ -119,9 +117,9 @@ class TestReconciliationMatch:
             ),
             amount_difference=Decimal("500.00"),
         )
-        
+
         result = match.to_dict()
-        
+
         assert result["amount_difference"] == 500.00
 
     def test_to_dict_only_pdf(self) -> None:
@@ -130,9 +128,9 @@ class TestReconciliationMatch:
             status=MatchStatus.ONLY_IN_PDF,
             pdf_transaction={"fecha": "2024-11-20", "comercio": "EFECTIVO", "monto": 10000},
         )
-        
+
         result = match.to_dict()
-        
+
         assert result["status"] == "only_in_pdf"
         assert "pdf" in result
         assert "system" not in result
@@ -147,7 +145,7 @@ class TestReconciliationResult:
             periodo_inicio=date(2024, 11, 1),
             periodo_fin=date(2024, 11, 30),
         )
-        
+
         assert result.total_pdf == 0
         assert result.total_system == 0
         assert result.matched == []
@@ -162,23 +160,20 @@ class TestReconciliationResult:
             periodo_fin=date(2024, 11, 30),
             total_pdf=0,
         )
-        
+
         assert result.match_rate == 0.0
 
     def test_match_rate_calculation(self) -> None:
         """match_rate se calcula correctamente."""
-        matched = [
-            ReconciliationMatch(status=MatchStatus.MATCHED)
-            for _ in range(8)
-        ]
-        
+        matched = [ReconciliationMatch(status=MatchStatus.MATCHED) for _ in range(8)]
+
         result = ReconciliationResult(
             periodo_inicio=date(2024, 11, 1),
             periodo_fin=date(2024, 11, 30),
             total_pdf=10,
             matched=matched,
         )
-        
+
         assert result.match_rate == 80.0
 
     def test_has_issues_false(self) -> None:
@@ -188,7 +183,7 @@ class TestReconciliationResult:
             periodo_fin=date(2024, 11, 30),
             matched=[ReconciliationMatch(status=MatchStatus.MATCHED)],
         )
-        
+
         assert result.has_issues is False
 
     def test_has_issues_true_amount_mismatch(self) -> None:
@@ -198,7 +193,7 @@ class TestReconciliationResult:
             periodo_fin=date(2024, 11, 30),
             amount_mismatches=[ReconciliationMatch(status=MatchStatus.AMOUNT_MISMATCH)],
         )
-        
+
         assert result.has_issues is True
 
     def test_has_issues_true_only_in_pdf(self) -> None:
@@ -208,7 +203,7 @@ class TestReconciliationResult:
             periodo_fin=date(2024, 11, 30),
             only_in_pdf=[ReconciliationMatch(status=MatchStatus.ONLY_IN_PDF)],
         )
-        
+
         assert result.has_issues is True
 
     def test_has_issues_true_only_in_system(self) -> None:
@@ -218,7 +213,7 @@ class TestReconciliationResult:
             periodo_fin=date(2024, 11, 30),
             only_in_system=[ReconciliationMatch(status=MatchStatus.ONLY_IN_SYSTEM)],
         )
-        
+
         assert result.has_issues is True
 
     def test_to_dict_structure(self) -> None:
@@ -229,9 +224,9 @@ class TestReconciliationResult:
             total_pdf=10,
             total_system=8,
         )
-        
+
         data = result.to_dict()
-        
+
         assert "periodo" in data
         assert data["periodo"]["inicio"] == "2024-11-01"
         assert data["periodo"]["fin"] == "2024-11-30"
@@ -249,7 +244,7 @@ class TestReconciliationServiceInit:
         """Inicializa correctamente con sesión de BD."""
         mock_db = MagicMock(spec=Session)
         service = ReconciliationService(mock_db)
-        
+
         assert service.db == mock_db
 
 
@@ -283,7 +278,7 @@ class TestReconciliationServiceReconcile:
                 periodo_inicio=date(2024, 11, 1),
                 periodo_fin=date(2024, 11, 30),
             )
-        
+
         assert result.total_pdf == 0
         assert result.total_system == 0
         assert len(result.matched) == 0
@@ -301,7 +296,7 @@ class TestReconciliationServiceReconcile:
                 periodo_inicio=date(2024, 11, 1),
                 periodo_fin=date(2024, 11, 30),
             )
-        
+
         assert result.total_pdf == 3
         assert result.total_system == 0
         assert len(result.only_in_pdf) == 3
@@ -314,13 +309,13 @@ class TestReconciliationServiceReconcile:
         pdf_tx = [
             {"fecha": date(2024, 11, 5), "comercio": "STARBUCKS", "monto": 5000},
         ]
-        
+
         sys_tx = MagicMock()
         sys_tx.id = "tx-1"
         sys_tx.fecha_transaccion = date(2024, 11, 5)
         sys_tx.comercio_original = "STARBUCKS"
         sys_tx.monto_original = Decimal("5000.00")
-        
+
         with patch.object(service, "_get_system_transactions", return_value=[sys_tx]):
             with patch.object(service, "_find_best_match", return_value=(sys_tx, 0.95, None)):
                 result = service.reconcile(
@@ -329,7 +324,7 @@ class TestReconciliationServiceReconcile:
                     periodo_inicio=date(2024, 11, 1),
                     periodo_fin=date(2024, 11, 30),
                 )
-        
+
         assert len(result.matched) == 1
         assert len(result.only_in_pdf) == 0
 
@@ -341,18 +336,16 @@ class TestReconciliationServiceReconcile:
         pdf_tx = [
             {"fecha": date(2024, 11, 10), "comercio": "UBER", "monto": 5500},
         ]
-        
+
         sys_tx = MagicMock()
         sys_tx.id = "tx-1"
         sys_tx.fecha_transaccion = date(2024, 11, 10)
         sys_tx.comercio_original = "UBER"
         sys_tx.monto_original = Decimal("5000.00")
-        
+
         with patch.object(service, "_get_system_transactions", return_value=[sys_tx]):
             with patch.object(
-                service, 
-                "_find_best_match", 
-                return_value=(sys_tx, 0.8, Decimal("500.00"))
+                service, "_find_best_match", return_value=(sys_tx, 0.8, Decimal("500.00"))
             ):
                 result = service.reconcile(
                     profile_id="profile-123",
@@ -360,7 +353,7 @@ class TestReconciliationServiceReconcile:
                     periodo_inicio=date(2024, 11, 1),
                     periodo_fin=date(2024, 11, 30),
                 )
-        
+
         assert len(result.amount_mismatches) == 1
         assert result.amount_mismatches[0].amount_difference == Decimal("500.00")
 
@@ -374,7 +367,7 @@ class TestReconciliationServiceReconcile:
         sys_tx.fecha_transaccion = date(2024, 11, 20)
         sys_tx.comercio_original = "SPOTIFY"
         sys_tx.monto_original = Decimal("5000.00")
-        
+
         with patch.object(service, "_get_system_transactions", return_value=[sys_tx]):
             result = service.reconcile(
                 profile_id="profile-123",
@@ -382,7 +375,7 @@ class TestReconciliationServiceReconcile:
                 periodo_inicio=date(2024, 11, 1),
                 periodo_fin=date(2024, 11, 30),
             )
-        
+
         assert len(result.only_in_system) == 1
         assert result.only_in_system[0].system_transaction.id == "tx-orphan"
 
@@ -395,24 +388,24 @@ class TestReconciliationServiceReconcile:
             {"fecha": date(2024, 11, 5), "comercio": "STARBUCKS", "monto": 5000},
             {"fecha": date(2024, 11, 15), "comercio": "EFECTIVO", "monto": 10000},
         ]
-        
+
         sys_tx1 = MagicMock()
         sys_tx1.id = "tx-1"
         sys_tx1.fecha_transaccion = date(2024, 11, 5)
         sys_tx1.comercio_original = "STARBUCKS"
         sys_tx1.monto_original = Decimal("5000.00")
-        
+
         sys_tx2 = MagicMock()
         sys_tx2.id = "tx-2"
         sys_tx2.fecha_transaccion = date(2024, 11, 20)
         sys_tx2.comercio_original = "NETFLIX"
         sys_tx2.monto_original = Decimal("8000.00")
-        
+
         def mock_find_match(pdf_tx, sys_txns, matched, tol_days, tol_amount):
             if pdf_tx.get("comercio") == "STARBUCKS":
                 return (sys_tx1, 0.95, None)
             return None
-        
+
         with patch.object(service, "_get_system_transactions", return_value=[sys_tx1, sys_tx2]):
             with patch.object(service, "_find_best_match", side_effect=mock_find_match):
                 result = service.reconcile(
@@ -421,7 +414,7 @@ class TestReconciliationServiceReconcile:
                     periodo_inicio=date(2024, 11, 1),
                     periodo_fin=date(2024, 11, 30),
                 )
-        
+
         assert len(result.matched) == 1  # STARBUCKS
         assert len(result.only_in_pdf) == 1  # EFECTIVO
         assert len(result.only_in_system) == 1  # NETFLIX
@@ -442,13 +435,13 @@ class TestReconciliationServiceGetSystemTransactions:
     ) -> None:
         """Retorna lista vacía cuando no hay transacciones."""
         service.db.execute.return_value.scalars.return_value.all.return_value = []
-        
+
         result = service._get_system_transactions(
             profile_id="profile-123",
             fecha_inicio=date(2024, 11, 1),
             fecha_fin=date(2024, 11, 30),
         )
-        
+
         assert result == []
 
     def test_get_system_transactions_filters_correctly(
@@ -458,13 +451,13 @@ class TestReconciliationServiceGetSystemTransactions:
         """Filtra transacciones correctamente."""
         mock_txs = [MagicMock(), MagicMock()]
         service.db.execute.return_value.scalars.return_value.all.return_value = mock_txs
-        
+
         result = service._get_system_transactions(
             profile_id="profile-123",
             fecha_inicio=date(2024, 11, 1),
             fecha_fin=date(2024, 11, 30),
         )
-        
+
         assert len(result) == 2
         service.db.execute.assert_called_once()
 
@@ -494,7 +487,7 @@ class TestReconciliationServiceFindBestMatch:
     ) -> None:
         """Retorna None cuando no hay candidatos."""
         pdf_tx = {"fecha": "2024-11-15", "comercio": "STARBUCKS", "monto": 5000}
-        
+
         result = service._find_best_match(
             pdf_tx=pdf_tx,
             system_txns=[],
@@ -502,7 +495,7 @@ class TestReconciliationServiceFindBestMatch:
             tolerance_days=2,
             tolerance_amount=Decimal("100"),
         )
-        
+
         assert result is None
 
     def test_find_best_match_skips_already_matched(
@@ -512,7 +505,7 @@ class TestReconciliationServiceFindBestMatch:
     ) -> None:
         """Omite transacciones ya matcheadas."""
         pdf_tx = {"fecha": "2024-11-15", "comercio": "STARBUCKS", "monto": 5000}
-        
+
         result = service._find_best_match(
             pdf_tx=pdf_tx,
             system_txns=[system_transaction],
@@ -520,7 +513,7 @@ class TestReconciliationServiceFindBestMatch:
             tolerance_days=2,
             tolerance_amount=Decimal("100"),
         )
-        
+
         assert result is None
 
     def test_find_best_match_no_fecha(
@@ -530,7 +523,7 @@ class TestReconciliationServiceFindBestMatch:
     ) -> None:
         """Retorna None si PDF no tiene fecha."""
         pdf_tx = {"comercio": "STARBUCKS", "monto": 5000}  # Sin fecha
-        
+
         result = service._find_best_match(
             pdf_tx=pdf_tx,
             system_txns=[system_transaction],
@@ -538,7 +531,7 @@ class TestReconciliationServiceFindBestMatch:
             tolerance_days=2,
             tolerance_amount=Decimal("100"),
         )
-        
+
         assert result is None
 
 
@@ -554,15 +547,15 @@ class TestReconciliationResultToDict:
             )
             for i in range(15)
         ]
-        
+
         result = ReconciliationResult(
             periodo_inicio=date(2024, 11, 1),
             periodo_fin=date(2024, 11, 30),
             matched=matched,
         )
-        
+
         data = result.to_dict()
-        
+
         # Solo primeros 10 en detalles
         assert len(data["detalles"]["matched"]) == 10
 
@@ -576,15 +569,15 @@ class TestReconciliationResultToDict:
             )
             for i in range(15)
         ]
-        
+
         result = ReconciliationResult(
             periodo_inicio=date(2024, 11, 1),
             periodo_fin=date(2024, 11, 30),
             amount_mismatches=mismatches,
         )
-        
+
         data = result.to_dict()
-        
+
         # Todos los problemas se incluyen
         assert len(data["detalles"]["amount_mismatches"]) == 15
 
@@ -596,14 +589,18 @@ class TestReconciliationResultToDict:
             total_pdf=100,
             total_system=95,
             matched=[ReconciliationMatch(status=MatchStatus.MATCHED) for _ in range(80)],
-            amount_mismatches=[ReconciliationMatch(status=MatchStatus.AMOUNT_MISMATCH) for _ in range(5)],
+            amount_mismatches=[
+                ReconciliationMatch(status=MatchStatus.AMOUNT_MISMATCH) for _ in range(5)
+            ],
             only_in_pdf=[ReconciliationMatch(status=MatchStatus.ONLY_IN_PDF) for _ in range(15)],
-            only_in_system=[ReconciliationMatch(status=MatchStatus.ONLY_IN_SYSTEM) for _ in range(10)],
+            only_in_system=[
+                ReconciliationMatch(status=MatchStatus.ONLY_IN_SYSTEM) for _ in range(10)
+            ],
         )
-        
+
         data = result.to_dict()
         resumen = data["resumen"]
-        
+
         assert resumen["total_pdf"] == 100
         assert resumen["total_sistema"] == 95
         assert resumen["coinciden"] == 80

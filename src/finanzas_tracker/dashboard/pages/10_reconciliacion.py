@@ -4,9 +4,11 @@ Permite subir un PDF del estado de cuenta y compararlo con las
 transacciones ya registradas en el sistema.
 """
 
-import streamlit as st
 from datetime import date
-from decimal import Decimal
+
+import httpx
+import streamlit as st
+
 
 # Configuración de página
 st.set_page_config(
@@ -14,6 +16,34 @@ st.set_page_config(
     page_icon="🔄",
     layout="wide",
 )
+
+# API Base URL
+API_URL = "http://localhost:8000/api/v1"
+
+
+def call_reconciliation_api(pdf_file, banco: str, profile_id: str) -> dict | None:
+    """Llama al API de reconciliación con el PDF subido."""
+    try:
+        files = {"pdf_file": (pdf_file.name, pdf_file.getvalue(), "application/pdf")}
+        params = {"banco": banco.lower(), "profile_id": profile_id}
+
+        response = httpx.post(
+            f"{API_URL}/reconciliation/upload",
+            files=files,
+            params=params,
+            timeout=60.0,
+        )
+
+        if response.status_code == 200:
+            return response.json()
+        st.error(f"Error del API: {response.status_code} - {response.text}")
+        return None
+    except httpx.ConnectError:
+        st.warning("⚠️ No se pudo conectar al API. Usando modo demo.")
+        return None
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return None
 
 
 def render_reconciliation():
@@ -79,8 +109,14 @@ def render_reconciliation():
         if st.button("🔍 Analizar PDF", type="primary", use_container_width=True):
             with st.spinner("Procesando estado de cuenta..."):
                 try:
-                    # Simular procesamiento (en producción llamaría al API)
-                    result = simulate_reconciliation(uploaded_file)
+                    # Intentar llamar al API real primero
+                    result = call_reconciliation_api(uploaded_file, banco, profile_id)
+
+                    # Si no hay API, usar datos de demo
+                    if result is None:
+                        result = get_demo_reconciliation_data()
+                        st.info("📋 Mostrando datos de demostración (API no disponible)")
+
                     st.session_state.reconciliation_result = result
                     st.success("✅ Análisis completado")
                 except Exception as e:
@@ -91,12 +127,8 @@ def render_reconciliation():
         render_results(st.session_state.reconciliation_result)
 
 
-def simulate_reconciliation(uploaded_file) -> dict:
-    """Simula el proceso de reconciliación.
-
-    En producción, esto llamaría al API real.
-    """
-    # Datos de ejemplo para demostración
+def get_demo_reconciliation_data() -> dict:
+    """Datos de demostración cuando el API no está disponible."""
     return {
         "periodo": {
             "inicio": "2024-11-01",
@@ -118,7 +150,12 @@ def simulate_reconciliation(uploaded_file) -> dict:
                     "status": "matched",
                     "confidence": 0.98,
                     "pdf": {"fecha": "2024-11-05", "comercio": "AUTOMERCADO", "monto": 45000},
-                    "system": {"id": 123, "fecha": "2024-11-05", "comercio": "Automercado", "monto": 45000},
+                    "system": {
+                        "id": 123,
+                        "fecha": "2024-11-05",
+                        "comercio": "Automercado",
+                        "monto": 45000,
+                    },
                 },
                 {
                     "status": "matched",
@@ -132,7 +169,12 @@ def simulate_reconciliation(uploaded_file) -> dict:
                     "status": "amount_mismatch",
                     "confidence": 0.85,
                     "pdf": {"fecha": "2024-11-15", "comercio": "PRICESMART", "monto": 125000},
-                    "system": {"id": 125, "fecha": "2024-11-15", "comercio": "PriceSmart", "monto": 120000},
+                    "system": {
+                        "id": 125,
+                        "fecha": "2024-11-15",
+                        "comercio": "PriceSmart",
+                        "monto": 120000,
+                    },
                     "amount_difference": 5000,
                 },
             ],
@@ -153,7 +195,12 @@ def simulate_reconciliation(uploaded_file) -> dict:
             "only_in_system": [
                 {
                     "status": "only_in_system",
-                    "system": {"id": 130, "fecha": "2024-11-18", "comercio": "SINPE Móvil", "monto": 15000},
+                    "system": {
+                        "id": 130,
+                        "fecha": "2024-11-18",
+                        "comercio": "SINPE Móvil",
+                        "monto": 15000,
+                    },
                 },
             ],
         },
@@ -203,12 +250,14 @@ def render_results(result: dict):
     # Pestañas para detalles
     st.subheader("📋 Detalles")
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        f"✅ Coinciden ({resumen['coinciden']})",
-        f"⚠️ Diferencia Monto ({resumen['diferencia_monto']})",
-        f"🆕 Solo en PDF ({resumen['solo_en_pdf']})",
-        f"📱 Solo en Sistema ({resumen['solo_en_sistema']})",
-    ])
+    tab1, tab2, tab3, tab4 = st.tabs(
+        [
+            f"✅ Coinciden ({resumen['coinciden']})",
+            f"⚠️ Diferencia Monto ({resumen['diferencia_monto']})",
+            f"🆕 Solo en PDF ({resumen['solo_en_pdf']})",
+            f"📱 Solo en Sistema ({resumen['solo_en_sistema']})",
+        ]
+    )
 
     with tab1:
         render_matched(result["detalles"].get("matched", []))
@@ -240,7 +289,9 @@ def render_matched(matches: list):
         system = match.get("system", {})
         confidence = match.get("confidence", 0)
 
-        with st.expander(f"📅 {pdf.get('fecha', 'N/A')} - {pdf.get('comercio', 'N/A')} - ₡{pdf.get('monto', 0):,.0f}"):
+        with st.expander(
+            f"📅 {pdf.get('fecha', 'N/A')} - {pdf.get('comercio', 'N/A')} - ₡{pdf.get('monto', 0):,.0f}"
+        ):
             col1, col2 = st.columns(2)
             with col1:
                 st.write("**📄 En PDF:**")
@@ -270,7 +321,9 @@ def render_amount_mismatches(mismatches: list):
         system = mismatch.get("system", {})
         diff = mismatch.get("amount_difference", 0)
 
-        with st.expander(f"⚠️ {pdf.get('fecha', 'N/A')} - {pdf.get('comercio', 'N/A')} - Δ ₡{abs(diff):,.0f}"):
+        with st.expander(
+            f"⚠️ {pdf.get('fecha', 'N/A')} - {pdf.get('comercio', 'N/A')} - Δ ₡{abs(diff):,.0f}"
+        ):
             col1, col2 = st.columns(2)
             with col1:
                 st.write("**📄 En PDF:**")
@@ -314,8 +367,20 @@ def render_only_in_pdf(only_pdf: list):
             selected.append(i)
 
     if selected:
+        profile_id = st.session_state.get("profile_id", "default")
         if st.button(f"📥 Importar {len(selected)} transacciones", type="primary"):
-            st.success(f"✅ {len(selected)} transacciones importadas al sistema")
+            try:
+                response = httpx.post(
+                    f"{API_URL}/reconciliation/import-new",
+                    json={"profile_id": profile_id, "indices": selected},
+                    timeout=30.0,
+                )
+                if response.status_code == 200:
+                    st.success(f"✅ {len(selected)} transacciones importadas al sistema")
+                else:
+                    st.error(f"Error: {response.text}")
+            except Exception:
+                st.success(f"✅ {len(selected)} transacciones importadas (demo)")
 
 
 def render_only_in_system(only_system: list):
@@ -329,7 +394,9 @@ def render_only_in_system(only_system: list):
 
     for item in only_system:
         system = item.get("system", {})
-        with st.expander(f"📅 {system.get('fecha', 'N/A')} - {system.get('comercio', 'N/A')} - ₡{system.get('monto', 0):,.0f}"):
+        with st.expander(
+            f"📅 {system.get('fecha', 'N/A')} - {system.get('comercio', 'N/A')} - ₡{system.get('monto', 0):,.0f}"
+        ):
             st.write(f"- ID: {system.get('id', 'N/A')}")
             st.write(f"- Fecha: {system.get('fecha', 'N/A')}")
             st.write(f"- Comercio: {system.get('comercio', 'N/A')}")

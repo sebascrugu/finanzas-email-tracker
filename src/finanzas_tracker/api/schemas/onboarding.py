@@ -4,11 +4,7 @@ Schemas Pydantic para Onboarding.
 Define los modelos de request/response para el flujo de onboarding.
 """
 
-from datetime import datetime
-from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
-
-from finanzas_tracker.models.enums import AccountType, BankName, CardType, Currency
 
 
 # =============================================================================
@@ -50,7 +46,10 @@ class OnboardingStateResponse(BaseModel):
 
     user_id: str
     profile_id: str | None = None
-    current_step: str = Field(..., description="Paso actual: registered, pdf_uploaded, accounts_confirmed, cards_confirmed, budget_set, completed")
+    current_step: str = Field(
+        ...,
+        description="Paso actual: registered, pdf_uploaded, accounts_confirmed, cards_confirmed, budget_set, completed",
+    )
     detected_accounts: list[DetectedAccountResponse] = Field(default_factory=list)
     detected_cards: list[DetectedCardResponse] = Field(default_factory=list)
     pdf_processed: bool = False

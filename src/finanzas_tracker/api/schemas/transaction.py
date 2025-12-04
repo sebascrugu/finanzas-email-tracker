@@ -11,7 +11,9 @@ class TransactionBase(BaseModel):
 
     comercio: str = Field(..., min_length=1, max_length=255, description="Nombre del comercio")
     monto_original: Decimal = Field(..., gt=0, description="Monto en moneda original")
-    moneda_original: str = Field(default="CRC", pattern="^(CRC|USD)$", description="Moneda: CRC o USD")
+    moneda_original: str = Field(
+        default="CRC", pattern="^(CRC|USD)$", description="Moneda: CRC o USD"
+    )
     fecha_transaccion: datetime = Field(..., description="Fecha y hora de la transacción")
     tipo_transaccion: str = Field(
         default="compra",
@@ -24,7 +26,9 @@ class TransactionCreate(TransactionBase):
     """Schema para crear transacción."""
 
     email_id: str | None = Field(None, description="ID del email origen (opcional para manuales)")
-    monto_crc: Decimal | None = Field(None, gt=0, description="Monto en colones (calculado si es USD)")
+    monto_crc: Decimal | None = Field(
+        None, gt=0, description="Monto en colones (calculado si es USD)"
+    )
     subcategory_id: str | None = Field(None, description="ID de subcategoría")
     notas: str | None = Field(None, max_length=1000, description="Notas adicionales")
     tipo_especial: str | None = Field(None, description="dinero_ajeno, intermediaria, etc.")
@@ -72,13 +76,22 @@ class TransactionResponse(BaseModel):
     excluir_de_presupuesto: bool
 
     # Nuevos campos para reconciliación y patrimonio
-    estado: str = Field(default="pendiente", description="Estado: pendiente, confirmada, reconciliada, cancelada, huerfana")
+    estado: str = Field(
+        default="pendiente",
+        description="Estado: pendiente, confirmada, reconciliada, cancelada, huerfana",
+    )
     es_historica: bool = Field(default=False, description="True si es anterior a FECHA_BASE")
-    fecha_registro_sistema: datetime | None = Field(None, description="Cuándo se importó al sistema")
+    fecha_registro_sistema: datetime | None = Field(
+        None, description="Cuándo se importó al sistema"
+    )
     reconciliacion_id: str | None = Field(None, description="ID del reporte de reconciliación")
     reconciliada_en: datetime | None = Field(None, description="Cuándo fue reconciliada")
-    es_transferencia_interna: bool = Field(default=False, description="True si es transferencia entre cuentas propias")
-    referencia_banco: str | None = Field(None, description="Referencia bancaria para matching exacto")
+    es_transferencia_interna: bool = Field(
+        default=False, description="True si es transferencia entre cuentas propias"
+    )
+    referencia_banco: str | None = Field(
+        None, description="Referencia bancaria para matching exacto"
+    )
 
     created_at: datetime
     updated_at: datetime

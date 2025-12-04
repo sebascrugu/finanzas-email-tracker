@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.config.settings import settings
-from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.user import User
+
 
 logger = get_logger(__name__)
 

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+
 # Deshabilitar fixtures de DB para estos tests
 pytestmark = pytest.mark.usefixtures()  # No usar fixtures automáticos
 
@@ -29,7 +30,7 @@ class TestPatrimonyServiceInit:
     def test_service_init(self):
         """Debería inicializar el servicio correctamente."""
         # Import dentro del test para evitar side effects de conftest
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -45,7 +46,7 @@ class TestCrearSnapshot:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -53,8 +54,7 @@ class TestCrearSnapshot:
 
     def test_crear_snapshot_sin_cuentas(self, service):
         """Debería crear snapshot con valores en cero si no hay cuentas."""
-        from finanzas_tracker.models.patrimonio_snapshot import SnapshotType
-        
+
         # Mock queries
         service.db.execute.return_value.scalars.return_value.all.return_value = []
 
@@ -112,7 +112,7 @@ class TestEstablecerPatrimonioInicial:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -139,7 +139,7 @@ class TestEstablecerPatrimonioInicial:
     def test_establecer_patrimonio_inicial_duplicado(self, service):
         """Debería lanzar error si ya existe fecha base."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         # Ya existe fecha base
         existing = MagicMock(spec=PatrimonioSnapshot)
         service.db.execute.return_value.scalar_one_or_none.return_value = existing
@@ -157,7 +157,7 @@ class TestObtenerHistorial:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -174,7 +174,7 @@ class TestObtenerHistorial:
     def test_obtener_historial_con_limite(self, service):
         """Debería respetar el límite de resultados."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         snapshots = [MagicMock(spec=PatrimonioSnapshot) for _ in range(5)]
         service.db.execute.return_value.scalars.return_value.all.return_value = snapshots
 
@@ -189,7 +189,7 @@ class TestObtenerHistorial:
     def test_obtener_historial_ordenado_descendente(self, service):
         """Debería ordenar por fecha descendente (más reciente primero)."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         s1 = MagicMock(spec=PatrimonioSnapshot)
         s1.fecha_snapshot = datetime(2025, 12, 1, tzinfo=UTC)
         s2 = MagicMock(spec=PatrimonioSnapshot)
@@ -209,7 +209,7 @@ class TestGetSnapshotFechaBase:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -218,12 +218,10 @@ class TestGetSnapshotFechaBase:
     def test_get_fecha_base_existe(self, service):
         """Debería retornar el snapshot de fecha base."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         fecha_base_snapshot = MagicMock(spec=PatrimonioSnapshot)
         fecha_base_snapshot.es_fecha_base = True
-        service.db.execute.return_value.scalar_one_or_none.return_value = (
-            fecha_base_snapshot
-        )
+        service.db.execute.return_value.scalar_one_or_none.return_value = fecha_base_snapshot
 
         result = service.get_snapshot_fecha_base(profile_id="test-profile-id")
 
@@ -245,7 +243,7 @@ class TestCalcularCambioPeriodo:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -255,7 +253,7 @@ class TestCalcularCambioPeriodo:
     def snapshot_inicio(self):
         """Fixture para snapshot inicial."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         s = MagicMock(spec=PatrimonioSnapshot)
         s.fecha_snapshot = datetime(2025, 1, 1, tzinfo=UTC)
         s.patrimonio_neto_crc = Decimal("1000000")
@@ -267,7 +265,7 @@ class TestCalcularCambioPeriodo:
     def snapshot_fin(self):
         """Fixture para snapshot final."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         s = MagicMock(spec=PatrimonioSnapshot)
         s.fecha_snapshot = datetime(2025, 6, 1, tzinfo=UTC)
         s.patrimonio_neto_crc = Decimal("1200000")
@@ -310,7 +308,7 @@ class TestGenerarSnapshotMensual:
     @pytest.fixture
     def service(self):
         """Fixture para crear el servicio con DB mockeada."""
-        with patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'test-key'}):
+        with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-key"}):
             from finanzas_tracker.services.patrimony_service import PatrimonyService
 
             mock_db = MagicMock()
@@ -333,7 +331,7 @@ class TestGenerarSnapshotMensual:
     def test_generar_snapshot_mensual_existente(self, service):
         """Debería retornar None si ya existe snapshot este mes."""
         from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
-        
+
         existing = MagicMock(spec=PatrimonioSnapshot)
         service.db.execute.return_value.scalar_one_or_none.return_value = existing
 

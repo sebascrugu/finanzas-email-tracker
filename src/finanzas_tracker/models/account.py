@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import AccountType, BankName, Currency

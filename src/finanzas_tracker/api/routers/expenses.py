@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from finanzas_tracker.api.dependencies import get_db
 from finanzas_tracker.services.recurring_expense_predictor import (
     AlertLevel,
-    ExpenseType,
     RecurringExpensePredictor,
     generar_reporte_gastos_proximos,
 )
@@ -94,13 +93,13 @@ def get_predicted_expenses(
     suscripciones detectadas y patrones de pago.
     """
     predictor = RecurringExpensePredictor(db)
-    
+
     predicciones = predictor.predecir_gastos(
         profile_id=profile_id,
         dias_adelante=dias,
         confianza_minima=confianza_minima,
     )
-    
+
     # Convertir a response
     responses = []
     for pred in predicciones:
@@ -118,11 +117,11 @@ def get_predicted_expenses(
                 notas=pred.notas,
             )
         )
-    
+
     total = sum(p.monto_estimado for p in predicciones)
     urgentes = sum(1 for p in predicciones if p.nivel_alerta == AlertLevel.URGENT)
     warnings = sum(1 for p in predicciones if p.nivel_alerta == AlertLevel.WARNING)
-    
+
     return PredictedExpenseListResponse(
         gastos=responses,
         total_estimado=float(total),
@@ -143,12 +142,12 @@ def get_expense_alerts(
     Solo retorna gastos con nivel de alerta WARNING o URGENT.
     """
     predictor = RecurringExpensePredictor(db)
-    
+
     alertas = predictor.get_alertas_vencimiento(
         profile_id=profile_id,
         dias_alerta=dias,
     )
-    
+
     responses = []
     for pred in alertas:
         responses.append(
@@ -165,11 +164,11 @@ def get_expense_alerts(
                 notas=pred.notas,
             )
         )
-    
+
     total = sum(p.monto_estimado for p in alertas)
     urgentes = sum(1 for p in alertas if p.nivel_alerta == AlertLevel.URGENT)
     warnings = sum(1 for p in alertas if p.nivel_alerta == AlertLevel.WARNING)
-    
+
     return PredictedExpenseListResponse(
         gastos=responses,
         total_estimado=float(total),
@@ -191,13 +190,13 @@ def get_monthly_expense_summary(
     Si no se especifica mes/año, usa el mes actual.
     """
     predictor = RecurringExpensePredictor(db)
-    
+
     resumen = predictor.generar_resumen_mensual(
         profile_id=profile_id,
         mes=mes,
         anio=anio,
     )
-    
+
     # Convertir gastos a response
     gastos_response = []
     for pred in resumen.gastos:
@@ -215,10 +214,10 @@ def get_monthly_expense_summary(
                 notas=pred.notas,
             )
         )
-    
+
     # Convertir por_tipo
     por_tipo = {k.value: float(v) for k, v in resumen.por_tipo.items()}
-    
+
     return ExpenseSummaryResponse(
         periodo_inicio=resumen.periodo_inicio,
         periodo_fin=resumen.periodo_fin,
@@ -242,23 +241,20 @@ def get_cash_flow_projection(
     Calcula cómo afectarán los gastos proyectados al saldo de cuenta.
     """
     predictor = RecurringExpensePredictor(db)
-    
+
     flujo = predictor.estimar_flujo_caja(
         profile_id=profile_id,
         saldo_inicial=Decimal(str(saldo_inicial)),
         dias=dias,
     )
-    
+
     # Convertir a dict con fechas string
-    flujo_diario = {
-        fecha.isoformat(): float(saldo)
-        for fecha, saldo in flujo.items()
-    }
-    
+    flujo_diario = {fecha.isoformat(): float(saldo) for fecha, saldo in flujo.items()}
+
     # Calcular totales
     saldos = list(flujo.values())
     gastos_proyectados = float(Decimal(str(saldo_inicial)) - saldos[-1]) if saldos else 0
-    
+
     return CashFlowResponse(
         saldo_inicial=saldo_inicial,
         saldo_final=float(saldos[-1]) if saldos else saldo_inicial,

@@ -201,7 +201,9 @@ class TransactionProcessor:
             transaction_data["necesita_revision"] = True
             stats["necesitan_revision"] += 1
 
-    def _save_transaction(self, transaction_data: dict[str, Any]) -> tuple[bool, Transaction | None]:
+    def _save_transaction(
+        self, transaction_data: dict[str, Any]
+    ) -> tuple[bool, Transaction | None]:
         """Guarda una transacción en la base de datos."""
         try:
             with get_session() as session:
@@ -223,7 +225,7 @@ class TransactionProcessor:
                 session.add(transaction)
                 session.commit()
                 session.refresh(transaction)
-                
+
                 # Detectar transferencias internas (pagos de tarjeta, etc.)
                 transfer_detector = InternalTransferDetector(session)
                 if transfer_detector.es_transferencia_interna(transaction):
@@ -232,10 +234,12 @@ class TransactionProcessor:
                         transaction.profile_id,
                     )
                     session.refresh(transaction)
-                
+
                 session.expunge(transaction)
 
-                logger.debug(f"Transacción guardada: {transaction.comercio} - {transaction.monto_crc:,.2f}")
+                logger.debug(
+                    f"Transacción guardada: {transaction.comercio} - {transaction.monto_crc:,.2f}"
+                )
                 return (True, transaction)
 
         except IntegrityError:

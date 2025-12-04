@@ -164,6 +164,7 @@ def progress_bar_with_label(
             Ejemplo: {0.5: "danger", 0.8: "warning", 1.0: "success"}
     """
     if format_fn is None:
+
         def format_fn(x) -> str:
             return f"₡{x:,.0f}"
 
@@ -303,6 +304,7 @@ def metric_comparison(
         reverse_colors: Si True, inversión es buena (para gastos)
     """
     if format_fn is None:
+
         def format_fn(x) -> str:
             return f"₡{x:,.0f}"
 
