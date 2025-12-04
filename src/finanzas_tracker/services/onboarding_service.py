@@ -230,10 +230,111 @@ class OnboardingService:
                     f"{len(state.detected_cards)} tarjetas, "
                     f"{state.transactions_count} transacciones"
                 )
+
+                # Guardar transacciones en el estado para importación posterior
+                state._pdf_transactions = result.get("transactions", [])
         else:
             logger.warning(f"Parser para {banco} no implementado en onboarding")
 
         return state
+
+    def import_transactions_from_pdf(
+        self,
+        user_id: str,
+        profile_id: str,
+        fecha_base: date,
+        importar_historicas: bool = True,
+    ) -> dict:
+        """
+        Importa transacciones del PDF procesado.
+
+        Las transacciones anteriores a fecha_base se marcan como históricas
+        y no afectan el cálculo de patrimonio.
+
+        Args:
+            user_id: ID del usuario
+            profile_id: ID del perfil
+            fecha_base: Fecha límite para marcar como históricas
+            importar_historicas: Si importar transacciones anteriores a fecha_base
+
+        Returns:
+            Diccionario con estadísticas de importación
+        """
+        from finanzas_tracker.models.transaction import Transaction
+        from finanzas_tracker.models.enums import TransactionStatus
+        from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
+
+        state = self._states.get(user_id)
+        if not state or not hasattr(state, '_pdf_transactions'):
+            return {"error": "No hay PDF procesado para este usuario"}
+
+        transactions = state._pdf_transactions
+        stats = {
+            "total": len(transactions),
+            "importadas": 0,
+            "historicas": 0,
+            "recientes": 0,
+            "duplicadas": 0,
+            "transferencias_internas": 0,
+        }
+
+        transfer_detector = InternalTransferDetector(self.db)
+
+        for tx_data in transactions:
+            fecha_tx = tx_data.get("fecha")
+            if isinstance(fecha_tx, str):
+                fecha_tx = datetime.strptime(fecha_tx, "%Y-%m-%d").date()
+
+            es_historica = fecha_tx < fecha_base
+
+            if es_historica and not importar_historicas:
+                continue
+
+            try:
+                # Crear transacción
+                transaction = Transaction(
+                    profile_id=profile_id,
+                    email_id=f"pdf_import_{user_id}_{tx_data.get('referencia', '')}_{fecha_tx}",
+                    banco=tx_data.get("banco", "bac"),
+                    comercio=tx_data.get("comercio", tx_data.get("descripcion", "")),
+                    tipo_transaccion=tx_data.get("tipo", "compra"),
+                    monto_original=Decimal(str(tx_data.get("monto", 0))),
+                    monto_crc=Decimal(str(tx_data.get("monto_crc", tx_data.get("monto", 0)))),
+                    moneda=tx_data.get("moneda", "CRC"),
+                    fecha_transaccion=fecha_tx,
+                    es_historica=es_historica,
+                    estado=TransactionStatus.CONFIRMED.value if es_historica else TransactionStatus.PENDING.value,
+                    referencia_banco=tx_data.get("referencia"),
+                )
+
+                self.db.add(transaction)
+                self.db.flush()  # Para obtener el ID
+
+                # Detectar transferencias internas
+                if transfer_detector.es_transferencia_interna(transaction):
+                    transfer_detector.procesar_pago_tarjeta(transaction, profile_id)
+                    stats["transferencias_internas"] += 1
+
+                stats["importadas"] += 1
+                if es_historica:
+                    stats["historicas"] += 1
+                else:
+                    stats["recientes"] += 1
+
+            except Exception as e:
+                if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+                    stats["duplicadas"] += 1
+                else:
+                    logger.error(f"Error importando transacción: {e}")
+
+        self.db.commit()
+
+        logger.info(
+            f"Importación completada: {stats['importadas']} transacciones "
+            f"({stats['historicas']} históricas, {stats['recientes']} recientes)"
+        )
+
+        return stats
 
     def _extract_accounts_from_pdf(
         self,
@@ -432,21 +533,106 @@ class OnboardingService:
     # Finalización
     # =========================================================================
 
-    def complete_onboarding(self, user_id: str) -> OnboardingState | None:
+    def complete_onboarding(
+        self,
+        user_id: str,
+        fecha_base: date | None = None,
+    ) -> OnboardingState | None:
         """
-        Marca el onboarding como completado.
+        Marca el onboarding como completado y establece patrimonio inicial.
 
         Args:
             user_id: ID del usuario
+            fecha_base: Fecha base para el patrimonio (default: hoy)
 
         Returns:
             Estado final del onboarding
         """
         state = self._states.get(user_id)
-        if state:
-            state.current_step = OnboardingStep.COMPLETED
-            logger.info(f"Onboarding completado para {user_id[:8]}...")
+        if not state or not state.profile_id:
+            return state
+
+        # Establecer patrimonio inicial usando PatrimonyService
+        self._establecer_patrimonio_inicial(state.profile_id, fecha_base)
+
+        state.current_step = OnboardingStep.COMPLETED
+        logger.info(f"Onboarding completado para {user_id[:8]}...")
         return state
+
+    def _establecer_patrimonio_inicial(
+        self,
+        profile_id: str,
+        fecha_base: date | None = None,
+    ) -> None:
+        """
+        Calcula y guarda el patrimonio inicial del usuario.
+
+        Usa las cuentas y tarjetas confirmadas para calcular:
+        - Total activos (saldos de cuentas)
+        - Total deudas (saldos de tarjetas de crédito)
+        - Patrimonio neto
+
+        Args:
+            profile_id: ID del perfil
+            fecha_base: Fecha del snapshot inicial
+        """
+        from finanzas_tracker.services.patrimony_service import PatrimonyService
+
+        patrimony_service = PatrimonyService(self.db)
+
+        # Obtener cuentas
+        accounts = self.db.execute(
+            select(Account).where(
+                Account.profile_id == profile_id,
+                Account.deleted_at.is_(None),
+                Account.incluir_en_patrimonio.is_(True),
+            )
+        ).scalars().all()
+
+        # Obtener tarjetas de crédito con saldo
+        cards = self.db.execute(
+            select(Card).where(
+                Card.profile_id == profile_id,
+                Card.deleted_at.is_(None),
+                Card.tipo == CardType.CREDIT,
+            )
+        ).scalars().all()
+
+        # Preparar datos para el servicio de patrimonio
+        saldos_cuentas = [
+            {
+                "cuenta_id": acc.id,
+                "nombre": acc.nombre,
+                "saldo": acc.saldo,
+                "moneda": acc.moneda.value if hasattr(acc.moneda, 'value') else acc.moneda,
+            }
+            for acc in accounts
+        ]
+
+        deudas_tarjetas = [
+            {
+                "tarjeta_id": card.id,
+                "ultimos_4": card.ultimos_4_digitos,
+                "saldo": card.current_balance or Decimal("0"),
+            }
+            for card in cards
+            if card.current_balance and card.current_balance > 0
+        ]
+
+        # Crear snapshot inicial
+        snapshot = patrimony_service.establecer_patrimonio_inicial(
+            profile_id=profile_id,
+            saldos_cuentas=saldos_cuentas,
+            deudas_tarjetas=deudas_tarjetas,
+            fecha_base=fecha_base or date.today(),
+        )
+
+        logger.info(
+            f"Patrimonio inicial establecido para {profile_id[:8]}...: "
+            f"activos={snapshot.total_activos_crc:,.2f}, "
+            f"deudas={snapshot.total_deudas_crc:,.2f}, "
+            f"neto={snapshot.patrimonio_neto_crc:,.2f}"
+        )
 
     def get_onboarding_summary(self, user_id: str) -> dict:
         """
