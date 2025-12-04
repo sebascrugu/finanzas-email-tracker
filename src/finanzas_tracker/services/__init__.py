@@ -15,6 +15,7 @@ from finanzas_tracker.services.email_fetcher import EmailFetcher
 from finanzas_tracker.services.exchange_rate import ExchangeRateService, exchange_rate_service
 from finanzas_tracker.services.finance_chat import FinanceChatService
 from finanzas_tracker.services.insights import InsightsService
+from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
 from finanzas_tracker.services.notification_service import CardNotificationService
 from finanzas_tracker.services.onboarding_service import OnboardingService
@@ -46,6 +47,7 @@ __all__ = [
     "exchange_rate_service",
     "FinanceChatService",
     "InsightsService",
+    "InternalTransferDetector",
     "listar_comercios_ambiguos",
     "MerchantNormalizationService",
     "OnboardingService",
