@@ -6,12 +6,14 @@ from finanzas_tracker.api.routers import (
     budgets,
     cards,
     categories,
+    expenses,
     notifications,
     onboarding,
     patrimony,
     profiles,
     reconciliation,
     statements,
+    subscriptions,
     transactions,
 )
 
@@ -22,11 +24,13 @@ __all__ = [
     "budgets",
     "cards",
     "categories",
+    "expenses",
     "notifications",
     "onboarding",
     "patrimony",
     "profiles",
     "reconciliation",
     "statements",
+    "subscriptions",
     "transactions",
 ]

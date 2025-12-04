@@ -17,12 +17,14 @@ from finanzas_tracker.api.routers import (
     budgets,
     cards,
     categories,
+    expenses,
     notifications,
     onboarding,
     patrimony,
     profiles,
     reconciliation,
     statements,
+    subscriptions,
     transactions,
 )
 from finanzas_tracker.config.settings import settings
@@ -126,6 +128,8 @@ app.include_router(cards.router, prefix="/api/v1", tags=["Tarjetas"])
 app.include_router(notifications.router, prefix="/api/v1", tags=["Notificaciones"])
 app.include_router(statements.router, prefix="/api/v1", tags=["Estados de Cuenta"])
 app.include_router(reconciliation.router, prefix="/api/v1", tags=["Reconciliación"])
+app.include_router(subscriptions.router, prefix="/api/v1", tags=["Suscripciones"])
+app.include_router(expenses.router, prefix="/api/v1", tags=["Gastos Proyectados"])
 app.include_router(ai.router, prefix="/api/v1", tags=["AI & RAG"])
 
 

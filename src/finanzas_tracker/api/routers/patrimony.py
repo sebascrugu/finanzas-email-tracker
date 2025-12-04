@@ -87,6 +87,47 @@ def get_net_worth_summary(
     )
 
 
+@router.get("/history")
+def get_patrimony_history(
+    profile_id: str = Query(..., description="ID del perfil"),
+    meses: int = Query(6, ge=1, le=24, description="Meses de historial"),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Obtiene el historial de evolución del patrimonio.
+
+    Retorna snapshots del patrimonio neto a lo largo del tiempo
+    para graficar la evolución.
+    """
+    from datetime import date, timedelta
+    
+    service = PatrimonyService(db)
+    
+    # Calcular rango de fechas
+    fecha_fin = date.today()
+    fecha_inicio = fecha_fin - timedelta(days=meses * 30)
+    
+    snapshots = service.obtener_historial(
+        profile_id=profile_id,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        limite=meses * 4,  # Aproximadamente 4 snapshots por mes
+    )
+    
+    history = []
+    for snapshot in snapshots:
+        history.append({
+            "fecha": snapshot.fecha_snapshot.isoformat(),
+            "net_worth": float(snapshot.patrimonio_neto_crc),
+            "activos": float(snapshot.total_activos_crc),
+            "pasivos": float(snapshot.total_pasivos_crc),
+        })
+    
+    # Ordenar por fecha ascendente
+    history.sort(key=lambda x: x["fecha"])
+    
+    return history
+
+
 @router.get("/returns", response_model=InvestmentReturnsResponse)
 def get_investment_returns(
     profile_id: str = Query(..., description="ID del perfil"),
