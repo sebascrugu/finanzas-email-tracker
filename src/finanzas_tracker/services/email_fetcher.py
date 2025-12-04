@@ -83,6 +83,17 @@ class EmailFetcher:
             "presente en su supermercado",
             "doble oportunidad",
             "festejamos",
+            "crédito preaprobado",
+            "credito preaprobado",
+            "te respaldamos",
+            "emergencia",
+            "exclusivo",
+            "accedé",
+            "conocé",
+            "beneficio",
+            "black friday",
+            "amex tiene para vos",
+            "entrada gratis",
             # Notificaciones de configuración (no son transacciones de dinero)
             "cambio de pin",
             "cambio de clave",
@@ -90,6 +101,8 @@ class EmailFetcher:
             "afiliacion",
             "desafiliación",
             "desafiliacion",
+            "activación de transferencias",
+            "activacion de transferencias",
             "bac credomatic le informa",  # Suelen ser informativos
         ]
 

@@ -11,13 +11,30 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from finanzas_tracker.api.errors import setup_exception_handlers
 from finanzas_tracker.api.middleware import setup_middlewares
-from finanzas_tracker.api.routers import ai, budgets, categories, profiles, transactions
+from finanzas_tracker.api.routers import (
+    ai,
+    auth,
+    budgets,
+    cards,
+    categories,
+    notifications,
+    onboarding,
+    patrimony,
+    profiles,
+    reconciliation,
+    statements,
+    transactions,
+)
 from finanzas_tracker.config.settings import settings
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.services.embedding_events import (
     register_embedding_events,
     start_embedding_worker,
     stop_embedding_worker,
+)
+from finanzas_tracker.services.sync_scheduler import (
+    start_background_tasks,
+    stop_background_tasks,
 )
 
 
@@ -35,10 +52,16 @@ async def lifespan(app: FastAPI):
     start_embedding_worker()
     logger.info("✅ Sistema de auto-embeddings activado")
 
+    # Iniciar tareas de fondo (sync emails, card alerts, etc.)
+    start_background_tasks()
+    logger.info("✅ Tareas de fondo programadas")
+
     yield
 
     # Shutdown
     logger.info("🛑 Deteniendo Finanzas Tracker API...")
+    stop_background_tasks()
+    logger.info("✅ Tareas de fondo detenidas")
     stop_embedding_worker()
     logger.info("✅ API detenida correctamente")
 
@@ -92,10 +115,17 @@ app.add_middleware(
 )
 
 # Incluir routers
+app.include_router(auth.router, prefix="/api/v1", tags=["Authentication"])
+app.include_router(onboarding.router, prefix="/api/v1", tags=["Onboarding"])
 app.include_router(transactions.router, prefix="/api/v1", tags=["Transactions"])
 app.include_router(categories.router, prefix="/api/v1", tags=["Categories"])
 app.include_router(budgets.router, prefix="/api/v1", tags=["Budgets"])
 app.include_router(profiles.router, prefix="/api/v1", tags=["Profiles"])
+app.include_router(patrimony.router, prefix="/api/v1", tags=["Patrimonio"])
+app.include_router(cards.router, prefix="/api/v1", tags=["Tarjetas"])
+app.include_router(notifications.router, prefix="/api/v1", tags=["Notificaciones"])
+app.include_router(statements.router, prefix="/api/v1", tags=["Estados de Cuenta"])
+app.include_router(reconciliation.router, prefix="/api/v1", tags=["Reconciliación"])
 app.include_router(ai.router, prefix="/api/v1", tags=["AI & RAG"])
 
 

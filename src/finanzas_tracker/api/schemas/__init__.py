@@ -18,6 +18,14 @@ from finanzas_tracker.api.schemas.profile import (
     ProfileResponse,
     ProfileUpdate,
 )
+from finanzas_tracker.api.schemas.reconciliation import (
+    PatrimonioSnapshotCreate,
+    PatrimonioSnapshotResponse,
+    PatrimonioSnapshotUpdate,
+    ReconciliationReportCreate,
+    ReconciliationReportResponse,
+    ReconciliationReportUpdate,
+)
 from finanzas_tracker.api.schemas.transaction import (
     TransactionCreate,
     TransactionListResponse,
@@ -47,4 +55,11 @@ __all__ = [
     "ProfileUpdate",
     "ProfileResponse",
     "ProfileListResponse",
+    # Reconciliation & Patrimonio
+    "ReconciliationReportCreate",
+    "ReconciliationReportUpdate",
+    "ReconciliationReportResponse",
+    "PatrimonioSnapshotCreate",
+    "PatrimonioSnapshotUpdate",
+    "PatrimonioSnapshotResponse",
 ]

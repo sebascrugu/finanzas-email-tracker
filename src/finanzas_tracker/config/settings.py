@@ -168,6 +168,21 @@ class Settings(BaseSettings):
         le=1.0,
     )
 
+    # === JWT Authentication ===
+    jwt_secret_key: str = Field(
+        default="dev-secret-key-change-in-production-32chars",
+        description="Clave secreta para firmar tokens JWT (CAMBIAR EN PRODUCCIÓN)",
+    )
+    jwt_algorithm: str = Field(
+        default="HS256",
+        description="Algoritmo para firmar tokens JWT",
+    )
+    jwt_access_token_expire_minutes: int = Field(
+        default=60 * 24,  # 24 horas
+        description="Tiempo de expiración del access token en minutos",
+        ge=5,
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

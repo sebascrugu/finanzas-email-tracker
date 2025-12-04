@@ -70,6 +70,16 @@ class TransactionResponse(BaseModel):
     contexto: str | None
     tipo_especial: str | None
     excluir_de_presupuesto: bool
+
+    # Nuevos campos para reconciliación y patrimonio
+    estado: str = Field(default="pendiente", description="Estado: pendiente, confirmada, reconciliada, cancelada, huerfana")
+    es_historica: bool = Field(default=False, description="True si es anterior a FECHA_BASE")
+    fecha_registro_sistema: datetime | None = Field(None, description="Cuándo se importó al sistema")
+    reconciliacion_id: str | None = Field(None, description="ID del reporte de reconciliación")
+    reconciliada_en: datetime | None = Field(None, description="Cuándo fue reconciliada")
+    es_transferencia_interna: bool = Field(default=False, description="True si es transferencia entre cuentas propias")
+    referencia_banco: str | None = Field(None, description="Referencia bancaria para matching exacto")
+
     created_at: datetime
     updated_at: datetime
 
