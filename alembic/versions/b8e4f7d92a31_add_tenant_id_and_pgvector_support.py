@@ -74,17 +74,24 @@ def upgrade() -> None:
     
     # Para PostgreSQL, crear tabla de embeddings para RAG
     if is_postgres():
+        # Primero creamos la extensión vector
+        op.execute("CREATE EXTENSION IF NOT EXISTS vector")
+        
         op.create_table(
             'transaction_embeddings',
             sa.Column('id', sa.String(36), primary_key=True),
             sa.Column('transaction_id', sa.String(36), sa.ForeignKey('transactions.id', ondelete='CASCADE'), nullable=False, unique=True),
             sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=True, index=True),
-            sa.Column('embedding', postgresql.ARRAY(sa.Float), nullable=False, comment='Vector embedding 1536-dim para Claude'),
+            # Usamos raw SQL para el tipo vector ya que SQLAlchemy no lo soporta nativamente
             sa.Column('text_content', sa.Text(), nullable=False, comment='Texto usado para generar el embedding'),
-            sa.Column('model_version', sa.String(50), nullable=False, default='claude-3-haiku', comment='Modelo usado para generar embedding'),
+            sa.Column('model_version', sa.String(50), nullable=False, default='all-MiniLM-L6-v2', comment='Modelo usado para generar embedding'),
+            sa.Column('embedding_dim', sa.Integer(), nullable=False, default=384, comment='Dimensión del vector'),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         )
+        
+        # Agregar columna embedding como tipo vector usando SQL raw
+        op.execute("ALTER TABLE transaction_embeddings ADD COLUMN embedding vector(384) NOT NULL")
         
         op.create_index('ix_transaction_embeddings_transaction_id', 'transaction_embeddings', ['transaction_id'])
 
