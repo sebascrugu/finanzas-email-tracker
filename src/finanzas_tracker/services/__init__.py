@@ -26,6 +26,13 @@ from finanzas_tracker.services.notification_service import CardNotificationServi
 from finanzas_tracker.services.onboarding_service import OnboardingService
 from finanzas_tracker.services.patrimony_service import PatrimonyService
 from finanzas_tracker.services.reconciliation_service import ReconciliationService
+from finanzas_tracker.services.recurring_expense_predictor import (
+    AlertLevel,
+    ExpenseType,
+    PredictedExpense,
+    RecurringExpensePredictor,
+    generar_reporte_gastos_proximos,
+)
 from finanzas_tracker.services.statement_email_service import (
     StatementEmailService,
     statement_email_service,
@@ -40,6 +47,7 @@ from finanzas_tracker.services.transaction_service import TransactionService
 
 
 __all__ = [
+    "AlertLevel",
     "AmbiguousMerchantService",
     "AuthManager",
     "auth_manager",
@@ -51,14 +59,18 @@ __all__ = [
     "EmailFetcher",
     "ExchangeRateService",
     "exchange_rate_service",
+    "ExpenseType",
     "FinanceChatService",
+    "generar_reporte_gastos_proximos",
     "InsightsService",
     "InternalTransferDetector",
     "listar_comercios_ambiguos",
     "MerchantNormalizationService",
     "OnboardingService",
     "PatrimonyService",
+    "PredictedExpense",
     "ReconciliationService",
+    "RecurringExpensePredictor",
     "scheduler",
     "start_background_tasks",
     "StatementEmailService",
