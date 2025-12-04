@@ -127,6 +127,7 @@ class SubscriptionDetector:
         profile_id: str,
         meses_atras: int = 6,
         min_ocurrencias: int = 2,
+        confianza_minima: int = 50,
     ) -> list[DetectedSubscription]:
         """
         Detecta suscripciones en las transacciones del usuario.
@@ -136,11 +137,13 @@ class SubscriptionDetector:
         - Monto similar (±10%)
         - Frecuencia regular (semanal, mensual, anual)
         - Al menos min_ocurrencias cobros
+        - Confianza mínima requerida
 
         Args:
             profile_id: ID del perfil.
             meses_atras: Meses de historial a analizar.
             min_ocurrencias: Mínimo de cobros para considerar suscripción.
+            confianza_minima: Confianza mínima requerida (0-100).
 
         Returns:
             Lista de suscripciones detectadas ordenadas por confianza.
@@ -165,7 +168,7 @@ class SubscriptionDetector:
         for comercio_norm, txs in grupos.items():
             if len(txs) >= min_ocurrencias:
                 sub = self._analizar_grupo(comercio_norm, txs)
-                if sub:
+                if sub and sub.confianza >= confianza_minima:
                     suscripciones.append(sub)
         
         # Ordenar por confianza descendente
