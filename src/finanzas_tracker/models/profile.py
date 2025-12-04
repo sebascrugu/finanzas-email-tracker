@@ -99,6 +99,12 @@ class Profile(Base):
     incomes: Mapped[list["Income"]] = relationship(
         "Income", back_populates="profile", cascade="all, delete-orphan"
     )
+    reconciliation_reports: Mapped[list["ReconciliationReport"]] = relationship(
+        "ReconciliationReport", back_populates="profile", cascade="all, delete-orphan"
+    )
+    patrimonio_snapshots: Mapped[list["PatrimonioSnapshot"]] = relationship(
+        "PatrimonioSnapshot", back_populates="profile", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """Representación en string del modelo."""

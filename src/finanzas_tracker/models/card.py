@@ -147,6 +147,18 @@ class Card(Base):
         "Transaction",
         back_populates="card",
     )
+    billing_cycles: Mapped[list["BillingCycle"]] = relationship(
+        "BillingCycle",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        order_by="desc(BillingCycle.fecha_corte)",
+    )
+    payments: Mapped[list["CardPayment"]] = relationship(
+        "CardPayment",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        order_by="desc(CardPayment.fecha_pago)",
+    )
 
     # Constraints e índices
     __table_args__ = (
