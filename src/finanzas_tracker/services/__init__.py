@@ -17,6 +17,11 @@ from finanzas_tracker.services.finance_chat import FinanceChatService
 from finanzas_tracker.services.insights import InsightsService
 from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
+from finanzas_tracker.services.subscription_detector import (
+    DetectedSubscription,
+    SubscriptionDetector,
+    SubscriptionFrequency,
+)
 from finanzas_tracker.services.notification_service import CardNotificationService
 from finanzas_tracker.services.onboarding_service import OnboardingService
 from finanzas_tracker.services.patrimony_service import PatrimonyService
@@ -40,6 +45,7 @@ __all__ = [
     "auth_manager",
     "CardNotificationService",
     "CardService",
+    "DetectedSubscription",
     "DuplicateDetectorService",
     "duplicate_detector_service",
     "EmailFetcher",
@@ -58,6 +64,8 @@ __all__ = [
     "StatementEmailService",
     "statement_email_service",
     "stop_background_tasks",
+    "SubscriptionDetector",
+    "SubscriptionFrequency",
     "TransactionCategorizer",
     "TransactionProcessor",
     "TransactionService",
