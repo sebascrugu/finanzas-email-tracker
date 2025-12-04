@@ -98,8 +98,15 @@ def setup_test_database():
     from finanzas_tracker.models.embedding import TransactionEmbedding  # noqa: F401
     from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
     from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache  # noqa: F401
+    from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot  # noqa: F401
+    from finanzas_tracker.models.reconciliation_report import ReconciliationReport  # noqa: F401
+    from finanzas_tracker.models.account import Account  # noqa: F401
+    from finanzas_tracker.models.investment import Investment  # noqa: F401
+    from finanzas_tracker.models.goal import Goal  # noqa: F401
+    from finanzas_tracker.models.billing_cycle import BillingCycle  # noqa: F401
     
-    # Crear todas las tablas
+    # Drop y crear todas las tablas (limpia cualquier estado previo)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     
     yield engine

@@ -14,6 +14,7 @@ from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import (
     BankName,
     Currency,
+    TransactionStatus,
     TransactionType,
 )
 
@@ -109,6 +110,94 @@ class Transaction(Base):
         index=True,
         comment="Si se debe excluir del cálculo de presupuesto (ej: alquiler intermediario)",
     )
+
+    # =====================================================
+    # Campos para tracking de patrimonio y reconciliación
+    # =====================================================
+
+    # Estado del ciclo de vida
+    estado: Mapped[str] = mapped_column(
+        String(20),
+        default=TransactionStatus.PENDING.value,
+        index=True,
+        comment="Estado: pendiente, confirmada, reconciliada, cancelada, huerfana",
+    )
+
+    # Histórica vs activa (FECHA_BASE concept)
+    es_historica: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si es anterior a FECHA_BASE (no cuenta para patrimonio activo)",
+    )
+
+    # Registro del sistema
+    fecha_registro_sistema: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        index=True,
+        comment="Cuándo se importó al sistema (puede diferir de created_at si hubo migración)",
+    )
+
+    # Reconciliación
+    reconciliacion_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("reconciliation_reports.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="ID del reporte de reconciliación que verificó esta transacción",
+    )
+    reconciliada_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Cuándo fue reconciliada",
+    )
+
+    # Transferencias internas (pagos de tarjeta, entre cuentas propias)
+    es_transferencia_interna: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si es transferencia entre cuentas propias (no afecta patrimonio neto)",
+    )
+    cuenta_origen_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Cuenta de origen para transferencias internas",
+    )
+    cuenta_destino_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        comment="Cuenta de destino para transferencias internas",
+    )
+
+    # Discrepancias en reconciliación
+    monto_original_estimado: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+        comment="Monto original si hubo discrepancia con el estado de cuenta",
+    )
+    monto_ajustado: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+        comment="Monto corregido tras reconciliación",
+    )
+    razon_ajuste: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Explicación del ajuste (ej: 'Propina añadida', 'Tipo de cambio diferente')",
+    )
+
+    # Referencia bancaria para matching exacto
+    referencia_banco: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        # No index=True aquí porque está definido en __table_args__
+        comment="Número de referencia del banco para matching exacto en reconciliación",
+    )
+
     relacionada_con: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
@@ -293,6 +382,23 @@ class Transaction(Base):
         cascade="all, delete-orphan",
     )
 
+    # Relación con reconciliación
+    reconciliation_report: Mapped["ReconciliationReport | None"] = relationship(
+        "ReconciliationReport",
+        back_populates="transactions",
+        foreign_keys=[reconciliacion_id],
+    )
+
+    # Relaciones con cuentas bancarias (para transferencias internas)
+    cuenta_origen: Mapped["Account | None"] = relationship(
+        "Account",
+        foreign_keys=[cuenta_origen_id],
+    )
+    cuenta_destino: Mapped["Account | None"] = relationship(
+        "Account",
+        foreign_keys=[cuenta_destino_id],
+    )
+
     # Constraints e índices
     __table_args__ = (
         CheckConstraint("monto_crc > 0", name="check_transaction_monto_positive"),
@@ -306,6 +412,11 @@ class Transaction(Base):
         Index("ix_transactions_profile_categoria", "profile_id", "subcategory_id"),
         Index("ix_transactions_comercio", "comercio"),
         Index("ix_transactions_desconocidas", "es_desconocida"),
+        # Nuevos índices para reconciliación y patrimonio
+        Index("ix_transactions_profile_estado", "profile_id", "estado"),
+        Index("ix_transactions_profile_historica", "profile_id", "es_historica"),
+        Index("ix_transactions_reconciliacion", "reconciliacion_id"),
+        Index("ix_transactions_referencia_banco", "referencia_banco"),
     )
 
     def __repr__(self) -> str:
