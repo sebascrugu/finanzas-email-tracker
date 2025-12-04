@@ -12,6 +12,7 @@ from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
 from finanzas_tracker.services.categorizer import TransactionCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
+from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
 
 
@@ -222,6 +223,16 @@ class TransactionProcessor:
                 session.add(transaction)
                 session.commit()
                 session.refresh(transaction)
+                
+                # Detectar transferencias internas (pagos de tarjeta, etc.)
+                transfer_detector = InternalTransferDetector(session)
+                if transfer_detector.es_transferencia_interna(transaction):
+                    transfer_detector.procesar_pago_tarjeta(
+                        transaction,
+                        transaction.profile_id,
+                    )
+                    session.refresh(transaction)
+                
                 session.expunge(transaction)
 
                 logger.debug(f"Transacción guardada: {transaction.comercio} - {transaction.monto_crc:,.2f}")
