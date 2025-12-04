@@ -1,35 +1,32 @@
 """Módulo core con funcionalidades fundamentales del proyecto."""
 
-# Performance & Profiling
-from finanzas_tracker.core.profiler import (
-    SQLProfiler,
-    enable_sql_profiling,
-    get_profiler,
-    profile_function,
-    profile_queries,
+from finanzas_tracker.core.cache import TTLCache, cached_query, invalidate_profile_cache
+from finanzas_tracker.core.constants import (
+    AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD,
+    HIGH_CONFIDENCE_SCORE,
+    KEYWORD_MIN_LENGTH_FOR_HIGH_CONFIDENCE,
+    MEDIUM_CONFIDENCE_SCORE,
 )
-from finanzas_tracker.core.query_optimizer import (
-    QueryOptimizer,
-    batch_load_subcategories,
-    create_missing_indexes_migration,
-    get_profile_with_full_context,
-    get_transactions_with_relations,
-    query_optimizer,
-)
+from finanzas_tracker.core.database import Base, get_session
+from finanzas_tracker.core.logging import get_logger
+from finanzas_tracker.core.retry import retry_on_anthropic_error
 
 
 __all__ = [
-    # Profiling
-    "SQLProfiler",
-    "enable_sql_profiling",
-    "get_profiler",
-    "profile_function",
-    "profile_queries",
-    # Query Optimization
-    "QueryOptimizer",
-    "query_optimizer",
-    "get_transactions_with_relations",
-    "get_profile_with_full_context",
-    "batch_load_subcategories",
-    "create_missing_indexes_migration",
+    # Cache
+    "TTLCache",
+    "cached_query",
+    "invalidate_profile_cache",
+    # Constants
+    "AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD",
+    "HIGH_CONFIDENCE_SCORE",
+    "KEYWORD_MIN_LENGTH_FOR_HIGH_CONFIDENCE",
+    "MEDIUM_CONFIDENCE_SCORE",
+    # Database
+    "Base",
+    "get_session",
+    # Logging
+    "get_logger",
+    # Retry
+    "retry_on_anthropic_error",
 ]

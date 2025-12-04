@@ -2,9 +2,10 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -27,6 +28,14 @@ class Card(Base):
         primary_key=True,
         default=lambda: str(uuid4()),
         comment="UUID único de la tarjeta",
+    )
+
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
     )
 
     # Relación con perfil
@@ -138,9 +147,17 @@ class Card(Base):
         "Transaction",
         back_populates="card",
     )
-    alerts: Mapped[list["Alert"]] = relationship(
-        "Alert",
+    billing_cycles: Mapped[list["BillingCycle"]] = relationship(
+        "BillingCycle",
         back_populates="card",
+        cascade="all, delete-orphan",
+        order_by="desc(BillingCycle.fecha_corte)",
+    )
+    payments: Mapped[list["CardPayment"]] = relationship(
+        "CardPayment",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        order_by="desc(CardPayment.fecha_pago)",
     )
 
     # Constraints e índices

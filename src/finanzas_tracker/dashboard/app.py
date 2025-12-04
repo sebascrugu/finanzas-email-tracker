@@ -186,8 +186,8 @@ def get_active_profile() -> Profile | None:
                 joinedload(Profile.cards),
             )
             .filter(
-                Profile.es_activo == True,  # noqa: E712
-                Profile.activo == True,  # noqa: E712
+                Profile.es_activo == True,
+                Profile.activo == True,
             )
             .first()
         )
@@ -206,7 +206,7 @@ def mostrar_sidebar_simple(perfil_actual: Profile) -> None:
     with get_session() as session:
         perfiles = (
             session.query(Profile)
-            .filter(Profile.activo == True)  # noqa: E712
+            .filter(Profile.activo == True)
             .all()
         )
 
@@ -393,7 +393,7 @@ def main() -> None:
                 Transaction.fecha_transaccion >= primer_dia,
                 Transaction.fecha_transaccion < proximo_mes,
                 Transaction.deleted_at.is_(None),
-                Transaction.excluir_de_presupuesto == False,  # noqa: E712
+                Transaction.excluir_de_presupuesto == False,
             )
             .all()
         )
@@ -405,7 +405,7 @@ def main() -> None:
             session.query(Transaction)
             .filter(
                 Transaction.profile_id == perfil_activo.id,
-                Transaction.necesita_revision == True,  # noqa: E712
+                Transaction.necesita_revision == True,
                 Transaction.deleted_at.is_(None),
             )
             .count()
@@ -438,7 +438,7 @@ def main() -> None:
             session.query(Account)
             .filter(
                 Account.profile_id == perfil_activo.id,
-                Account.activa == True,  # noqa: E712
+                Account.activa == True,
                 Account.deleted_at.is_(None),
             )
             .all()

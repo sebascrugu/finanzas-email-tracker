@@ -21,7 +21,7 @@ class ExchangeRateService:
 
     Implementa cache-aside pattern con dos niveles de caché:
     1. Cache en memoria (dict) - ~1ms de latencia
-    2. Cache persistente en DB (SQLite) - ~5ms de latencia
+    2. Cache persistente en DB (PostgreSQL) - ~5ms de latencia
     3. API externa si no existe cache - ~500ms de latencia
 
     Fuentes de exchange rates (en orden de prioridad):

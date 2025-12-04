@@ -1,0 +1,111 @@
+# =============================================================================
+# Docker Compose - DESARROLLO
+# Hot reload, volúmenes para código, debug habilitado
+# =============================================================================
+#
+# Uso:  docker compose -f docker-compose.dev.yml up
+#
+# Características:
+# - Hot reload con watchfiles
+# - Código montado como volumen
+# - Debug y logs verbosos
+# - pgAdmin incluido
+
+services:
+  # ===========================================================================
+  # PostgreSQL 16 con pgvector
+  # ===========================================================================
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: finanzas_postgres_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: finanzas
+      POSTGRES_PASSWORD: finanzas_dev_2024
+      POSTGRES_DB: finanzas_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finanzas -d finanzas_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finanzas_dev_network
+
+  # ===========================================================================
+  # FastAPI con Hot Reload
+  # ===========================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: finanzas_api_dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=finanzas
+      - POSTGRES_PASSWORD=finanzas_dev_2024
+      - POSTGRES_DB=finanzas_tracker
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      # Montar código para hot reload
+      - ./src:/app/src:ro
+      - ./alembic:/app/alembic:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - finanzas_dev_network
+
+  # ===========================================================================
+  # pgAdmin para desarrollo
+  # ===========================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: finanzas_pgadmin_dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@finanzas.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_dev_data:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - finanzas_dev_network
+
+  # ===========================================================================
+  # Redis para desarrollo (cache, celery futuro)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: finanzas_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - finanzas_dev_network
+
+volumes:
+  postgres_dev_data:
+  pgadmin_dev_data:
+  redis_dev_data:
+
+networks:
+  finanzas_dev_network:
+    driver: bridge

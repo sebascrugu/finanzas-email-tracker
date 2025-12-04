@@ -38,6 +38,10 @@ class ParserUtils:
         moneda = "CRC"
         if "USD" in monto_str.upper() or "$" in monto_str:
             moneda = "USD"
+        elif "CAD" in monto_str.upper():
+            moneda = "CAD"
+        elif "EUR" in monto_str.upper() or "€" in monto_str:
+            moneda = "EUR"
         elif "CRC" in monto_str.upper() or "₡" in monto_str:
             moneda = "CRC"
 

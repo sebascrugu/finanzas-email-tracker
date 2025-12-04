@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from bs4 import BeautifulSoup
 
@@ -13,6 +13,9 @@ from finanzas_tracker.utils.parser_utils import ParserUtils
 
 
 logger = get_logger(__name__)
+
+# Tipo especial para indicar que un correo debe ser ignorado (config, marketing, etc)
+SkipEmail = Literal["SKIP"]
 
 
 class ParsedTransaction(TypedDict):
@@ -72,6 +75,9 @@ class BaseParser(ABC):
 
             # Hook para manejar formatos especiales (ej: retiro sin tarjeta)
             special_result = self._handle_special_format(soup, email_data)
+            if special_result == "SKIP":
+                # Email de configuración o marketing que debe ignorarse silenciosamente
+                return None
             if special_result is not None:
                 return special_result
 
@@ -93,7 +99,9 @@ class BaseParser(ABC):
 
             validation_error = self._validate_transaction(monto, moneda, subject)
             if validation_error:
-                logger.warning(validation_error)
+                # "SKIP" = pre-autorización, ignorar silenciosamente (ya se loggeó como INFO)
+                if validation_error != "SKIP":
+                    logger.warning(validation_error)
                 return None
 
             # Parsear ubicación
@@ -133,6 +141,11 @@ class BaseParser(ABC):
         Returns:
             Mensaje de error si hay validación fallida, None si es válido.
         """
+        # Pre-autorizaciones ($0.00) son verificaciones de tarjeta, no transacciones reales
+        if monto == Decimal("0.00") or monto == Decimal("0"):
+            logger.info(f"Pre-autorización ignorada (monto $0): {subject}")
+            return "SKIP"  # Return especial para indicar que debe ignorarse silenciosamente
+        
         if monto < MIN_TRANSACTION_AMOUNT:
             return f"Monto invalido (<{MIN_TRANSACTION_AMOUNT}): {monto} en correo: {subject}"
         if moneda not in SUPPORTED_CURRENCIES:
@@ -141,7 +154,7 @@ class BaseParser(ABC):
 
     def _handle_special_format(
         self, soup: BeautifulSoup, email_data: dict[str, Any]
-    ) -> ParsedTransaction | None:
+    ) -> ParsedTransaction | SkipEmail | None:
         """
         Hook para manejar formatos especiales de correo.
 
@@ -149,8 +162,9 @@ class BaseParser(ABC):
         como retiros sin tarjeta, etc.
 
         Returns:
-            ParsedTransaction si se manejó un formato especial, None para continuar
-            con el flujo normal.
+            ParsedTransaction si se manejó un formato especial,
+            "SKIP" si el correo debe ignorarse silenciosamente,
+            None para continuar con el flujo normal.
         """
         return None
 

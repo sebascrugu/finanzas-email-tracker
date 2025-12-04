@@ -252,7 +252,7 @@ class ReconciliationReport:
 🏦 Cuenta: {self.cuenta_iban}
 ⏰ Procesado: {self.processed_at.strftime('%Y-%m-%d %H:%M:%S')}
 
-{str(self.summary)}
+{self.summary!s}
 
 {'⚠️  REQUIERE ATENCIÓN' if self.needs_attention else '✅ TODO EN ORDEN'}
 """

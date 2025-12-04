@@ -1,786 +1,784 @@
-# Arquitectura del Sistema - Finanzas Email Tracker
+# Finanzas Tracker CR - Arquitectura
 
-## 📋 Tabla de Contenidos
+> Sistema de finanzas personales para Costa Rica con AI.  
+> Sistema de finanzas personales para Costa Rica con parsing automatizado de emails bancarios.
 
-- [Visión General](#visión-general)
-- [Arquitectura de Capas](#arquitectura-de-capas)
-- [Flujo de Datos](#flujo-de-datos)
-- [Modelo de Datos](#modelo-de-datos)
-- [Componentes Principales](#componentes-principales)
-- [Decisiones Arquitectónicas](#decisiones-arquitectónicas)
+## Tabla de Contenidos
+
+- [Vista General](#vista-general)
+- [Stack Tecnológico](#stack-tecnológico)
+- [Estructura del Proyecto](#estructura-del-proyecto)
+- [Capas de la Arquitectura](#capas-de-la-arquitectura)
+- [Base de Datos](#base-de-datos)
+- [API REST](#api-rest)
 - [Patrones de Diseño](#patrones-de-diseño)
+- [Infraestructura](#infraestructura)
+- [Testing](#testing)
+- [Flujo de Datos](#flujo-de-datos)
 
 ---
 
-## 🎯 Visión General
+## Vista General
 
-Sistema automatizado de rastreo financiero que procesa correos electrónicos bancarios, extrae transacciones, categoriza con IA, y presenta análisis financieros en un dashboard interactivo.
-
-### Características Clave
-- ✅ Extracción automática de transacciones desde correos Outlook
-- ✅ Parseo robusto de HTML de múltiples bancos (BAC, Banco Popular)
-- ✅ Categorización inteligente con Claude AI (Anthropic)
-- ✅ Conversión automática USD → CRC con tipos de cambio históricos
-- ✅ Sistema multi-perfil (personal, negocio, familia)
-- ✅ Dashboard interactivo con Streamlit
-
----
-
-## 🏗️ Arquitectura de Capas
-
-El sistema sigue una **arquitectura en capas** (layered architecture) con separación clara de responsabilidades:
-
-```mermaid
-graph TB
-    subgraph "Presentation Layer"
-        A[Streamlit Dashboard]
-        B[CLI Scripts]
-    end
-
-    subgraph "Service Layer"
-        C[EmailFetcher]
-        D[TransactionProcessor]
-        E[TransactionCategorizer]
-        F[ExchangeRateService]
-    end
-
-    subgraph "Parser Layer"
-        G[BACParser]
-        H[PopularParser]
-    end
-
-    subgraph "Data Access Layer"
-        I[SQLAlchemy Models]
-        J[Database Session]
-    end
-
-    subgraph "External Services"
-        K[Microsoft Graph API]
-        L[Claude AI API]
-        M[Exchange Rate APIs]
-    end
-
-    subgraph "Data Storage"
-        N[(SQLite Database)]
-    end
-
-    A --> D
-    B --> C
-    C --> K
-    C --> D
-    D --> G
-    D --> H
-    D --> E
-    D --> F
-    E --> L
-    F --> M
-    D --> J
-    J --> I
-    I --> N
-
-    style A fill:#e1f5ff
-    style B fill:#e1f5ff
-    style C fill:#fff4e1
-    style D fill:#fff4e1
-    style E fill:#fff4e1
-    style F fill:#fff4e1
-    style G fill:#f0e1ff
-    style H fill:#f0e1ff
-    style I fill:#e1ffe1
-    style J fill:#e1ffe1
-    style N fill:#ffe1e1
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CLIENTES                                  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │  Streamlit  │  │   Claude    │  │   Future    │              │
+│  │  Dashboard  │  │   Desktop   │  │   Mobile    │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+└─────────┼────────────────┼────────────────┼─────────────────────┘
+          │                │                │
+          ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     FastAPI REST API                             │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Middleware Layer                       │   │
+│  │  • CorrelationIdMiddleware (X-Correlation-ID)            │   │
+│  │  • RequestLoggingMiddleware (JSON structured logs)       │   │
+│  │  • Error Handling (AppException hierarchy)               │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Router Layer                           │   │
+│  │  /api/v1/transactions  │  /api/v1/categories             │   │
+│  │  /api/v1/incomes       │  /api/v1/budgets                │   │
+│  │  /api/v1/profiles      │  /api/v1/cards                  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      SERVICE LAYER                               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │Transaction  │  │ Categorizer │  │   Budget    │              │
+│  │  Service    │  │  (Claude)   │  │   Service   │              │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘              │
+│         │                │                │                      │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                  REPOSITORY LAYER                         │   │
+│  │  • BaseRepository<T> (Generic CRUD + soft delete)        │   │
+│  │  • TransactionRepository                                  │   │
+│  │  • CategoryRepository                                     │   │
+│  │  • ProfileRepository                                      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PostgreSQL + pgvector                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │
+│  │transactions │  │ categories  │  │  embeddings │              │
+│  │   (soft     │  │  (seed +    │  │   (vector   │              │
+│  │   delete)   │  │   custom)   │  │   search)   │              │
+│  └─────────────┘  └─────────────┘  └─────────────┘              │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Descripción de Capas
+---
 
-#### 1. **Presentation Layer** (Capa de Presentación)
-- **Responsabilidad**: Interfaz de usuario y comandos CLI
-- **Componentes**: Streamlit Dashboard, CLI scripts
-- **Tecnologías**: Streamlit, Python argparse
+## Stack Tecnológico
 
-#### 2. **Service Layer** (Capa de Servicios)
-- **Responsabilidad**: Lógica de negocio y orquestación
-- **Componentes**:
-  - `EmailFetcher`: Obtiene correos de Outlook via Microsoft Graph
-  - `TransactionProcessor`: Orquesta todo el flujo de procesamiento
-  - `TransactionCategorizer`: Categoriza con IA usando Claude
-  - `ExchangeRateService`: Obtiene tipos de cambio históricos
-- **Patrones**: Service Layer, Facade
+### Core
+| Componente | Tecnología | Versión | Propósito |
+|------------|------------|---------|-----------|
+| Runtime | Python | 3.11+ | Lenguaje principal |
+| API Framework | FastAPI | 0.100+ | REST API async |
+| ORM | SQLAlchemy | 2.0+ | Mapeo objeto-relacional |
+| Validation | Pydantic | 2.0+ | Schemas y validación |
+| Database | PostgreSQL | 16+ | Almacenamiento principal |
+| Vector Store | pgvector | 0.5+ | Embeddings para RAG |
+| AI | Claude (Anthropic) | API | Categorización inteligente |
 
-#### 3. **Parser Layer** (Capa de Parseo)
-- **Responsabilidad**: Extracción de datos de correos HTML
-- **Componentes**: BACParser, PopularParser
-- **Patrones**: Strategy Pattern (diferentes parsers por banco)
+### Infrastructure
+| Componente | Tecnología | Propósito |
+|------------|------------|-----------|
+| Containerization | Docker | Ambientes consistentes |
+| Orchestration | Docker Compose | Dev/Prod deployment |
+| CI/CD | GitHub Actions | Automatización |
+| Migrations | Alembic | Schema versioning |
 
-#### 4. **Data Access Layer** (Capa de Acceso a Datos)
-- **Responsabilidad**: Persistencia y queries a base de datos
-- **Componentes**: SQLAlchemy ORM Models
-- **Patrones**: Active Record, Unit of Work
+### Development
+| Componente | Tecnología | Propósito |
+|------------|------------|-----------|
+| Linting | Ruff | Fast Python linter |
+| Type Checking | mypy | Static type analysis |
+| Security Scan | Bandit | Vulnerability detection |
+| Testing | pytest | Unit/Integration tests |
+| Coverage | pytest-cov | Code coverage reports |
+
+### MCP Server (Model Context Protocol)
+| Componente | Tecnología | Versión | Propósito |
+|------------|------------|---------|-----------|
+| SDK | FastMCP | 1.22.0 | Protocol implementation |
+| Transport | stdio | - | Claude Desktop integration |
+| Features | Tools, Resources, Prompts | - | Full MCP spec support |
 
 ---
 
-## 🔄 Flujo de Datos End-to-End
+## MCP Server - Integración con Claude Desktop
 
-```mermaid
-sequenceDiagram
-    actor User
-    participant Dashboard
-    participant EmailFetcher
-    participant GraphAPI as Microsoft Graph API
-    participant Processor as TransactionProcessor
-    participant Parser as BACParser/PopularParser
-    participant Categorizer
-    participant ClaudeAPI as Claude AI
-    participant ExchangeRate as ExchangeRateService
-    participant DB as SQLite Database
+El servidor MCP permite que Claude Desktop interactúe directamente con tus finanzas personales.
 
-    User->>Dashboard: Click "Procesar Correos"
-    Dashboard->>EmailFetcher: fetch_bank_emails(profile)
-    EmailFetcher->>GraphAPI: GET /me/messages
-    GraphAPI-->>EmailFetcher: Lista de correos
-    EmailFetcher-->>Dashboard: Correos bancarios
+### Arquitectura MCP
 
-    Dashboard->>Processor: process_emails(emails, profile_id)
-
-    loop Para cada correo
-        Processor->>Processor: _identify_bank(email)
-        Processor->>Parser: parse(email_data)
-        Parser-->>Processor: transaction_data
-
-        alt Moneda es USD
-            Processor->>ExchangeRate: get_rate(fecha)
-            ExchangeRate-->>Processor: tipo_cambio
-            Processor->>Processor: convert USD→CRC
-        end
-
-        alt Auto-categorización habilitada
-            Processor->>Categorizer: categorize(comercio, monto)
-            Categorizer->>ClaudeAPI: Prompt con contexto
-            ClaudeAPI-->>Categorizer: Categoría sugerida
-            Categorizer-->>Processor: subcategory_id
-        end
-
-        Processor->>DB: INSERT transaction
-        DB-->>Processor: Success/Duplicate
-    end
-
-    Processor-->>Dashboard: Estadísticas de procesamiento
-    Dashboard-->>User: Mostrar resultados
+```
+┌────────────────────┐         ┌────────────────────────────────┐
+│   Claude Desktop   │  stdio  │        MCP Server              │
+│                    │◄───────►│   (finanzas-tracker)           │
+│  "¿Cuánto gasté    │         │                                │
+│   en comida?"      │         │  ┌──────────────────────────┐  │
+│                    │         │  │ 🔧 12 Tools              │  │
+└────────────────────┘         │  │ 📄 3 Resources           │  │
+                               │  │ 📝 4 Prompts             │  │
+                               │  └────────────┬─────────────┘  │
+                               │               │                 │
+                               │               ▼                 │
+                               │  ┌──────────────────────────┐  │
+                               │  │      PostgreSQL          │  │
+                               │  │   (transactions, etc)    │  │
+                               │  └──────────────────────────┘  │
+                               └────────────────────────────────┘
 ```
 
-### Flujo Detallado
+### Herramientas Disponibles (12 total)
 
-1. **Obtención de Correos**
-   - Usuario inicia proceso desde Dashboard
-   - `EmailFetcher` consulta Microsoft Graph API
-   - Filtra correos por sender (bancos conocidos)
-   - Retorna lista de correos bancarios
+#### Configuración (REQUERIDO PRIMERO)
+| Herramienta | Descripción |
+|-------------|-------------|
+| `set_profile` | ⚙️ Establece el perfil activo (OBLIGATORIO antes de otras tools) |
+| `list_profiles` | 📋 Lista todos los perfiles disponibles |
 
-2. **Procesamiento**
-   - `TransactionProcessor` identifica banco por sender
-   - Selecciona parser apropiado (Strategy Pattern)
-   - Parser extrae datos del HTML con BeautifulSoup + Regex
-   - Valida y normaliza datos (Decimal para montos)
+#### Nivel 1 - Consultas Básicas
+| Herramienta | Descripción |
+|-------------|-------------|
+| `get_transactions` | Consultar transacciones con filtros (días, comercio, categoría) |
+| `get_spending_summary` | Resumen agrupado por categoría, comercio o banco |
+| `get_top_merchants` | Top N comercios donde más gastas |
 
-3. **Conversión de Moneda** (si aplica)
-   - Detecta transacciones en USD
-   - Consulta tipo de cambio histórico para la fecha
-   - Convierte a CRC con precisión Decimal
+#### Nivel 2 - Análisis
+| Herramienta | Descripción |
+|-------------|-------------|
+| `search_transactions` | Búsqueda semántica con embeddings |
+| `get_monthly_comparison` | Comparación mes actual vs anterior |
 
-4. **Categorización IA** (opcional)
-   - Busca en historial de transacciones similares
-   - Si no hay match, consulta Claude AI
-   - Claude retorna categoría con nivel de confianza
-   - Marca para revisión si confianza < 80%
+#### Nivel 3 - Coaching (DIFERENCIADOR vs Actual Budget)
+| Herramienta | Emoji | Descripción |
+|-------------|-------|-------------|
+| `budget_coaching` | 🎯 | Coaching financiero personalizado con score de salud |
+| `savings_opportunities` | 💰 | Encuentra oportunidades concretas de ahorro |
+| `cashflow_prediction` | 🔮 | Predice flujo de efectivo y días de riesgo |
+| `spending_alert` | 🚨 | Detecta patrones problemáticos en tiempo real |
+| `goal_advisor` | 🎯 | Asesor de metas de ahorro con plan de acción |
 
-5. **Persistencia**
-   - Crea objeto Transaction con SQLAlchemy
-   - Guarda en base de datos
-   - Maneja duplicados (constraint en email_id)
+### MCP Resources (Contexto Automático)
 
-6. **Resultados**
-   - Retorna estadísticas: procesados, duplicados, errores
-   - Dashboard actualiza visualizaciones
+Los Resources proveen contexto que Claude puede leer automáticamente:
 
----
+| Resource URI | Descripción |
+|--------------|-------------|
+| `profile://current` | Información del perfil activo actual |
+| `finance://summary` | Resumen financiero rápido del mes actual |
+| `categories://list` | Lista de categorías disponibles |
 
-## 📊 Modelo de Datos (Entity-Relationship Diagram)
+### MCP Prompts (Plantillas Predefinidas)
 
-```mermaid
-erDiagram
-    Profile ||--o{ Card : "tiene"
-    Profile ||--o{ Transaction : "posee"
-    Profile ||--o{ Income : "recibe"
-    Profile ||--o{ Budget : "define"
+Los Prompts son plantillas para casos de uso comunes:
 
-    Card ||--o{ Transaction : "usa"
+| Prompt | Descripción | Parámetros |
+|--------|-------------|------------|
+| `weekly_review` | Revisión semanal de finanzas | ninguno |
+| `monthly_checkup` | Chequeo mensual completo | ninguno |
+| `savings_plan` | Plan de ahorro para meta específica | goal, amount, months |
+| `quick_question` | Plantilla para preguntas rápidas | question |
 
-    Category ||--o{ Subcategory : "contiene"
-    Subcategory ||--o{ Transaction : "clasifica"
+### Configuración Claude Desktop
 
-    Transaction ||--|| TransactionType : "es de tipo"
-    Transaction ||--|| Currency : "en moneda"
-
-    Profile {
-        string id PK "UUID"
-        string email_outlook UK "Correo Outlook único"
-        string nombre "Nombre del perfil"
-        string descripcion "Descripción opcional"
-        string icono "Emoji del perfil"
-        boolean es_activo "Perfil activo"
-        datetime created_at
-        datetime updated_at
+```json
+{
+  "mcpServers": {
+    "finanzas-tracker": {
+      "command": "poetry",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "finanzas_tracker.mcp"
+      ],
+      "cwd": "/path/to/finanzas-email-tracker"
     }
-
-    Card {
-        string id PK "UUID"
-        string profile_id FK "Dueño de la tarjeta"
-        string banco "BAC o Popular"
-        string ultimos_digitos UK "Últimos 4 dígitos"
-        string tipo "Débito/Crédito"
-        string alias "Nombre personalizado"
-        boolean activa
-        datetime created_at
-    }
-
-    Transaction {
-        string id PK "UUID"
-        string email_id UK "ID del correo (dedup)"
-        string profile_id FK
-        string card_id FK
-        string subcategory_id FK "Nullable"
-        string banco "BAC/Popular"
-        string comercio "Nombre del comercio"
-        decimal monto_original "Monto en moneda original"
-        string moneda_original "CRC/USD"
-        decimal monto_crc "Monto convertido a CRC"
-        decimal tipo_cambio_usado "Si fue USD"
-        string tipo_transaccion "compra/retiro/etc"
-        datetime fecha_transaccion
-        string ciudad "Nullable"
-        string pais "Nullable"
-        boolean necesita_revision "Flag IA"
-        string categoria_sugerida_por_ia
-        datetime created_at
-    }
-
-    Category {
-        string id PK "UUID"
-        string tipo UK "necesidades/gustos/ahorros"
-        string nombre "Nombre descriptivo"
-        string descripcion
-        string icono
-        datetime created_at
-    }
-
-    Subcategory {
-        string id PK "UUID"
-        string category_id FK
-        string nombre "Ej: Transporte"
-        string descripcion "Ej: Gasolina, Uber"
-        string keywords "Para auto-categorización"
-        string icono
-        datetime created_at
-    }
-
-    Budget {
-        string id PK "UUID"
-        string profile_id FK
-        string mes "YYYY-MM"
-        decimal ingreso_mensual
-        decimal necesidades_50 "50% del ingreso"
-        decimal gustos_30 "30% del ingreso"
-        decimal ahorros_20 "20% del ingreso"
-        datetime created_at
-    }
-
-    Income {
-        string id PK "UUID"
-        string profile_id FK
-        string fuente "Nombre de la fuente"
-        decimal monto
-        string frecuencia "mensual/quincenal/etc"
-        date fecha_inicio
-        boolean activo
-        datetime created_at
-    }
+  }
+}
 ```
 
-### Descripción de Entidades Principales
+### Ejemplos de Uso
 
-#### **Profile** (Entidad Central)
-- Representa un contexto financiero separado
-- Permite gestionar múltiples perfiles (personal, negocio, familia)
-- Cada perfil tiene su propio email de Outlook
-- Un perfil puede estar "activo" para el dashboard
-
-#### **Transaction** (Entidad Core)
-- Registro de cada transacción bancaria
-- `email_id` único previene duplicados
-- `necesita_revision`: flag para transacciones ambiguas
-- Soporte para USD con tipo de cambio histórico
-
-#### **Category & Subcategory** (Sistema 50/30/20)
-- 3 categorías principales: Necesidades, Gustos, Ahorros
-- Subcategorías granulares con keywords
-- Keywords permiten auto-categorización sin IA
-
-#### **Card**
-- Tarjetas bancarias asociadas a un perfil
-- Identificación por últimos 4 dígitos
-- Soft delete (activa = false)
-
----
-
-## 🧩 Componentes Principales
-
-### 1. **EmailFetcher** (`services/email_fetcher.py`)
-
-**Responsabilidad**: Obtención de correos bancarios desde Outlook
-
-**Dependencias**:
-- Microsoft Graph API (via `msgraph-sdk`)
-- `AuthManager` para autenticación OAuth2
-
-**Flujo**:
-```python
-1. Autenticación con Azure AD (OAuth2 PKCE)
-2. Query a Microsoft Graph: /me/messages
-3. Filtros:
-   - Sender en lista de bancos conocidos
-   - Fecha >= days_back
-   - Carpeta: Inbox
-4. Retorna lista de emails con: id, subject, body, sender, date
 ```
+Usuario: "¿Cómo van mis finanzas este mes?"
+→ Claude usa set_profile() + budget_coaching()
+→ Retorna: Score de salud 78/100, 3 recomendaciones priorizadas
 
-**Características**:
-- ✅ Retry automático con exponential backoff
-- ✅ Paginación (batches de 50)
-- ✅ Filtrado por sender para performance
-- ✅ Cache de tokens OAuth en keyring
+Usuario: "¿Dónde puedo ahorrar dinero?"
+→ Claude usa savings_opportunities()
+→ Retorna: ₡45,000 en oportunidades identificadas
 
----
-
-### 2. **TransactionProcessor** (`services/transaction_processor.py`)
-
-**Responsabilidad**: Orquestación del flujo completo de procesamiento
-
-**Arquitectura**:
-```python
-class TransactionProcessor:
-    """
-    Facade Pattern: Simplifica interacción con múltiples subsistemas
-    """
-
-    def __init__(self, auto_categorize: bool = True):
-        # Lazy loading de categorizer (solo si se necesita)
-        self.categorizer = TransactionCategorizer() if auto_categorize else None
-
-    def process_emails(self, emails, profile_id) -> dict:
-        """
-        Procesa batch de correos end-to-end
-
-        Pipeline:
-        1. Identificar banco -> 2. Parsear -> 3. Convertir USD
-        4. Categorizar (IA) -> 5. Guardar -> 6. Stats
-        """
-```
-
-**Patrones**:
-- **Facade Pattern**: Simplifica orquestación compleja
-- **Pipeline Pattern**: Procesamiento en etapas secuenciales
-- **Strategy Pattern**: Selección dinámica de parser por banco
-
-**Testing**: 93% coverage con mocks de DB y APIs
-
----
-
-### 3. **BACParser & PopularParser** (`parsers/`)
-
-**Responsabilidad**: Extracción estructurada de datos desde HTML bancario
-
-**Desafío**: HTML no-estándar, inconsistente entre emails
-
-**Solución**:
-```python
-class BACParser:
-    """
-    Parser robusto con múltiples estrategias de extracción:
-
-    1. BeautifulSoup para estructura HTML
-    2. Regex para patrones de texto
-    3. Fallbacks para campos opcionales
-    4. Validación con Decimal para precisión
-    """
-
-    @staticmethod
-    def parse(email_data: dict) -> dict | None:
-        """
-        Estrategia de parsing en cascada:
-
-        1. Intentar extraer de tabla HTML
-        2. Si falla, buscar en párrafos <p>
-        3. Si falla, usar regex en subject
-        4. Validar campos requeridos
-        5. Retornar None si no se puede parsear
-        """
-```
-
-**Características**:
-- ✅ Manejo robusto de edge cases (HTML malformado)
-- ✅ Extracción de fechas con múltiples formatos
-- ✅ Normalización de montos (eliminación de comas, conversión a Decimal)
-- ✅ Fallback a email subject si HTML no tiene datos
-
-**Testing**: 87-89% coverage con 51 tests
-
----
-
-### 4. **TransactionCategorizer** (`services/categorizer.py`)
-
-**Responsabilidad**: Categorización inteligente con IA
-
-**Estrategia en 3 niveles**:
-
-```python
-1. Keywords Match (Instant):
-   - "Gasolina" → Necesidades/Transporte
-   - "Netflix" → Gustos/Entretenimiento
-
-2. Historical Learning (Fast):
-   - "STARBUCKS" ya categorizado antes → usar mismo
-   - Incrementa confianza con cada uso
-
-3. Claude AI (Fallback):
-   - Comercios ambiguos (ej: "WALMART")
-   - Prompt con contexto del negocio
-   - Retorna categoría + confianza (0-100)
-```
-
-**Prompt Engineering**:
-```python
-system_prompt = """
-Eres un experto en finanzas personales...
-Categoriza según metodología 50/30/20:
-- Necesidades: Esenciales para vivir
-- Gustos: Discrecionales, pueden eliminarse
-- Ahorros: Inversiones, ahorro
-"""
-
-user_prompt = f"""
-Comercio: {comercio}
-Monto: {monto} CRC
-Historial: {transacciones_similares}
-
-Retorna JSON: {{"categoria": "...", "confianza": 85}}
-"""
-```
-
-**Optimización de Costos**:
-- Modelo: Claude Haiku 4.5 ($1/M tokens - 5x más barato que Sonnet)
-- Temperature: 0.3 (determinístico)
-- Max tokens: 1024 (suficiente para JSON corto)
-- Cache: Historial de transacciones similar
-
----
-
-### 5. **ExchangeRateService** (`services/exchange_rate.py`)
-
-**Responsabilidad**: Conversión precisa USD → CRC con tipos históricos
-
-**Fuentes de Datos (Fallback Chain)**:
-```python
-1. Cache local (dict en memoria)
-2. API Ministerio de Hacienda CR (oficial, gratuita)
-3. ExchangeRate.host API (backup, gratuita)
-4. settings.usd_to_crc_rate (fallback final)
-```
-
-**Precisión**:
-- Tipo de cambio histórico (no usar rate actual para transacciones pasadas)
-- Uso de `Decimal` para evitar errores de punto flotante
-- Cache para evitar requests repetidos
-
-**Ejemplo**:
-```python
-service = ExchangeRateService()
-
-# Obtener tipo de cambio para fecha específica
-rate = service.get_rate("2025-11-06")  # ₡520.50
-
-# Convertir monto
-crc = service.convert_usd_to_crc(50.00, "2025-11-06")
-# ₡26,025.00
+Usuario: "Quiero ahorrar ₡300,000 en 6 meses para un viaje"
+→ Claude usa goal_advisor(goal_amount=300000, goal_months=6, goal_name="viaje")
+→ Retorna: Plan de acción con categorías a reducir
 ```
 
 ---
 
-## 🎨 Decisiones Arquitectónicas (ADRs)
+## Estructura del Proyecto
 
-### ADR-001: SQLite como Base de Datos
-
-**Contexto**: Aplicación personal/familiar, no web pública
-
-**Decisión**: Usar SQLite en lugar de PostgreSQL/MySQL
-
-**Razones**:
-- ✅ Zero configuration (no servidor DB)
-- ✅ File-based (fácil backup con git)
-- ✅ Suficiente para <100K transacciones
-- ✅ ACID compliant
-- ✅ Excelente para desarrollo local
-
-**Consecuencias**:
-- ➕ Setup simple, portabilidad
-- ➖ No adecuado para múltiples usuarios concurrentes
-- ➖ Migraciones más manuales que con PostgreSQL
-
-**Alternativa futura**: Si escala a web app → migrar a PostgreSQL
-
----
-
-### ADR-002: Pydantic para Validación de Configuración
-
-**Contexto**: Muchas variables de entorno, configuración compleja
-
-**Decisión**: Usar `pydantic-settings` en lugar de `python-decouple`
-
-**Razones**:
-- ✅ Type safety automático
-- ✅ Validación declarativa
-- ✅ Error messages claros
-- ✅ Integración con IDE (autocomplete)
-- ✅ Soporta validadores custom
-
-**Ejemplo**:
-```python
-class Settings(BaseSettings):
-    email_fetch_days_back: int = Field(ge=1, le=365)  # Auto-validación
-    anthropic_api_key: str = Field(min_length=20)    # No vacío
+```
+finanzas-email-tracker/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions: lint, typecheck, security, test, docker
+│
+├── alembic/
+│   └── versions/               # Database migrations
+│
+├── src/finanzas_tracker/
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── main.py             # FastAPI app factory
+│   │   ├── deps.py             # Dependency injection
+│   │   ├── errors.py           # Exception handlers
+│   │   ├── middleware.py       # Correlation ID, Request logging
+│   │   └── routers/
+│   │       ├── transactions.py
+│   │       ├── categories.py
+│   │       ├── incomes.py
+│   │       ├── budgets.py
+│   │       └── profiles.py
+│   │
+│   ├── core/
+│   │   ├── config.py           # Settings (Pydantic)
+│   │   ├── logging.py          # Loguru + JSON formatting
+│   │   └── exceptions.py       # AppException hierarchy
+│   │
+│   ├── db/
+│   │   ├── database.py         # Session management
+│   │   └── repositories/
+│   │       ├── base.py         # BaseRepository<T>
+│   │       ├── transaction.py
+│   │       ├── category.py
+│   │       └── profile.py
+│   │
+│   ├── models/
+│   │   ├── base.py             # Base model with timestamps
+│   │   ├── transaction.py
+│   │   ├── category.py
+│   │   ├── income.py
+│   │   ├── budget.py
+│   │   ├── profile.py
+│   │   └── card.py
+│   │
+│   ├── schemas/
+│   │   ├── transaction.py      # Create, Update, Response
+│   │   ├── category.py
+│   │   ├── income.py
+│   │   └── ...
+│   │
+│   ├── services/
+│   │   ├── transaction_processor.py
+│   │   ├── categorizer.py      # Claude integration
+│   │   ├── email_fetcher.py
+│   │   └── exchange_rate.py
+│   │
+│   └── parsers/
+│       ├── bac_parser.py       # BAC Credomatic
+│       ├── sinpe_parser.py     # SINPE Móvil
+│       └── popular_parser.py   # Banco Popular
+│
+├── tests/
+│   ├── conftest.py             # Fixtures (db, client, factories)
+│   ├── unit/
+│   ├── integration/
+│   └── api/                    # FastAPI TestClient tests
+│
+├── docker-compose.yml          # Base compose
+├── docker-compose.dev.yml      # Development overrides
+├── docker-compose.prod.yml     # Production config
+├── Dockerfile                  # Multi-stage production build
+├── Dockerfile.dev              # Development with hot reload
+│
+├── pyproject.toml              # Dependencies + tool config
+├── ruff.toml                   # Linting rules
+└── alembic.ini                 # Migration config
 ```
 
 ---
 
-### ADR-003: Claude Haiku 4.5 para Categorización
+## Capas de la Arquitectura
 
-**Contexto**: Necesidad de categorización inteligente, presupuesto limitado
+### 1. API Layer (`src/finanzas_tracker/api/`)
 
-**Decisión**: Claude Haiku 4.5 en lugar de GPT-4 o Claude Sonnet
+**Responsabilidades:**
+- Recibir requests HTTP
+- Validar input con Pydantic schemas
+- Inyectar dependencias (DB session)
+- Retornar responses estructuradas
+- Manejo de errores consistente
 
-**Razones**:
-- ✅ Costo: $1/M tokens (vs $15/M de GPT-4)
-- ✅ Velocidad: <3s response (vs >10s de modelos grandes)
-- ✅ Calidad: Suficiente para clasificación simple
-- ✅ Soporte JSON nativo
-- ✅ Provider: Anthropic (mejor para structured output)
-
-**Optimizaciones**:
-- Temperature: 0.3 (más determinístico)
-- System prompts optimizados
-- Fallback a keywords (evita costo IA)
-
-**Costo mensual estimado**: ~$0.50 para 50 transacciones/día
-
----
-
-### ADR-004: Multi-Perfil Sin Modelo User
-
-**Contexto**: App familiar simple, no necesita autenticación
-
-**Decisión**: Profile como entidad principal, sin User model
-
-**Razones**:
-- ✅ Simplifica arquitectura (no auth, no sessions)
-- ✅ Cada perfil = email de Outlook separado
-- ✅ Dashboard selecciona perfil activo
-- ✅ Evita over-engineering
-
-**Trade-offs**:
-- ➕ Código más simple
-- ➖ No adecuado para web multi-tenant
-- ➖ No hay permisos por usuario
-
-**Alternativa futura**: Agregar User + roles si se hace web app
-
----
-
-### ADR-005: Streamlit para Dashboard
-
-**Contexto**: Necesidad de UI interactiva, desarrollo rápido
-
-**Decisión**: Streamlit en lugar de Flask/FastAPI + React
-
-**Razones**:
-- ✅ Prototipado ultra-rápido (100 líneas = dashboard completo)
-- ✅ Reactive por defecto (state management simple)
-- ✅ Componentes out-of-the-box (charts, tables, forms)
-- ✅ Zero configuración frontend
-- ✅ Ideal para data apps
-
-**Trade-offs**:
-- ➕ Desarrollo 10x más rápido
-- ➖ No ideal para apps web complejas
-- ➖ Menos control de UX que React
-- ➖ Re-run completo en cada interacción
-
-**Justificación**: Para MVP/personal use, Streamlit es perfecto
-
----
-
-## 🔧 Patrones de Diseño Utilizados
-
-### 1. **Strategy Pattern** (Parsers)
-
+**Middleware Stack:**
 ```python
-# Selección dinámica de parser según banco
-def _get_parser(self, banco: str):
-    parsers = {
-        "bac": BACParser,
-        "popular": PopularParser,
-    }
-    return parsers.get(banco)
-
-# Uso
-parser_class = self._get_parser(banco)
-data = parser_class.parse(email)
+# Orden de ejecución (de afuera hacia adentro)
+app.add_middleware(CorrelationIdMiddleware)   # 1. Genera/propaga X-Correlation-ID
+app.add_middleware(RequestLoggingMiddleware)  # 2. Log: method, path, status, duration
 ```
 
-**Beneficio**: Fácil agregar nuevos bancos sin modificar processor
-
----
-
-### 2. **Facade Pattern** (TransactionProcessor)
-
+**Error Handling:**
 ```python
-# Cliente solo ve una interfaz simple:
-processor = TransactionProcessor()
-stats = processor.process_emails(emails, profile_id)
+# Jerarquía de excepciones
+AppException (base)
+├── ValidationError      # 400 Bad Request
+├── NotFoundError        # 404 Not Found
+├── ConflictError        # 409 Conflict
+├── AuthenticationError  # 401 Unauthorized
+└── AuthorizationError   # 403 Forbidden
 
-# Internamente orquesta múltiples subsistemas:
-# - Parser selection
-# - Currency conversion
-# - AI categorization
-# - Database persistence
+# Respuesta estructurada
+{
+    "error": "Categoría no encontrada",
+    "code": "CATEGORY_NOT_FOUND",
+    "details": {...}  # Solo en development
+}
 ```
 
-**Beneficio**: Simplifica complejidad para el cliente
+### 2. Service Layer (`src/finanzas_tracker/services/`)
+
+**Responsabilidades:**
+- Lógica de negocio
+- Orquestación de repositories
+- Integración con servicios externos (Claude, email)
+- Validaciones de dominio
+
+**Patrón:**
+```python
+class TransactionService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.repository = TransactionRepository(db)
+    
+    def create_with_categorization(
+        self, 
+        data: TransactionCreate
+    ) -> Transaction:
+        # 1. Validar datos
+        # 2. Categorizar con Claude si necesario
+        # 3. Guardar via repository
+        # 4. Retornar entidad
+        ...
+```
+
+### 3. Repository Layer (`src/finanzas_tracker/db/repositories/`)
+
+**Responsabilidades:**
+- Acceso a datos
+- Queries SQLAlchemy
+- Soft delete automático
+- Paginación
+
+**BaseRepository genérico:**
+```python
+class BaseRepository(Generic[T]):
+    def __init__(self, db: Session, model: type[T]) -> None:
+        self.db = db
+        self.model = model
+    
+    def get(self, id: int) -> T | None:
+        """Obtiene por ID, excluyendo soft-deleted."""
+        stmt = select(self.model).where(
+            self.model.id == id,
+            self.model.deleted_at.is_(None)
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+    
+    def get_all(self, skip: int = 0, limit: int = 100) -> list[T]:
+        """Lista con paginación."""
+        ...
+    
+    def create(self, obj: T) -> T:
+        """Crea y retorna con ID."""
+        ...
+    
+    def soft_delete(self, id: int) -> bool:
+        """Marca deleted_at, nunca DELETE real."""
+        ...
+```
+
+### 4. Model Layer (`src/finanzas_tracker/models/`)
+
+**Responsabilidades:**
+- Definición de tablas
+- Relaciones SQLAlchemy
+- Timestamps automáticos
+
+**Convenciones:**
+```python
+class Transaction(Base):
+    __tablename__ = "transactions"
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[UUID | None]  # Multi-tenancy futuro
+    
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))  # NUNCA Float
+    description: Mapped[str] = mapped_column(String(500))
+    
+    # Soft delete - NUNCA DELETE real
+    deleted_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(onupdate=datetime.utcnow)
+```
 
 ---
 
-### 3. **Active Record** (SQLAlchemy Models)
+## Base de Datos
+
+### PostgreSQL + pgvector
+
+**¿Por qué PostgreSQL?**
+- ACID compliant
+- pgvector para embeddings (RAG)
+- Mejor soporte para Numeric/Decimal
+- Producción ready
+
+**Schema Principal:**
+
+```
+┌─────────────────────┐       ┌─────────────────────┐
+│     categories      │       │      profiles       │
+├─────────────────────┤       ├─────────────────────┤
+│ id (PK)             │       │ id (PK)             │
+│ nombre              │       │ nombre              │
+│ tipo (enum)         │       │ email               │
+│ color               │       │ is_default          │
+│ icono               │       │ deleted_at          │
+│ tenant_id           │       │ created_at          │
+│ deleted_at          │       │ updated_at          │
+└─────────────────────┘       └─────────────────────┘
+         │                              │
+         │                              │
+         ▼                              ▼
+┌─────────────────────────────────────────────────────┐
+│                    transactions                      │
+├─────────────────────────────────────────────────────┤
+│ id (PK)                                             │
+│ amount (Numeric 12,2)                               │
+│ currency (CRC/USD)                                  │
+│ description                                         │
+│ date                                                │
+│ source_type (sinpe/bac/manual)                     │
+│ category_id (FK) ────────────────────────────────┐ │
+│ profile_id (FK) ─────────────────────────────────┘ │
+│ tenant_id                                           │
+│ deleted_at                                          │
+│ created_at, updated_at                              │
+└─────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────┐
+│              transaction_embeddings                  │
+├─────────────────────────────────────────────────────┤
+│ id (PK)                                             │
+│ transaction_id (FK)                                 │
+│ embedding (vector 1536)  ← pgvector                 │
+│ model_version                                       │
+└─────────────────────────────────────────────────────┘
+```
+
+### Migrations (Alembic)
+
+```bash
+# Crear nueva migración
+alembic revision --autogenerate -m "add_new_table"
+
+# Aplicar migraciones
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
+```
+
+---
+
+## API REST
+
+### Endpoints Principales
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/api/v1/transactions` | Listar transacciones |
+| `POST` | `/api/v1/transactions` | Crear transacción |
+| `GET` | `/api/v1/transactions/{id}` | Obtener por ID |
+| `PUT` | `/api/v1/transactions/{id}` | Actualizar |
+| `DELETE` | `/api/v1/transactions/{id}` | Soft delete |
+| `GET` | `/api/v1/categories` | Listar categorías |
+| `POST` | `/api/v1/categories` | Crear categoría |
+| `GET` | `/api/v1/budgets` | Listar presupuestos |
+| `POST` | `/api/v1/budgets` | Crear presupuesto |
+| `GET` | `/health` | Health check |
+
+### Schemas (Pydantic)
 
 ```python
-# Modelo incluye lógica de persistencia
-transaction = Transaction(
-    comercio="STARBUCKS",
-    monto_crc=Decimal("5000.00"),
+# Patrón: Create, Update, Response separados
+class TransactionCreate(BaseModel):
+    amount: Decimal = Field(..., description="Monto en la moneda especificada")
+    currency: Currency = Currency.CRC
+    description: str = Field(..., max_length=500)
+    date: date
+    category_id: int | None = None
+
+class TransactionUpdate(BaseModel):
+    amount: Decimal | None = None
+    description: str | None = None
+    category_id: int | None = None
+
+class TransactionResponse(BaseModel):
+    id: int
+    amount: Decimal
+    currency: Currency
+    description: str
+    date: date
+    category: CategoryResponse | None
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+```
+
+---
+
+## Patrones de Diseño
+
+### 1. Repository Pattern
+- Abstracción sobre acceso a datos
+- BaseRepository genérico con CRUD
+- Soft delete automático
+- Facilita testing con mocks
+
+### 2. Dependency Injection
+```python
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@router.get("/")
+def list_transactions(db: Session = Depends(get_db)):
     ...
-)
-
-session.add(transaction)
-session.commit()  # Persiste automáticamente
 ```
 
-**Beneficio**: ORM simplifica acceso a datos
+### 3. Factory Pattern
+- `create_app()` para FastAPI application
+- Permite diferentes configs (test, dev, prod)
+
+### 4. Strategy Pattern (Parsers)
+```python
+class BaseParser(ABC):
+    @abstractmethod
+    def parse(self, content: str) -> list[Transaction]:
+        ...
+
+class BACParser(BaseParser):
+    def parse(self, content: str) -> list[Transaction]:
+        # Lógica específica BAC
+        ...
+
+class SINPEParser(BaseParser):
+    def parse(self, content: str) -> list[Transaction]:
+        # Lógica específica SINPE
+        ...
+```
 
 ---
 
-### 4. **Singleton** (Settings, Services)
+## Infraestructura
+
+### Docker
+
+**Development:**
+```yaml
+# docker-compose.dev.yml
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./src:/app/src  # Hot reload
+    environment:
+      - DEBUG=true
+    ports:
+      - "8000:8000"
+  
+  db:
+    image: pgvector/pgvector:pg16
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+```
+
+**Production:**
+```yaml
+# docker-compose.prod.yml
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+```
+
+### GitHub Actions CI
+
+```yaml
+# .github/workflows/ci.yml
+jobs:
+  lint:        # Ruff check + format
+  typecheck:   # mypy strict
+  security:    # Bandit scan
+  test:        # pytest with PostgreSQL service
+  docker:      # Build + push to GHCR
+```
+
+### Logging
 
 ```python
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()  # Solo se crea una vez
+# Production: JSON structured
+{
+    "timestamp": "2024-01-15T10:30:00Z",
+    "level": "INFO",
+    "service": "finanzas-tracker-api",
+    "correlation_id": "abc123",
+    "message": "POST /api/v1/transactions 201 45ms"
+}
 
-settings = get_settings()  # Singleton global
+# Development: Colorized console
+2024-01-15 10:30:00 | INFO | POST /api/v1/transactions 201 45ms
 ```
-
-**Beneficio**: Una sola instancia de configuración en toda la app
 
 ---
 
-### 5. **Template Method** (Parser base - implícito)
+## Testing
+
+### Estrategia de Tests
+
+```
+tests/
+├── unit/                  # Lógica aislada, mocks
+├── integration/           # Con DB real (PostgreSQL)
+└── api/                   # FastAPI TestClient
+```
+
+### Fixtures (conftest.py)
 
 ```python
-# Ambos parsers siguen misma estructura:
-class BaseParser:
-    def parse(email_data):
-        comercio = self._extract_comercio(email_data)
-        monto = self._extract_monto(email_data)
-        fecha = self._extract_fecha(email_data)
-        return self._build_result(...)
+@pytest.fixture
+def db_session():
+    """Session con transacción que hace rollback."""
+    ...
+
+@pytest.fixture
+def client(db_session):
+    """TestClient con DB inyectada."""
+    ...
+
+@pytest.fixture
+def sample_category(db_session):
+    """Categoría de prueba."""
+    ...
 ```
 
-**Beneficio**: Estructura consistente, reutilización de código
+### Ejecutar Tests
+
+```bash
+# Todos los tests
+pytest
+
+# Con coverage
+pytest --cov=src/finanzas_tracker --cov-report=html
+
+# Solo unit tests
+pytest tests/unit/
+
+# Solo API tests
+pytest tests/api/
+```
+
+### Coverage Target
+- **Global:** 80%+
+- **Services:** 90%+
+- **Parsers:** 95%+ (lógica crítica)
 
 ---
 
-## 🚀 Escalabilidad y Rendimiento
+## Flujo de Datos
 
-### Optimizaciones Actuales
+### Crear Transacción
 
-1. **Índices de Base de Datos**
-   ```sql
-   CREATE INDEX ix_transactions_profile_date
-   ON transactions(profile_id, fecha_transaccion);
+```
+1. Request → POST /api/v1/transactions
+                    │
+2. Middleware → Genera Correlation ID
+                    │
+3. Router → Valida con Pydantic schema
+                    │
+4. Service → Categoriza con Claude (si necesario)
+                    │
+5. Repository → INSERT con SQLAlchemy
+                    │
+6. Response → 201 Created + TransactionResponse
+```
 
-   CREATE UNIQUE INDEX ix_transactions_email_id
-   ON transactions(email_id);  -- Previene duplicados
-   ```
+### Flujo de Email Processing
 
-2. **Cache de Tipos de Cambio**
-   ```python
-   # Cache en memoria para evitar API calls repetidos
-   _cache: dict[str, float] = {}
-   ```
-
-3. **Batch Processing**
-   ```python
-   # Procesa correos en lotes de 50
-   EMAIL_BATCH_SIZE = 50
-   ```
-
-### Mejoras Futuras (Si Escala)
-
-1. **Background Tasks**
-   - Procesamiento asíncrono con Celery/RQ
-   - Cola de tareas para procesamiento largo
-
-2. **Caching Distribuido**
-   - Redis para cache compartido
-   - Cache de categorización IA
-
-3. **Database Migration**
-   - PostgreSQL para mejor concurrencia
-   - Read replicas para analytics
-
-4. **API Layer**
-   - FastAPI REST API
-   - Separación frontend/backend
+```
+1. Email Fetcher → Lee IMAP inbox
+                    │
+2. Parser Selection → Detecta banco (BAC/SINPE/Popular)
+                    │
+3. Parser → Extrae transacciones del email
+                    │
+4. Categorizer → Claude categoriza cada transacción
+                    │
+5. Transaction Service → Guarda en DB
+                    │
+6. Embeddings → Genera vectores para RAG
+```
 
 ---
 
-## 📚 Referencias
+## Decisiones de Arquitectura
 
-- [Microsoft Graph API Docs](https://learn.microsoft.com/en-us/graph/)
-- [Anthropic Claude API](https://docs.anthropic.com/)
-- [SQLAlchemy 2.0 Docs](https://docs.sqlalchemy.org/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
+| Decisión | Alternativa | Razón |
+|----------|-------------|-------|
+| PostgreSQL + pgvector | ChromaDB, Pinecone | Un solo DB, menos complejidad |
+| Repository Pattern | Active Record | Mejor testabilidad |
+| Soft Delete | Hard Delete | Recuperación, auditoría |
+| Decimal para dinero | Float | Precisión financiera |
+| Multi-stage Docker | Single Dockerfile | Imágenes más pequeñas |
+| Pydantic v2 | Marshmallow | Mejor integración FastAPI |
 
 ---
 
-## 🔄 Changelog de Arquitectura
+## Próximos Pasos
 
-### v0.1.0 (2025-11-19)
-- ✅ Arquitectura inicial en capas
-- ✅ Implementación de parsers (BAC, Popular)
-- ✅ Integración con Claude AI
-- ✅ Sistema multi-perfil
-- ✅ Dashboard Streamlit básico
+- [ ] Autenticación (OAuth2 / JWT)
+- [ ] Rate limiting
+- [ ] Caching (Redis)
+- [ ] Background jobs (Celery/ARQ)
+- [ ] Métricas (Prometheus)
+- [ ] Tracing distribuido (OpenTelemetry)
 
-### Próximas Mejoras Planeadas
-- [ ] API REST con FastAPI
-- [ ] Sistema de notificaciones (email/SMS)
-- [ ] Exportación de reportes (PDF, Excel)
-- [ ] Machine Learning para predicción de gastos
-- [ ] Detección de anomalías
+---
+
+*Última actualización: Enero 2025*

@@ -29,9 +29,23 @@ python-dateutil = "^2.8.2"
 beautifulsoup4 = "^4.12.0"
 lxml = "^5.1.0"
 anthropic = "^0.72.0"
+pypdf = "^4.0.0"
 keyring = "^25.7.0"
 tenacity = "^8.2.3"
 scikit-learn = "^1.7.2"
+pdfplumber = "^0.11.8"
+psycopg2-binary = "^2.9.11"
+asyncpg = "^0.31.0"
+fastapi = "^0.122.0"
+uvicorn = "^0.38.0"
+python-multipart = "^0.0.20"
+psycopg = {extras = ["binary"], version = "^3.2.13"}
+sentence-transformers = "^5.1.2"
+pgvector = "^0.4.1"
+# MCP Server
+mcp = {version = "^1.22.0", extras = ["cli"]}
+pyjwt = "^2.10.1"
+bcrypt = ">=4.0,<5.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
@@ -47,6 +61,7 @@ mypy = "^1.11.0"
 pre-commit = "^3.6.0"
 pytest-env = "^1.2.0"
 keyrings-alt = "^5.0.2"
+testcontainers = "^4.13.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -55,6 +70,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 fetch-emails = "finanzas_tracker.scripts.fetch_emails:main"
 dashboard = "finanzas_tracker.dashboard.app:main"
+mcp-server = "finanzas_tracker.mcp.__main__:main"
 
 [tool.mypy]
 python_version = "3.11"
@@ -94,6 +110,8 @@ markers = [
 ]
 # Variables de entorno para tests (pytest-env)
 env = [
+    "USE_POSTGRES=false",
+    "DATABASE_URL=sqlite:///:memory:",
     "AZURE_CLIENT_ID=test-client-id",
     "AZURE_TENANT_ID=test-tenant-id",
     "AZURE_CLIENT_SECRET=test-secret",
@@ -101,5 +119,15 @@ env = [
     "MOM_EMAIL=mom@example.com",
     "ANTHROPIC_API_KEY=sk-ant-test123",
     "ENVIRONMENT=testing",
+]
+
+# =============================================================================
+# Bandit Security Scanner Config
+# =============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "alembic", "scripts"]
+skips = [
+    "B101",  # assert_used - Usamos asserts en tests
+    "B104",  # hardcoded_bind_all_interfaces - Necesario para Docker
 ]
 

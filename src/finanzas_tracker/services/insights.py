@@ -2,11 +2,11 @@
 
 __all__ = ["InsightsService", "Insight", "InsightType", "insights_service"]
 
-import json
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
+import json
 from typing import Any
 
 import anthropic
@@ -440,12 +440,11 @@ class InsightsService:
         """Convierte hora en slot de tiempo."""
         if 6 <= hour < 12:
             return "mañanas (6am-12pm)"
-        elif 12 <= hour < 18:
+        if 12 <= hour < 18:
             return "tardes (12pm-6pm)"
-        elif 18 <= hour < 22:
+        if 18 <= hour < 22:
             return "noches (6pm-10pm)"
-        else:
-            return "madrugadas (10pm-6am)"
+        return "madrugadas (10pm-6am)"
 
     @retry_on_anthropic_error(max_attempts=2, max_wait=8)
     def _generate_ai_insights(self, data: dict, profile_id: str) -> list[Insight]:
@@ -482,9 +481,9 @@ Responde ÚNICAMENTE con un JSON válido:
   ]
 }}"""
 
-            # Llamar a Claude Sonnet para mejor análisis
+            # Llamar a Claude Haiku para análisis
             response = self.client.messages.create(
-                model="claude-3-5-sonnet-20241022",  # Sonnet para insights profundos
+                model=settings.claude_model,
                 max_tokens=600,
                 temperature=0.3,
                 messages=[{"role": "user", "content": prompt}],

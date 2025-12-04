@@ -2,12 +2,65 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+
+
+# Comercios conocidos que pueden tener múltiples categorías
+# El usuario debe confirmar qué compró
+COMERCIOS_AMBIGUOS: dict[str, list[str]] = {
+    # Tiendas departamentales / Big Box
+    "walmart": ["Supermercado", "Electrónica", "Ropa y Calzado", "Hogar", "Farmacia"],
+    "pricesmart": ["Supermercado", "Electrónica", "Hogar", "Oficina"],
+    "costco": ["Supermercado", "Electrónica", "Hogar", "Farmacia"],
+    "amazon": ["Electrónica", "Libros", "Ropa y Calzado", "Hogar", "Suscripciones"],
+
+    # Ferreterías / Mejoras del hogar
+    "epa": ["Ferretería", "Hogar", "Jardín", "Electrónica"],
+    "construplaza": ["Ferretería", "Hogar", "Jardín"],
+    "home depot": ["Ferretería", "Hogar", "Jardín", "Electrónica"],
+
+    # Tiendas por departamentos
+    "el rey": ["Supermercado", "Hogar", "Ropa y Calzado"],
+    "la curacao": ["Electrónica", "Hogar", "Electrodomésticos"],
+    "gollo": ["Electrónica", "Hogar", "Electrodomésticos"],
+
+    # Gasolineras (pueden tener tienda de conveniencia)
+    "total": ["Gasolina", "Tienda de Conveniencia", "Comida"],
+    "shell": ["Gasolina", "Tienda de Conveniencia", "Comida"],
+    "uno": ["Gasolina", "Tienda de Conveniencia", "Comida"],
+
+    # Farmacias que venden más
+    "farmacia fischel": ["Farmacia", "Belleza", "Hogar"],
+    "farmacia la bomba": ["Farmacia", "Belleza", "Supermercado"],
+
+    # Tiendas de conveniencia
+    "am pm": ["Tienda de Conveniencia", "Comida", "Bebidas"],
+    "fresh market": ["Tienda de Conveniencia", "Comida", "Bebidas"],
+}
+
+
+def es_comercio_ambiguo(nombre_comercio: str) -> bool:
+    """Verifica si un comercio necesita confirmación de categoría."""
+    nombre_lower = nombre_comercio.lower().strip()
+    return any(
+        ambiguo in nombre_lower or nombre_lower in ambiguo
+        for ambiguo in COMERCIOS_AMBIGUOS
+    )
+
+
+def obtener_categorias_posibles(nombre_comercio: str) -> list[str]:
+    """Obtiene las posibles categorías para un comercio ambiguo."""
+    nombre_lower = nombre_comercio.lower().strip()
+    for ambiguo, categorias in COMERCIOS_AMBIGUOS.items():
+        if ambiguo in nombre_lower or nombre_lower in ambiguo:
+            return categorias
+    return []
 
 
 class Merchant(Base):
@@ -25,6 +78,14 @@ class Merchant(Base):
     # Identificadores
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
 
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
+    )
+
     # Información del comercio
     nombre_normalizado: Mapped[str] = mapped_column(
         String(100), unique=True, index=True, comment="Nombre limpio y unificado"
@@ -38,6 +99,16 @@ class Merchant(Base):
     tipo_negocio: Mapped[str] = mapped_column(
         String(30),
         comment="Tipo: food_service, retail, gas_station, healthcare, entertainment, etc.",
+    )
+
+    # Comercios ambiguos (Walmart, Amazon, etc.)
+    es_ambiguo: Mapped[bool] = mapped_column(
+        Boolean, default=False, index=True,
+        comment="True si el comercio puede tener múltiples categorías (ej: Walmart)"
+    )
+    categorias_posibles: Mapped[str | None] = mapped_column(
+        Text, nullable=True,
+        comment="Lista de categorías posibles para comercios ambiguos (JSON serializado)"
     )
 
     # Metadata descriptiva
@@ -142,6 +213,15 @@ class MerchantVariant(Base):
 
     # Identificadores
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
+    )
+
     merchant_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("merchants.id"), nullable=False, index=True
     )

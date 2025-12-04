@@ -15,10 +15,8 @@ from finanzas_tracker.models.card import Card  # noqa: F401
 from finanzas_tracker.models.category import Category, Subcategory  # noqa: F401
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache  # noqa: F401
 from finanzas_tracker.models.income import Income  # noqa: F401
-from finanzas_tracker.models.income_split import IncomeSplit  # noqa: F401
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
 from finanzas_tracker.models.profile import Profile  # noqa: F401
-from finanzas_tracker.models.subscription import Subscription  # noqa: F401
 from finanzas_tracker.models.transaction import Transaction  # noqa: F401
 
 

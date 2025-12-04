@@ -50,10 +50,53 @@ class Settings(BaseSettings):
         description="API Key de Anthropic para Claude",
     )
 
-    # === Base de datos ===
-    database_path: Path = Field(
-        default=Path("data/finanzas.db"),
-        description="Ruta al archivo de base de datos SQLite",
+    # === Embeddings (RAG) ===
+    # Voyage AI (recomendado por Anthropic)
+    voyage_api_key: str | None = Field(
+        default=None,
+        description="API Key de Voyage AI para embeddings (opcional)",
+    )
+    voyage_model: str = Field(
+        default="voyage-3-lite",
+        description="Modelo de Voyage AI: voyage-3-lite, voyage-3, voyage-finance-2",
+    )
+
+    # OpenAI (fallback para embeddings)
+    openai_api_key: str | None = Field(
+        default=None,
+        description="API Key de OpenAI para embeddings (opcional, fallback)",
+    )
+    openai_embedding_model: str = Field(
+        default="text-embedding-3-small",
+        description="Modelo de embeddings de OpenAI",
+    )
+
+    # Modelo local (último fallback)
+    local_embedding_model: str = Field(
+        default="all-MiniLM-L6-v2",
+        description="Modelo de Sentence Transformers para embeddings locales",
+    )
+
+    # === Base de datos (PostgreSQL) ===
+    postgres_host: str = Field(
+        default="localhost",
+        description="Host del servidor PostgreSQL",
+    )
+    postgres_port: int = Field(
+        default=5432,
+        description="Puerto del servidor PostgreSQL",
+    )
+    postgres_user: str = Field(
+        default="finanzas",
+        description="Usuario de PostgreSQL",
+    )
+    postgres_password: str = Field(
+        default="finanzas_dev_2025",
+        description="Contraseña de PostgreSQL",
+    )
+    postgres_db: str = Field(
+        default="finanzas_tracker",
+        description="Nombre de la base de datos PostgreSQL",
     )
 
     # === Configuración de la aplicación ===
@@ -125,6 +168,21 @@ class Settings(BaseSettings):
         le=1.0,
     )
 
+    # === JWT Authentication ===
+    jwt_secret_key: str = Field(
+        default="dev-secret-key-change-in-production-32chars",
+        description="Clave secreta para firmar tokens JWT (CAMBIAR EN PRODUCCIÓN)",
+    )
+    jwt_algorithm: str = Field(
+        default="HS256",
+        description="Algoritmo para firmar tokens JWT",
+    )
+    jwt_access_token_expire_minutes: int = Field(
+        default=60 * 24,  # 24 horas
+        description="Tiempo de expiración del access token en minutos",
+        ge=5,
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -132,7 +190,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @field_validator("database_path", "logs_directory", mode="after")
+    @field_validator("logs_directory", mode="after")
     @classmethod
     def create_directories(cls, path: Path) -> Path:
         """Crea los directorios necesarios si no existen."""
@@ -150,12 +208,27 @@ class Settings(BaseSettings):
 
     def get_database_url(self) -> str:
         """
-        Obtiene la URL de conexión a la base de datos.
+        Obtiene la URL de conexión a PostgreSQL.
 
         Returns:
-            str: URL de conexión SQLite
+            str: URL de conexión a PostgreSQL
         """
-        return f"sqlite:///{self.database_path}"
+        return (
+            f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+
+    def get_async_database_url(self) -> str:
+        """
+        Obtiene la URL de conexión asíncrona a PostgreSQL.
+
+        Returns:
+            str: URL de conexión asíncrona (para FastAPI)
+        """
+        return (
+            f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
 
     def is_development(self) -> bool:
         """

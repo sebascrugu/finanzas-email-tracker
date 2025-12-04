@@ -1,68 +1,87 @@
-"""Modelos de base de datos."""
+"""Modelos de base de datos - Finanzas Tracker CR."""
 
-from finanzas_tracker.models.account import Account, AccountType
-from finanzas_tracker.models.alert import Alert, AlertConfig
-from finanzas_tracker.models.bank_statement import BankStatement
+from finanzas_tracker.models.base import (
+    BaseModelMixin,
+    SoftDeleteMixin,
+    TenantMixin,
+    TimestampMixin,
+)
+from finanzas_tracker.models.account import Account
+from finanzas_tracker.models.billing_cycle import BillingCycle
 from finanzas_tracker.models.budget import Budget
 from finanzas_tracker.models.card import Card
+from finanzas_tracker.models.card_payment import CardPayment
 from finanzas_tracker.models.category import Category, Subcategory
-from finanzas_tracker.models.credit_card import CreditCard
+from finanzas_tracker.models.embedding import TransactionEmbedding
 from finanzas_tracker.models.enums import (
-    AlertPriority,
-    AlertStatus,
-    AlertType,
+    AccountType,
     BankName,
+    BillingCycleStatus,
+    CardPaymentType,
     CardType,
     CategoryType,
     Currency,
+    GoalPriority,
+    GoalStatus,
     IncomeType,
+    InvestmentStatus,
+    InvestmentType,
     RecurrenceFrequency,
+    TransactionStatus,
     TransactionType,
 )
 from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
-from finanzas_tracker.models.goal_milestone import GoalMilestone
+from finanzas_tracker.models.goal import Goal
 from finanzas_tracker.models.income import Income
-from finanzas_tracker.models.income_split import IncomeSplit
+from finanzas_tracker.models.investment import Investment
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
-from finanzas_tracker.models.onboarding_progress import OnboardingProgress
+from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
 from finanzas_tracker.models.profile import Profile
-from finanzas_tracker.models.savings_goal import SavingsGoal
-from finanzas_tracker.models.subscription import Subscription
+from finanzas_tracker.models.reconciliation_report import ReconciliationReport
 from finanzas_tracker.models.transaction import Transaction
+from finanzas_tracker.models.user import User
 
 
 __all__ = [
-    # Models
+    # Mixins
+    "BaseModelMixin",
+    "SoftDeleteMixin",
+    "TenantMixin",
+    "TimestampMixin",
+    # Core Models
     "Account",
-    "Alert",
-    "AlertConfig",
-    "BankStatement",
+    "BillingCycle",
     "Budget",
     "Card",
+    "CardPayment",
     "Category",
-    "CreditCard",
     "ExchangeRateCache",
-    "GoalMilestone",
+    "Goal",
     "Income",
-    "IncomeSplit",
+    "Investment",
     "Merchant",
     "MerchantVariant",
-    "OnboardingProgress",
+    "PatrimonioSnapshot",
     "Profile",
-    "SavingsGoal",
+    "ReconciliationReport",
     "Subcategory",
-    "Subscription",
     "Transaction",
+    "TransactionEmbedding",
+    "User",
     # Enums
     "AccountType",
-    "AlertPriority",
-    "AlertStatus",
-    "AlertType",
     "BankName",
+    "BillingCycleStatus",
+    "CardPaymentType",
     "CardType",
     "CategoryType",
     "Currency",
+    "GoalPriority",
+    "GoalStatus",
     "IncomeType",
+    "InvestmentStatus",
+    "InvestmentType",
     "RecurrenceFrequency",
+    "TransactionStatus",
     "TransactionType",
 ]

@@ -74,14 +74,17 @@ RECENT_TRANSACTION_DAYS = 7
 # VALIDACIÓN
 # ============================================================================
 
-# Monto mínimo permitido para transacciones (en CRC)
-MIN_TRANSACTION_AMOUNT = 1.0
+# Monto mínimo permitido para transacciones
+# Nota: Usamos 0.01 para permitir transacciones pequeñas (ej: Amazon Prime $0.99)
+# Las pre-autorizaciones ($0.00) se filtran aparte en el parser
+MIN_TRANSACTION_AMOUNT = 0.01
 
 # Monto máximo permitido para transacciones (en CRC)
 MAX_TRANSACTION_AMOUNT = 100_000_000.0  # 100 millones
 
 # Monedas soportadas
-SUPPORTED_CURRENCIES = ["CRC", "USD"]
+# CRC = Colones, USD = Dólares, CAD = Dólares Canadienses, EUR = Euros
+SUPPORTED_CURRENCIES = ["CRC", "USD", "CAD", "EUR"]
 
 # ============================================================================
 # RETRY Y TIMEOUTS

@@ -3,9 +3,10 @@
 __all__ = ["Profile"]
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
@@ -37,6 +38,15 @@ class Profile(Base):
 
     # Identificadores
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+
+    # Multi-tenancy (futuro)
+    tenant_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="ID del tenant para multi-tenancy (futuro)",
+    )
+
     email_outlook: Mapped[str] = mapped_column(
         String(255),
         unique=True,
@@ -89,26 +99,11 @@ class Profile(Base):
     incomes: Mapped[list["Income"]] = relationship(
         "Income", back_populates="profile", cascade="all, delete-orphan"
     )
-    accounts: Mapped[list["Account"]] = relationship(
-        "Account", back_populates="profile", cascade="all, delete-orphan"
+    reconciliation_reports: Mapped[list["ReconciliationReport"]] = relationship(
+        "ReconciliationReport", back_populates="profile", cascade="all, delete-orphan"
     )
-    subscriptions: Mapped[list["Subscription"]] = relationship(
-        "Subscription", back_populates="profile", cascade="all, delete-orphan"
-    )
-    alerts: Mapped[list["Alert"]] = relationship(
-        "Alert", back_populates="profile", cascade="all, delete-orphan"
-    )
-    alert_config: Mapped["AlertConfig | None"] = relationship(
-        "AlertConfig", back_populates="profile", cascade="all, delete-orphan", uselist=False
-    )
-    credit_cards: Mapped[list["CreditCard"]] = relationship(
-        "CreditCard", back_populates="profile", cascade="all, delete-orphan"
-    )
-    savings_goals: Mapped[list["SavingsGoal"]] = relationship(
-        "SavingsGoal", back_populates="profile", cascade="all, delete-orphan"
-    )
-    bank_statements: Mapped[list["BankStatement"]] = relationship(
-        "BankStatement", back_populates="profile", cascade="all, delete-orphan"
+    patrimonio_snapshots: Mapped[list["PatrimonioSnapshot"]] = relationship(
+        "PatrimonioSnapshot", back_populates="profile", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

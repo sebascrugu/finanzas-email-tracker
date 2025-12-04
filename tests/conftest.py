@@ -3,16 +3,29 @@ Configuración de fixtures para pytest.
 
 Este archivo contiene fixtures compartidos que pueden ser usados
 en todos los tests del proyecto.
+
+Estrategia de Testing:
+- Todos los tests usan PostgreSQL real via Testcontainers
+- Cada sesión de tests obtiene un container PostgreSQL limpio
+- Las tablas se crean una vez por sesión y se limpian entre tests
+
+Nota: Si Docker no está disponible o Testcontainers falla, se usa
+el container PostgreSQL local existente (finanzas_postgres).
 """
 
+import logging
 import os
 import sys
 from unittest.mock import MagicMock
 
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
-# Setup de variables de entorno ANTES de cualquier import
-# Esto es necesario porque Pydantic Settings se carga al importar módulos
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# Configurar logging
+logging.getLogger("testcontainers").setLevel(logging.WARNING)
+
+# Setup de variables de entorno ANTES de cualquier import de la app
 os.environ.setdefault("GMAIL_CREDENTIALS_FILE", "credentials.json")
 os.environ.setdefault("GMAIL_TOKEN_FILE", "token.json")
 os.environ.setdefault("AZURE_CLIENT_ID", "test-client-id")
@@ -23,13 +36,6 @@ os.environ.setdefault("MOM_EMAIL", "mom@example.com")
 os.environ.setdefault("ANTHROPIC_API_KEY", "sk-ant-test123")
 os.environ.setdefault("ENVIRONMENT", "testing")
 
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from finanzas_tracker.core.database import Base
-
-
 # Mock keyring ANTES de que cualquier módulo lo importe
 keyring_mock = MagicMock()
 keyring_mock.get_password.return_value = None
@@ -37,22 +43,49 @@ keyring_mock.set_password.return_value = None
 sys.modules["keyring"] = keyring_mock
 
 
-@pytest.fixture(scope="function")
-def session(tmp_path, request):
+# Engine de tests compartido
+_test_engine = None
+
+
+def get_test_database_url() -> str:
     """
-    Fixture de sesión de base de datos para tests.
-
-    Crea una nueva base de datos SQLite temporal para cada test.
+    Obtiene la URL de la base de datos para tests.
+    
+    Usa el container PostgreSQL local (finanzas_postgres).
+    Para CI/CD, se puede configurar con TEST_DATABASE_URL.
     """
-    import uuid
+    return os.environ.get(
+        "TEST_DATABASE_URL",
+        "postgresql+psycopg://finanzas:finanzas_dev_2024@localhost:5432/finanzas_test"
+    )
 
-    # Crear archivo temporal único para cada test
-    test_id = str(uuid.uuid4())[:8]
-    db_file = tmp_path / f"test_{test_id}.db"
 
-    engine = create_engine(f"sqlite:///{db_file}")
+def get_test_engine():
+    """Obtiene o crea el engine de tests."""
+    global _test_engine
+    if _test_engine is None:
+        connection_url = get_test_database_url()
+        _test_engine = create_engine(connection_url, echo=False)
+        
+        # Crear extensión pgvector si no existe
+        with _test_engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
+    return _test_engine
 
-    # Importar todos los modelos
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_database():
+    """
+    Fixture que configura la base de datos para toda la sesión de tests.
+    
+    Se ejecuta automáticamente al inicio de la sesión de tests.
+    Crea todas las tablas necesarias.
+    """
+    engine = get_test_engine()
+    
+    # Importar todos los modelos para registrarlos con Base.metadata
+    from finanzas_tracker.core.database import Base
     from finanzas_tracker.models import (  # noqa: F401
         Budget,
         Card,
@@ -60,24 +93,57 @@ def session(tmp_path, request):
         Income,
         Profile,
         Subcategory,
-        Subscription,
         Transaction,
     )
-
-    # Crear todas las tablas
+    from finanzas_tracker.models.embedding import TransactionEmbedding  # noqa: F401
+    from finanzas_tracker.models.merchant import Merchant, MerchantVariant  # noqa: F401
+    from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache  # noqa: F401
+    from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot  # noqa: F401
+    from finanzas_tracker.models.reconciliation_report import ReconciliationReport  # noqa: F401
+    from finanzas_tracker.models.account import Account  # noqa: F401
+    from finanzas_tracker.models.investment import Investment  # noqa: F401
+    from finanzas_tracker.models.goal import Goal  # noqa: F401
+    from finanzas_tracker.models.billing_cycle import BillingCycle  # noqa: F401
+    
+    # Drop y crear todas las tablas (limpia cualquier estado previo)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    
+    yield engine
+    
+    # Cleanup al final de la sesión - drop all tables
+    Base.metadata.drop_all(engine)
+    
+    global _test_engine
+    if _test_engine:
+        _test_engine.dispose()
+        _test_engine = None
 
-    session_local = sessionmaker(bind=engine)
-    session = session_local()
 
-    yield session
-
-    session.close()
-    engine.dispose()
-
-    # Limpiar archivo de base de datos
-    if db_file.exists():
-        db_file.unlink()
+@pytest.fixture(scope="function")
+def session(setup_test_database):
+    """
+    Fixture de sesión de base de datos para tests.
+    
+    Usa PostgreSQL real.
+    Cada test obtiene una sesión limpia con rollback automático.
+    """
+    engine = setup_test_database
+    
+    # Crear conexión con transacción
+    connection = engine.connect()
+    transaction = connection.begin()
+    
+    # Crear session vinculada a esta conexión
+    Session = sessionmaker(bind=connection)
+    db_session = Session()
+    
+    yield db_session
+    
+    # Rollback para limpiar cambios del test
+    db_session.close()
+    transaction.rollback()
+    connection.close()
 
 
 @pytest.fixture
