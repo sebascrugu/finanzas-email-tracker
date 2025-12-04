@@ -4,7 +4,7 @@
 
 ### **Sistema de Finanzas Personales con IA para Costa Rica**
 
-*Primera app que soporta SINPE Móvil, BAC Credomatic y Banco Popular*
+*Parsing automático de emails de BAC Credomatic y Banco Popular*
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Poetry](https://img.shields.io/badge/dependency%20manager-poetry-blue.svg?logo=poetry)](https://python-poetry.org/)
@@ -79,6 +79,44 @@ poetry run streamlit run src/finanzas_tracker/dashboard/app.py
 
 Abre http://localhost:8501 🎉
 
+### 🔐 API REST
+
+```bash
+# Iniciar API
+poetry run uvicorn finanzas_tracker.api.main:app --reload
+
+# Documentación OpenAPI
+open http://localhost:8000/docs
+```
+
+**Endpoints de Auth:**
+```bash
+# Registrar usuario
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@test.com", "password": "password123", "nombre": "Test"}'
+
+# Login → obtener JWT
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@test.com", "password": "password123"}'
+
+# Usar token en requests
+curl http://localhost:8000/api/v1/auth/me \
+  -H "Authorization: Bearer <tu-token>"
+```
+
+### 🚀 Deploy a Railway
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template)
+
+```bash
+# 1. Conectar repo a Railway
+# 2. Agregar PostgreSQL addon
+# 3. Configurar variables de entorno (ver .env.railway.example)
+# 4. Deploy automático con push a main
+```
+
 ---
 
 ## 🏗️ Arquitectura
@@ -100,11 +138,12 @@ src/finanzas_tracker/
 | Capa | Tecnología |
 |------|------------|
 | **Backend** | Python 3.11, FastAPI, SQLAlchemy 2.0 |
-| **Database** | PostgreSQL + SQLite (dev) |
+| **Database** | PostgreSQL 16 + pgvector |
 | **Frontend** | Streamlit |
-| **AI** | Anthropic Claude |
-| **Auth** | Microsoft Graph (OAuth2 PKCE) |
+| **AI** | Anthropic Claude, RAG con embeddings |
+| **Auth** | JWT (PyJWT + bcrypt), Microsoft Graph OAuth2 |
 | **Testing** | pytest, coverage |
+| **Deploy** | Docker, Railway |
 
 ---
 
@@ -119,7 +158,8 @@ Merchant ──── MerchantVariant
 ExchangeRateCache (standalone)
 ```
 
-**9 modelos limpios** sin overengineering:
+**10 modelos limpios** sin overengineering:
+- `User`: Autenticación JWT
 - `Profile`: Multi-perfil por email
 - `Card`: Tarjetas débito/crédito
 - `Transaction`: Transacciones con categorización AI

@@ -1,7 +1,7 @@
 # Finanzas Tracker CR - Arquitectura
 
 > Sistema de finanzas personales para Costa Rica con AI.  
-> Primera app que soporta SINPE Móvil y bancos costarricenses.
+> Sistema de finanzas personales para Costa Rica con parsing automatizado de emails bancarios.
 
 ## Tabla de Contenidos
 

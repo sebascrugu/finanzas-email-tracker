@@ -1,7 +1,7 @@
 # Finanzas Tracker CR - Instrucciones para GitHub Copilot
 
 ## Proyecto
-Sistema de finanzas personales para Costa Rica con AI. Primera app que soporta SINPE Móvil y bancos costarricenses.
+Sistema de finanzas personales para Costa Rica con AI. Soporta BAC Credomatic y Banco Popular.
 
 **Stack:** Python 3.11+, FastAPI, SQLAlchemy 2.0, PostgreSQL 16 + pgvector, Streamlit, Claude AI
 

@@ -15,7 +15,7 @@ Costa Rica tiene **4.2 millones de usuarios potenciales** con 76% de adopción d
 
 ### Tu Diferenciador Real
 No es solo "otra app de finanzas con AI". Es:
-1. **Primera app de finanzas personales para Costa Rica** con parsing de SINPE Móvil
+1. **App de finanzas personales para Costa Rica** con parsing automático de emails bancarios
 2. **MCP Server inteligente** que va más allá de CRUD (coaching financiero, predicciones)
 3. **Privacy-first, self-hosted** para mercado que desconfía de apps gringas con sus datos
 
