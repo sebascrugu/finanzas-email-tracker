@@ -16,7 +16,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,6 +26,10 @@ from finanzas_tracker.models.embedding import TransactionEmbedding
 
 
 if TYPE_CHECKING:
+    import openai
+    from sentence_transformers import SentenceTransformer
+    import voyageai
+
     from finanzas_tracker.models.transaction import Transaction
 
 
@@ -136,7 +140,8 @@ class VoyageEmbeddingProvider(BaseEmbeddingProvider):
             model=self._model,
             input_type="document",
         )
-        return result.embeddings[0]
+        embeddings: list[float] = result.embeddings[0]
+        return embeddings
 
     def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """Genera embeddings para múltiples textos."""
@@ -149,7 +154,8 @@ class VoyageEmbeddingProvider(BaseEmbeddingProvider):
             model=self._model,
             input_type="document",
         )
-        return result.embeddings
+        embeddings: list[list[float]] = result.embeddings
+        return embeddings
 
 
 class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
@@ -209,7 +215,8 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
             input=text,
             model=self._model,
         )
-        return response.data[0].embedding
+        embedding: list[float] = response.data[0].embedding
+        return embedding
 
     def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """Genera embeddings para múltiples textos."""
@@ -246,7 +253,7 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
             model: Nombre del modelo de Sentence Transformers
         """
         self._model_name = model
-        self._model = None
+        self._model: SentenceTransformer | None = None
 
     @property
     def model_name(self) -> str:
@@ -277,7 +284,8 @@ class LocalEmbeddingProvider(BaseEmbeddingProvider):
         """Genera embedding para un texto."""
         model = self._get_model()
         embedding = model.encode(text)
-        return embedding.tolist()
+        result: list[float] = embedding.tolist()
+        return result
 
     def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         """Genera embeddings para múltiples textos."""
@@ -613,7 +621,7 @@ class EmbeddingService:
             LIMIT :limit
         """)
 
-        params = {"limit": limit, "min_similarity": min_similarity}
+        params: dict[str, int | float | str] = {"limit": limit, "min_similarity": min_similarity}
         if profile_id:
             params["profile_id"] = profile_id
 
@@ -621,13 +629,13 @@ class EmbeddingService:
 
         # Cargar transacciones completas
         transaction_ids = [r[0] for r in results]
-        similarities = {r[0]: r[1] for r in results}
+        similarities: dict[Any, float] = {r[0]: r[1] for r in results}
 
         if not transaction_ids:
             return []
 
-        stmt = select(Transaction).where(Transaction.id.in_(transaction_ids))
-        transactions = {t.id: t for t in self.db.execute(stmt).scalars().all()}
+        txn_stmt = select(Transaction).where(Transaction.id.in_(transaction_ids))
+        transactions = {t.id: t for t in self.db.execute(txn_stmt).scalars().all()}
 
         # Mantener orden por similitud
         return [

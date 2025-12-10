@@ -1,0 +1,39 @@
+📊 RESUMEN GENERAL
+  • Total transacciones: 35
+  • Gasto total: ₡742,914
+  • Promedio por transacción: ₡21,226
+
+🏪 TOP 10 COMERCIOS (por gasto total)
+  1. PAGO TARJETA DE CRÉDITO ****6386: ₡193,305 (2 compras, promedio ₡96,652)
+  2. E-TICKET E-COMMERCE: ₡156,800 (1 compras, promedio ₡156,800)
+  3. CLUB SPORT CARTAGINES: ₡113,000 (3 compras, promedio ₡37,667)
+  4. PRICE SMART TRES RI: ₡56,370 (1 compras, promedio ₡56,370)
+  5. RETIRO SIN TARJETA - CAR-PSMRT TRES RIOS: ₡46,000 (1 compras, promedio ₡46,000)
+  6. RETIRO SIN TARJETA: ₡46,000 (1 compras, promedio ₡46,000)
+  7. BREAD HOUSE PINARES: ₡31,310 (1 compras, promedio ₡31,310)
+  8. SERVI INDOOR: ₡27,704 (1 compras, promedio ₡27,704)
+  9. PARQUEO EL GATO: ₡15,000 (1 compras, promedio ₡15,000)
+  10. SUBWAY AYARCO: ₡13,550 (1 compras, promedio ₡13,550)
+
+📅 GASTO POR DÍA DE LA SEMANA
+  • Sábado: ₡287,190 (7 transacciones)
+  • Viernes: ₡169,503 (8 transacciones)
+  • Martes: ₡132,613 (6 transacciones)
+  • Jueves: ₡62,527 (5 transacciones)
+  • Miércoles: ₡56,370 (1 transacciones)
+  • Domingo: ₡22,005 (2 transacciones)
+  • Lunes: ₡12,706 (6 transacciones)
+
+⏰ HORAS PICO DE GASTO
+  • 22:00 - ₡156,934 (2 transacciones)
+  • 08:00 - ₡135,349 (2 transacciones)
+  • 14:00 - ₡91,000 (2 transacciones)
+  • 20:00 - ₡70,748 (5 transacciones)
+  • 18:00 - ₡59,760 (2 transacciones)
+
+🔄 GASTOS RECURRENTES DETECTADOS
+  • BET365: ~₡10 (3 veces, consistencia 100%)
+
+📈 TENDENCIA MENSUAL
+  • 2025-11: ₡521,798 (19 transacciones)
+  • 2025-12: ₡221,116 (16 transacciones)

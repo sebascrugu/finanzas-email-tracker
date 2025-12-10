@@ -10,10 +10,11 @@ from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.transaction import Transaction
 from finanzas_tracker.parsers.bac_parser import BACParser
 from finanzas_tracker.parsers.popular_parser import PopularParser
-from finanzas_tracker.services.categorizer import TransactionCategorizer
+from finanzas_tracker.services.smart_categorizer import SmartCategorizer
 from finanzas_tracker.services.exchange_rate import exchange_rate_service
 from finanzas_tracker.services.internal_transfer_detector import InternalTransferDetector
 from finanzas_tracker.services.merchant_service import MerchantNormalizationService
+from finanzas_tracker.services.merchant_lookup_service import MerchantLookupService
 
 
 logger = get_logger(__name__)
@@ -51,7 +52,7 @@ class TransactionProcessor:
         self.bac_parser = BACParser()
         self.popular_parser = PopularParser()
         self.auto_categorize = auto_categorize
-        self.categorizer = TransactionCategorizer() if auto_categorize else None
+        self.categorizer = SmartCategorizer() if auto_categorize else None
         self.merchant_service = MerchantNormalizationService()
         logger.info(f"TransactionProcessor inicializado (auto_categorize={auto_categorize})")
 
@@ -106,23 +107,26 @@ class TransactionProcessor:
                     stats["errores"] += 1
                     continue
 
+                # Convert TypedDict to mutable dict for adding extra fields
+                transaction_data: dict[str, Any] = dict(parsed_data)
+
                 # Agregar perfil
-                parsed_data["profile_id"] = profile_id
+                transaction_data["profile_id"] = profile_id
 
                 # Aplicar conversión de moneda
-                if parsed_data["moneda_original"] == "USD":
-                    self._apply_currency_conversion(parsed_data)
+                if transaction_data["moneda_original"] == "USD":
+                    self._apply_currency_conversion(transaction_data)
                     stats["usd_convertidos"] += 1
                 else:
-                    parsed_data["monto_crc"] = parsed_data["monto_original"]
-                    parsed_data["tipo_cambio_usado"] = None
+                    transaction_data["monto_crc"] = transaction_data["monto_original"]
+                    transaction_data["tipo_cambio_usado"] = None
 
                 # Categorización automática con IA
                 if self.auto_categorize and self.categorizer:
-                    self._categorize_transaction(parsed_data, stats)
+                    self._categorize_transaction(transaction_data, stats)
 
                 # Guardar en base de datos
-                success, _ = self._save_transaction(parsed_data)
+                success, _ = self._save_transaction(transaction_data)
                 if success:
                     stats["procesados"] += 1
                 else:
@@ -177,23 +181,36 @@ class TransactionProcessor:
         transaction_data: dict[str, Any],
         stats: dict[str, Any],
     ) -> None:
-        """Categoriza una transacción usando IA."""
+        """Categoriza una transacción usando SmartCategorizer (4 capas)."""
+        if self.categorizer is None:
+            return
+
         try:
+            comercio = transaction_data["comercio"]
+            
+            # SmartCategorizer retorna CategorizationResult, no dict
             result = self.categorizer.categorize(
-                comercio=transaction_data["comercio"],
-                monto_crc=float(transaction_data["monto_crc"]),
-                tipo_transaccion=transaction_data["tipo_transaccion"],
+                comercio=comercio,
+                monto=transaction_data["monto_crc"],
                 profile_id=transaction_data.get("profile_id"),
+                tipo_transaccion=transaction_data.get("tipo_transaccion"),
             )
 
-            transaction_data["subcategory_id"] = result.get("subcategory_id")
-            transaction_data["categoria_sugerida_por_ia"] = result.get("categoria_sugerida")
-            transaction_data["necesita_revision"] = result.get("necesita_revision", False)
+            # Usar propiedades del CategorizationResult
+            transaction_data["subcategory_id"] = result.subcategory_id
+            transaction_data["categoria_sugerida_por_ia"] = result.subcategory_name
+            transaction_data["necesita_revision"] = result.needs_review
+            transaction_data["confianza_categoria"] = result.confidence
 
-            if result.get("necesita_revision"):
+            if result.needs_review:
                 stats["necesitan_revision"] += 1
             else:
                 stats["categorizadas_automaticamente"] += 1
+
+            logger.debug(
+                f"Categorizado: {transaction_data['comercio']} → "
+                f"{result.subcategory_name} ({result.source.value}, {result.confidence}%)"
+            )
 
         except Exception as e:
             logger.error(f"Error categorizando transacción: {e}")
@@ -220,6 +237,43 @@ class TransactionProcessor:
                         pais=pais,
                     )
                     transaction_data["merchant_id"] = merchant.id
+                    
+                    # Si la categorización tuvo baja confianza, intentar con MerchantLookup
+                    needs_review = transaction_data.get("necesita_revision", False)
+                    confidence = transaction_data.get("confianza_categoria", 0)
+                    
+                    if needs_review and confidence < 70 and not transaction_data.get("subcategory_id"):
+                        try:
+                            lookup_service = MerchantLookupService(session)
+                            merchant_info = lookup_service.buscar_o_identificar(comercio_raw)
+                            
+                            if merchant_info and merchant_info.confianza >= 60:
+                                # Buscar subcategory_id por nombre
+                                from finanzas_tracker.models.category import Subcategory
+                                from sqlalchemy import select
+                                
+                                stmt = select(Subcategory).where(
+                                    Subcategory.nombre.ilike(f"%{merchant_info.subcategoria or merchant_info.categoria}%")
+                                ).limit(1)
+                                subcat = session.execute(stmt).scalar_one_or_none()
+                                
+                                if subcat:
+                                    transaction_data["subcategory_id"] = subcat.id
+                                    transaction_data["categoria_sugerida_por_ia"] = subcat.nombre
+                                    transaction_data["confianza_categoria"] = merchant_info.confianza
+                                    transaction_data["necesita_revision"] = merchant_info.confianza < 70
+                                    logger.info(
+                                        f"MerchantLookup identificó: {comercio_raw} → {subcat.nombre}"
+                                    )
+                        except Exception as e:
+                            logger.warning(f"MerchantLookup falló para {comercio_raw}: {e}")
+
+                # Extraer campos de metadata para transferencias
+                self._extract_transfer_metadata(transaction_data)
+
+                # Eliminar metadata del dict antes de crear Transaction
+                # (el modelo no tiene un campo 'metadata')
+                transaction_data.pop("metadata", None)
 
                 transaction = Transaction(**transaction_data)
                 session.add(transaction)
@@ -245,6 +299,58 @@ class TransactionProcessor:
         except IntegrityError:
             logger.debug(f"Transacción duplicada: {transaction_data['email_id']}")
             return (False, None)
+
+    def _extract_transfer_metadata(self, transaction_data: dict[str, Any]) -> None:
+        """
+        Extrae campos de metadata de transferencias y los asigna a columnas del modelo.
+        
+        El parser de BAC genera un dict 'metadata' con campos como:
+        - beneficiario: quien recibe el dinero
+        - concepto: descripción de la transferencia
+        - subtipo: sinpe_enviado, transferencia_local, etc.
+        - es_transferencia_propia: si es entre cuentas propias
+        - necesita_reconciliacion: si la descripción es ambigua
+        """
+        metadata = transaction_data.get("metadata", {})
+        if not metadata:
+            return
+        
+        # Extraer beneficiario
+        if "beneficiario" in metadata:
+            transaction_data["beneficiario"] = metadata["beneficiario"]
+        elif "destinatario" in metadata:  # Compatibilidad con formato anterior
+            transaction_data["beneficiario"] = metadata["destinatario"]
+        
+        # Extraer concepto de transferencia
+        if "concepto" in metadata:
+            transaction_data["concepto_transferencia"] = metadata["concepto"]
+        
+        # Extraer subtipo de transacción
+        if "subtipo" in metadata:
+            transaction_data["subtipo_transaccion"] = metadata["subtipo"]
+        
+        # Extraer referencia bancaria
+        if "referencia" in metadata:
+            transaction_data["referencia_banco"] = metadata["referencia"]
+        
+        # Marcar si es transferencia propia
+        if metadata.get("es_transferencia_propia"):
+            transaction_data["es_transferencia_interna"] = True
+            # Las transferencias propias no deben contar como gasto
+            transaction_data["excluir_de_presupuesto"] = True
+            transaction_data["tipo_especial"] = "transferencia_propia"
+        
+        # Marcar si necesita reconciliación
+        if metadata.get("necesita_reconciliacion"):
+            transaction_data["necesita_reconciliacion_sinpe"] = True
+            # También marcar como que necesita revisión general
+            transaction_data["necesita_revision"] = True
+        
+        logger.debug(
+            f"Metadata extraído: beneficiario={transaction_data.get('beneficiario')}, "
+            f"subtipo={transaction_data.get('subtipo_transaccion')}, "
+            f"necesita_reconciliacion={transaction_data.get('necesita_reconciliacion_sinpe')}"
+        )
 
 
 # Instancia singleton

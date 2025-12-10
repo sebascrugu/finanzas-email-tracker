@@ -10,9 +10,10 @@ import json
 from typing import Any
 
 import anthropic
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Session, joinedload
 
 from finanzas_tracker.config.settings import settings
+from finanzas_tracker.core.claude_credits import can_use_claude, handle_claude_error
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.core.retry import retry_on_anthropic_error
@@ -105,7 +106,7 @@ class InsightsService:
 
         return insights[:10]  # Maximo 10 insights
 
-    def _get_analysis_data(self, session, profile_id: str) -> dict[str, Any]:
+    def _get_analysis_data(self, session: Session, profile_id: str) -> dict[str, Any]:
         """Obtiene datos para analisis."""
         today = date.today()
         first_day_month = today.replace(day=1)
@@ -144,8 +145,8 @@ class InsightsService:
         )
 
         # Gastos por categoria
-        by_category_current = {}
-        by_category_last = {}
+        by_category_current: dict[str, Decimal] = {}
+        by_category_last: dict[str, Decimal] = {}
 
         for t in current_month:
             cat = t.subcategory.category.nombre if t.subcategory else "Sin categorizar"
@@ -156,7 +157,7 @@ class InsightsService:
             by_category_last[cat] = by_category_last.get(cat, Decimal("0")) + t.monto_crc
 
         # Gastos por comercio
-        by_merchant = {}
+        by_merchant: dict[str, dict[str, Any]] = {}
         for t in current_month:
             if t.comercio not in by_merchant:
                 by_merchant[t.comercio] = {"count": 0, "total": Decimal("0"), "transactions": []}
@@ -324,10 +325,10 @@ class InsightsService:
 
             # Calcular promedio por día
             avg_weekend = (
-                (weekend_spending / (weekend_count / 7)) if weekend_count > 0 else Decimal("0")
+                (weekend_spending / Decimal(weekend_count / 7)) if weekend_count > 0 else Decimal("0")
             )
             avg_weekday = (
-                (weekday_spending / (weekday_count / 7)) if weekday_count > 0 else Decimal("0")
+                (weekday_spending / Decimal(weekday_count / 7)) if weekday_count > 0 else Decimal("0")
             )
 
             if avg_weekend > 0 and avg_weekday > 0:
@@ -377,21 +378,26 @@ class InsightsService:
 
         try:
             # Agrupar por hora del día
-            by_hour = {}
+            by_hour: dict[str, dict[str, int | Decimal]] = {}
             for t in data["current_month"]:
                 hour = t.fecha_transaccion.hour
                 time_slot = self._get_time_slot(hour)
                 if time_slot not in by_hour:
                     by_hour[time_slot] = {"count": 0, "total": Decimal("0")}
-                by_hour[time_slot]["count"] += 1
-                by_hour[time_slot]["total"] += t.monto_crc
+                count_val = by_hour[time_slot]["count"]
+                if isinstance(count_val, int):
+                    by_hour[time_slot]["count"] = count_val + 1
+                total_val = by_hour[time_slot]["total"]
+                if isinstance(total_val, Decimal):
+                    by_hour[time_slot]["total"] = total_val + t.monto_crc
 
             # Detectar slot con más gasto
             if by_hour:
-                max_slot = max(by_hour.items(), key=lambda x: x[1]["total"])
+                max_slot = max(by_hour.items(), key=lambda x: float(x[1]["total"]) if isinstance(x[1]["total"], Decimal) else 0)
                 slot_name, slot_data = max_slot
                 total = float(data["total_current"])
-                pct = (float(slot_data["total"]) / total) * 100 if total > 0 else 0
+                slot_total = float(slot_data["total"]) if isinstance(slot_data["total"], Decimal) else 0
+                pct = (slot_total / total) * 100 if total > 0 else 0
 
                 if pct > 40:
                     insights.append(
@@ -399,9 +405,9 @@ class InsightsService:
                             type=InsightType.TIME_OF_DAY_PATTERN,
                             title=f"Gastas más en {slot_name}",
                             description=f"{slot_data['count']} transacciones, "
-                            f"₡{float(slot_data['total']):,.0f} ({pct:.0f}% del total)",
+                            f"₡{slot_total:,.0f} ({pct:.0f}% del total)",
                             impact="neutral",
-                            value=float(slot_data["total"]),
+                            value=slot_total,
                             recommendation=f"Tus gastos se concentran en {slot_name}. "
                             "Esto puede ser normal según tu rutina, pero vale la pena revisarlo",
                         )
@@ -445,11 +451,17 @@ class InsightsService:
         return "madrugadas (10pm-6am)"
 
     @retry_on_anthropic_error(max_attempts=2, max_wait=8)
-    def _generate_ai_insights(self, data: dict, profile_id: str) -> list[Insight]:
+    def _generate_ai_insights(self, data: dict[str, Any], profile_id: str) -> list[Insight]:
         """Genera insights usando Claude AI para análisis profundo."""
-        insights = []
+        insights: list[Insight] = []
 
         try:
+            # Verificar si podemos usar Claude (sin llamar a la API)
+            can_use, reason = can_use_claude()
+            if not can_use:
+                logger.info(f"⏭️ Insights AI no disponible: {reason}")
+                return insights
+            
             # Preparar contexto para Claude
             context = self._prepare_ai_context(data)
 
@@ -487,7 +499,10 @@ Responde ÚNICAMENTE con un JSON válido:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.content[0].text.strip()
+            first_block = response.content[0]
+            if not hasattr(first_block, "text"):
+                return insights
+            response_text = first_block.text.strip()
 
             # Parsear respuesta
             if response_text.startswith("```json"):
@@ -509,6 +524,12 @@ Responde ÚNICAMENTE con un JSON válido:
 
             logger.info(f"✨ Generados {len(insights)} insights con Claude AI")
 
+        except anthropic.APIStatusError as e:
+            # Manejar error de créditos y actualizar estado global
+            if handle_claude_error(e):
+                logger.info("⏭️ Insights AI: Créditos agotados")
+            else:
+                logger.error(f"Error de API generando insights con AI: {e}")
         except Exception as e:
             logger.error(f"Error generando insights con AI: {e}")
 

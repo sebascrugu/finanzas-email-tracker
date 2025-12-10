@@ -16,26 +16,21 @@ from finanzas_tracker.models.transaction import Transaction
 
 
 if TYPE_CHECKING:
-    from finanzas_tracker.services.embedding_service import EmbeddingService
+    pass
 
 logger = get_logger(__name__)
 
 # Cola para procesar embeddings en background
-_embedding_queue: Queue[str] = Queue()
+_embedding_queue: Queue[str | None] = Queue()
 _worker_thread: threading.Thread | None = None
 _shutdown_flag = threading.Event()
-
-
-def _get_embedding_service() -> "EmbeddingService":
-    """Importación lazy para evitar imports circulares."""
-    from finanzas_tracker.services.embedding_service import EmbeddingService
-
-    return EmbeddingService()
 
 
 def _embedding_worker() -> None:
     """Worker thread que procesa embeddings de la cola."""
     from finanzas_tracker.core.database import get_session
+    from finanzas_tracker.models.transaction import Transaction
+    from finanzas_tracker.services.embedding_service import EmbeddingService
 
     logger.info("🔄 Embedding worker thread iniciado")
 
@@ -54,8 +49,18 @@ def _embedding_worker() -> None:
 
             try:
                 with get_session() as session:
-                    service = _get_embedding_service()
-                    service.embed_transaction(session, transaction_id)
+                    # Cargar la transacción
+                    txn = session.query(Transaction).filter(
+                        Transaction.id == transaction_id
+                    ).first()
+
+                    if txn is None:
+                        logger.warning(f"Transacción no encontrada: {transaction_id}")
+                        continue
+
+                    # Crear servicio con la sesión y generar embedding
+                    service = EmbeddingService(db=session)
+                    service.embed_transaction(txn)
                     session.commit()
                     logger.info(f"✅ Embedding generado para transacción: {transaction_id}")
             except Exception as e:
@@ -128,9 +133,10 @@ def _after_update_transaction(mapper: object, connection: object, target: Transa
     # Verificar si campos relevantes para el embedding cambiaron
     # (comercio, tipo_transaccion, monto_crc, notas)
     from sqlalchemy import inspect
+    from sqlalchemy.orm import InstanceState
 
     try:
-        insp = inspect(target)
+        insp: InstanceState[Transaction] = inspect(target)
 
         # Verificar historial de cambios
         comercio_history = insp.attrs.comercio.history
@@ -181,13 +187,14 @@ def generate_all_embeddings_sync(batch_size: int = 50) -> dict[str, int]:
         dict: Estadísticas del procesamiento
     """
     from finanzas_tracker.core.database import get_session
+    from finanzas_tracker.services.embedding_service import EmbeddingService
 
     stats = {"generated": 0, "errors": 0, "skipped": 0}
 
     with get_session() as session:
-        service = _get_embedding_service()
+        service = EmbeddingService(db=session)
 
-        result = service.embed_pending_transactions(session, batch_size=batch_size)
+        result = service.embed_pending_transactions(batch_size=batch_size)
         stats["generated"] = result
 
         session.commit()

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 import logging
+from typing import Any
 
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
@@ -368,24 +369,14 @@ class PatrimonyService:
             is_crc = account.moneda == Currency.CRC
 
             if (
-                account.tipo == AccountType.CUENTA_CORRIENTE
-                or account.tipo == AccountType.CUENTA_AHORRO
+                account.tipo == AccountType.CHECKING
+                or account.tipo == AccountType.SAVINGS
             ):
                 if is_crc:
                     saldo_cuentas_crc += saldo
                 else:
                     saldo_cuentas_usd += saldo
-            elif account.tipo == AccountType.TARJETA_CREDITO:
-                # Tarjetas tienen saldo negativo (deuda)
-                if is_crc:
-                    saldo_tarjetas_crc += saldo
-                else:
-                    saldo_tarjetas_usd += saldo
-            elif account.tipo == AccountType.PRESTAMO:
-                if is_crc:
-                    saldo_prestamos_crc += saldo
-                else:
-                    saldo_prestamos_usd += saldo
+            # Note: Credit cards and loans are handled separately through cards/debts
 
         # Calcular inversiones
         saldo_inversiones_crc = Decimal("0")
@@ -546,7 +537,7 @@ class PatrimonyService:
         profile_id: str,
         fecha_inicio: date,
         fecha_fin: date,
-    ) -> dict[str, Decimal]:
+    ) -> dict[str, Any]:
         """Calcula el cambio de patrimonio entre dos fechas.
 
         Busca los snapshots más cercanos a las fechas dadas.

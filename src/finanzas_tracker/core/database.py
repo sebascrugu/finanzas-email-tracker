@@ -11,7 +11,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from finanzas_tracker.config.settings import settings
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 Base = declarative_base()
 
 
-def _create_engine(database_url: str | None = None):
+def _create_engine(database_url: str | None = None) -> Engine:
     """
     Crea el engine de SQLAlchemy para PostgreSQL.
 

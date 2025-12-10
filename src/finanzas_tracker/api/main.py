@@ -4,6 +4,7 @@ API REST para gestión de finanzas personales en Costa Rica.
 Soporta SINPE Móvil, BAC, Banco Popular y más.
 """
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -44,7 +45,7 @@ logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Lifecycle manager para startup/shutdown."""
     # Startup
     logger.info("🚀 Iniciando Finanzas Tracker API...")
@@ -134,7 +135,7 @@ app.include_router(ai.router, prefix="/api/v1", tags=["AI & RAG"])
 
 
 @app.get("/", tags=["Root"])
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint con información del API."""
     return {
         "name": "Finanzas Tracker CR API",
@@ -146,7 +147,7 @@ async def root():
 
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {
         "status": "healthy",

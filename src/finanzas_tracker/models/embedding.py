@@ -3,6 +3,7 @@
 __all__ = ["TransactionEmbedding"]
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from pgvector.sqlalchemy import Vector
@@ -13,12 +14,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from finanzas_tracker.core.database import Base
 
 
+if TYPE_CHECKING:
+    from finanzas_tracker.models.transaction import Transaction
+
+
 class TransactionEmbedding(Base):
     """
     Embedding vectorial de una transacción para búsqueda semántica.
 
     Almacena:
-    - El vector embedding (1024 dims para voyage-3-lite o 1536 para text-embedding-3-small)
+    - El vector embedding (384 dims para all-MiniLM-L6-v2)
     - El texto usado para generar el embedding
     - Metadata del modelo usado
 
@@ -26,6 +31,12 @@ class TransactionEmbedding(Base):
     - "Cuánto gasté en comida rápida?"
     - "Mis compras más grandes del mes"
     - "Transacciones en Starbucks"
+    
+    Modelo por defecto: all-MiniLM-L6-v2 (SentenceTransformers)
+    - Gratis y local
+    - 384 dimensiones
+    - Multilingüe (incluye español)
+    - ~14,000 embeddings/segundo en CPU
     """
 
     __tablename__ = "transaction_embeddings"
@@ -53,12 +64,11 @@ class TransactionEmbedding(Base):
     )
 
     # Vector embedding usando pgvector
-    # all-MiniLM-L6-v2: 384 dims, voyage-3-lite: 1024, text-embedding-3-small: 1536
-    # Usamos 384 como default para el modelo local
+    # all-MiniLM-L6-v2: 384 dims (modelo local gratuito)
     embedding: Mapped[list[float]] = mapped_column(
-        Vector(384),  # pgvector Vector type
+        Vector(384),  # pgvector Vector type - all-MiniLM-L6-v2
         nullable=False,
-        comment="Vector embedding para búsqueda semántica",
+        comment="Vector embedding para búsqueda semántica (384 dims)",
     )
 
     # Texto que se usó para generar el embedding
@@ -72,14 +82,14 @@ class TransactionEmbedding(Base):
     model_version: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
-        default="voyage-3-lite",
-        comment="Modelo usado: voyage-3-lite, text-embedding-3-small, etc.",
+        default="all-MiniLM-L6-v2",  # Modelo local gratuito
+        comment="Modelo usado: all-MiniLM-L6-v2, voyage-3-lite, etc.",
     )
 
     # Dimensión del embedding (para validación)
     embedding_dim: Mapped[int] = mapped_column(
         nullable=False,
-        default=1024,
+        default=384,  # all-MiniLM-L6-v2 = 384 dimensiones
         comment="Dimensión del vector",
     )
 

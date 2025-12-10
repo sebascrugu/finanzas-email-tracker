@@ -131,7 +131,7 @@ class TransactionService:
         logger.info(
             "Estado cambiado txn %d: %s → %s",
             transaction_id,
-            estado_anterior.value if estado_anterior else "None",
+            estado_anterior if estado_anterior else "None",
             nuevo_estado.value,
         )
 
@@ -207,7 +207,8 @@ class TransactionService:
         result = self.db.execute(stmt)
         self.db.commit()
 
-        count = result.rowcount
+        # Cast to get rowcount attribute (update returns CursorResult)
+        count = getattr(result, "rowcount", 0) or 0
         logger.info(
             "Marcadas %d transacciones como históricas (antes de %s) para profile %s",
             count,
@@ -285,7 +286,8 @@ class TransactionService:
         result = self.db.execute(stmt)
         self.db.commit()
 
-        count = result.rowcount
+        # Cast to get rowcount attribute (update returns CursorResult)
+        count = getattr(result, "rowcount", 0) or 0
         logger.info("Confirmadas %d transacciones en batch", count)
         return count
 

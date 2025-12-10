@@ -112,7 +112,7 @@ def get_patrimony_history(
         limite=meses * 4,  # Aproximadamente 4 snapshots por mes
     )
 
-    history = []
+    history: list[dict[str, str | float]] = []
     for snapshot in snapshots:
         history.append(
             {
@@ -124,7 +124,7 @@ def get_patrimony_history(
         )
 
     # Ordenar por fecha ascendente
-    history.sort(key=lambda x: x["fecha"])
+    history.sort(key=lambda x: str(x["fecha"]))
 
     return history
 

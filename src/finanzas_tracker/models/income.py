@@ -4,6 +4,7 @@ __all__ = ["Income"]
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -22,6 +23,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import Currency, IncomeType, RecurrenceFrequency
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.profile import Profile
 
 
 class Income(Base):

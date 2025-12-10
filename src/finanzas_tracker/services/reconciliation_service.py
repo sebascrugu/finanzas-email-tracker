@@ -11,19 +11,18 @@ También persiste reportes de reconciliación en la base de datos.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 import logging
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.models import Transaction
 from finanzas_tracker.models.enums import BankName, ReconciliationStatus, TransactionStatus
-from finanzas_tracker.models.reconciliation_report import (
-    ReconciliationReport as ReconciliationReportModel,
-)
+from finanzas_tracker.models.reconciliation_report import ReconciliationReport
 
 
 logger = logging.getLogger(__name__)
@@ -48,9 +47,9 @@ class ReconciliationMatch:
     amount_difference: Decimal | None = None
     confidence: float = 1.0  # 0-1, qué tan seguro del match
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convierte a diccionario para API/UI."""
-        result = {
+        result: dict[str, Any] = {
             "status": self.status.value,
             "confidence": self.confidence,
         }
@@ -295,7 +294,10 @@ class ReconciliationService:
             score = 0.0
 
             # Comparar fecha (peso: 30%)
-            date_diff = abs((sys_tx.fecha_transaccion - pdf_fecha).days)
+            sys_date = sys_tx.fecha_transaccion.date() if isinstance(
+                sys_tx.fecha_transaccion, datetime
+            ) else sys_tx.fecha_transaccion
+            date_diff = abs((sys_date - pdf_fecha).days)
             if date_diff <= tolerance_days:
                 date_score = 1.0 - (date_diff / (tolerance_days + 1))
                 score += date_score * 0.3
@@ -469,31 +471,46 @@ class ReconciliationService:
         Returns:
             ReconciliationResult
         """
+        from pathlib import Path
+        import tempfile
+
         from finanzas_tracker.parsers.bac_pdf_parser import BACPDFParser
 
         if banco == BankName.BAC:
             parser = BACPDFParser()
-            result = parser.parse_from_bytes(pdf_content)
+            # Guardar bytes en archivo temporal para parsear
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                tmp.write(pdf_content)
+                tmp_path = tmp.name
+
+            try:
+                result = parser.parse(tmp_path)
+            finally:
+                Path(tmp_path).unlink()
 
             if not result:
                 raise ValueError("No se pudo parsear el PDF")
 
-            transactions = result.get("transactions", [])
-            period_info = result.get("period", {})
+            # Convertir transacciones a formato dict para reconciliación
+            transactions_dict: list[dict[str, Any]] = [
+                {
+                    "fecha": tx.fecha,
+                    "comercio": tx.concepto,  # BACTransaction uses 'concepto' not 'comercio'
+                    "monto": tx.monto,
+                    "tipo": tx.tipo,
+                }
+                for tx in result.transactions
+            ]
 
-            # Determinar período
-            fecha_inicio = period_info.get("start")
-            fecha_fin = period_info.get("end")
-
-            if not fecha_inicio or not fecha_fin:
-                # Estimar período del mes anterior
-                hoy = date.today()
-                fecha_fin = hoy.replace(day=1) - timedelta(days=1)
-                fecha_inicio = fecha_fin.replace(day=1)
+            # Determinar período basado en fecha de corte
+            fecha_corte = result.metadata.fecha_corte
+            # Estimar período como el mes que termina en fecha_corte
+            fecha_fin = fecha_corte
+            fecha_inicio = fecha_corte.replace(day=1)
 
             return self.reconcile(
                 profile_id=profile_id,
-                pdf_transactions=transactions,
+                pdf_transactions=transactions_dict,
                 periodo_inicio=fecha_inicio,
                 periodo_fin=fecha_fin,
             )
@@ -508,7 +525,7 @@ class ReconciliationService:
         profile_id: str,
         result: ReconciliationResult,
         banco: str = "BAC",
-    ) -> ReconciliationReportModel:
+    ) -> ReconciliationReport:
         """
         Persiste el resultado de reconciliación en la base de datos.
 
@@ -518,7 +535,7 @@ class ReconciliationService:
             banco: Nombre del banco.
 
         Returns:
-            ReconciliationReportModel guardado en DB.
+            ReconciliationReport guardado en DB.
         """
         # Determinar estado basado en resultados
         if not result.amount_mismatches and not result.only_in_pdf and not result.only_in_system:
@@ -548,7 +565,7 @@ class ReconciliationService:
             m.system_transaction.id for m in result.only_in_system if m.system_transaction
         ]
 
-        reporte = ReconciliationReportModel(
+        reporte = ReconciliationReport(
             profile_id=profile_id,
             periodo_inicio=result.periodo_inicio,
             periodo_fin=result.periodo_fin,
@@ -581,8 +598,8 @@ class ReconciliationService:
 
     def marcar_transacciones_reconciliadas(
         self,
-        reporte_id: int,
-        transaction_ids: list[int],
+        reporte_id: str,
+        transaction_ids: list[str],
     ) -> int:
         """
         Marca transacciones como reconciliadas.
@@ -623,7 +640,7 @@ class ReconciliationService:
         self,
         profile_id: str,
         limite: int = 10,
-    ) -> list[ReconciliationReportModel]:
+    ) -> list[ReconciliationReport]:
         """
         Obtiene reportes de reconciliación recientes.
 
@@ -635,12 +652,12 @@ class ReconciliationService:
             Lista de reportes ordenados por fecha descendente.
         """
         stmt = (
-            select(ReconciliationReportModel)
+            select(ReconciliationReport)
             .where(
-                ReconciliationReportModel.profile_id == profile_id,
-                ReconciliationReportModel.deleted_at.is_(None),
+                ReconciliationReport.profile_id == profile_id,
+                ReconciliationReport.deleted_at.is_(None),
             )
-            .order_by(ReconciliationReportModel.created_at.desc())
+            .order_by(ReconciliationReport.created_at.desc())
             .limit(limite)
         )
 
@@ -648,27 +665,27 @@ class ReconciliationService:
 
     def get_reporte(
         self,
-        reporte_id: int,
-    ) -> ReconciliationReportModel | None:
+        reporte_id: str,
+    ) -> ReconciliationReport | None:
         """
         Obtiene un reporte específico por ID.
 
         Args:
-            reporte_id: ID del reporte.
+            reporte_id: ID del reporte (UUID string).
 
         Returns:
-            ReconciliationReportModel o None si no existe.
+            ReconciliationReport o None si no existe.
         """
-        stmt = select(ReconciliationReportModel).where(
-            ReconciliationReportModel.id == reporte_id,
-            ReconciliationReportModel.deleted_at.is_(None),
+        stmt = select(ReconciliationReport).where(
+            ReconciliationReport.id == reporte_id,
+            ReconciliationReport.deleted_at.is_(None),
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
     def resolver_discrepancia(
         self,
-        reporte_id: int,
-        transaction_id: int,
+        reporte_id: str,
+        transaction_id: str,
         accion: str,
         monto_ajustado: Decimal | None = None,
         razon: str | None = None,

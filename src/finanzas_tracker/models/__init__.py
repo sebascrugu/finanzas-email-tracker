@@ -34,8 +34,29 @@ from finanzas_tracker.models.exchange_rate_cache import ExchangeRateCache
 from finanzas_tracker.models.goal import Goal
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.investment import Investment
+from finanzas_tracker.models.learning import (
+    GlobalMerchantSuggestion,
+    UserContact,
+    UserMerchantPreference,
+)
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
+from finanzas_tracker.models.smart_learning import (
+    GlobalPattern,
+    LearningEvent,
+    LearningEventType,
+    PatternCluster,
+    PatternSource,
+    PatternType,
+    TransactionPattern,
+    UserLearningProfile,
+)
 from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
+from finanzas_tracker.models.pending_question import (
+    PendingQuestion,
+    QuestionPriority,
+    QuestionStatus,
+    QuestionType,
+)
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.reconciliation_report import ReconciliationReport
 from finanzas_tracker.models.transaction import Transaction
@@ -56,18 +77,22 @@ __all__ = [
     "CardPayment",
     "Category",
     "ExchangeRateCache",
+    "GlobalMerchantSuggestion",
     "Goal",
     "Income",
     "Investment",
     "Merchant",
     "MerchantVariant",
     "PatrimonioSnapshot",
+    "PendingQuestion",
     "Profile",
     "ReconciliationReport",
     "Subcategory",
     "Transaction",
     "TransactionEmbedding",
     "User",
+    "UserContact",
+    "UserMerchantPreference",
     # Enums
     "AccountType",
     "BankName",
@@ -84,4 +109,17 @@ __all__ = [
     "RecurrenceFrequency",
     "TransactionStatus",
     "TransactionType",
+    # Question Enums
+    "QuestionPriority",
+    "QuestionStatus",
+    "QuestionType",
+    # Smart Learning Models
+    "GlobalPattern",
+    "LearningEvent",
+    "LearningEventType",
+    "PatternCluster",
+    "PatternSource",
+    "PatternType",
+    "TransactionPattern",
+    "UserLearningProfile",
 ]

@@ -4,12 +4,13 @@ __all__ = ["FinanceChatService", "finance_chat_service"]
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 import anthropic
 from sqlalchemy.orm import joinedload
 
 from finanzas_tracker.config.settings import settings
+from finanzas_tracker.core.claude_credits import can_use_claude, handle_claude_error
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.core.retry import retry_on_anthropic_error
@@ -57,7 +58,11 @@ class FinanceChatService:
             temperature=0.3,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text
+        first_block = response.content[0]
+        if not hasattr(first_block, "text"):
+            return "No pude obtener una respuesta."
+        # After hasattr check, we know it's a TextBlock with text attribute
+        return cast(str, first_block.text)
 
     def chat(self, question: str, profile_id: str) -> str:
         """
@@ -71,6 +76,15 @@ class FinanceChatService:
             Respuesta en lenguaje natural
         """
         try:
+            # 0. Verificar si podemos usar Claude (sin llamar a la API)
+            can_use, reason = can_use_claude()
+            if not can_use:
+                logger.info(f"⏭️ Chat no disponible: {reason}")
+                return (
+                    "🤖 El asistente de IA no está disponible en este momento. "
+                    "Puedes revisar tus transacciones y estadísticas directamente."
+                )
+
             # 1. Obtener contexto financiero
             context = self._get_financial_context(profile_id)
 
@@ -78,10 +92,19 @@ class FinanceChatService:
             prompt = self._build_prompt(question, context)
 
             # 3. Llamar a Claude con retry logic
-            answer = self._call_claude_api(prompt)
+            answer: str = self._call_claude_api(prompt)
             logger.info(f"Chat respondido: {question[:50]}...")
             return answer
 
+        except anthropic.APIStatusError as e:
+            # Manejar error de créditos y actualizar estado global
+            if handle_claude_error(e):
+                return (
+                    "🤖 El asistente de IA no está disponible (créditos agotados). "
+                    "Puedes revisar tus transacciones y estadísticas directamente."
+                )
+            logger.error(f"Error de API en chat: {e}")
+            return f"Ocurrió un error con el servicio de IA: {e}"
         except anthropic.APIConnectionError as e:
             logger.error(f"Error de conexion con Claude: {e}")
             return "Lo siento, no puedo conectarme al servicio de IA en este momento."
@@ -160,16 +183,20 @@ class FinanceChatService:
             )[:5]
 
             # Top comercios
-            comercios = {}
+            comercios: dict[str, dict[str, int | Decimal]] = {}
             for t in transactions_this_month:
                 if t.comercio not in comercios:
                     comercios[t.comercio] = {"count": 0, "total": Decimal("0")}
-                comercios[t.comercio]["count"] += 1
-                comercios[t.comercio]["total"] += t.monto_crc
+                count_val = comercios[t.comercio]["count"]
+                if isinstance(count_val, int):
+                    comercios[t.comercio]["count"] = count_val + 1
+                total_val = comercios[t.comercio]["total"]
+                if isinstance(total_val, Decimal):
+                    comercios[t.comercio]["total"] = total_val + t.monto_crc
 
             top_comercios = sorted(
                 comercios.items(),
-                key=lambda x: x[1]["total"],
+                key=lambda x: float(x[1]["total"]) if isinstance(x[1]["total"], Decimal) else 0,
                 reverse=True,
             )[:5]
 
@@ -192,7 +219,7 @@ class FinanceChatService:
                     for t in top_gastos
                 ],
                 "top_comercios": [
-                    {"nombre": nombre, "visitas": data["count"], "total": float(data["total"])}
+                    {"nombre": nombre, "visitas": data["count"], "total": float(data["total"]) if isinstance(data["total"], Decimal) else 0}
                     for nombre, data in top_comercios
                 ],
                 "categorias_disponibles": [c.nombre for c in categories],

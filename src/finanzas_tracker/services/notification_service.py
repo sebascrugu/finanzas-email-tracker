@@ -51,7 +51,7 @@ class Notification:
     """Notificación generada."""
 
     type: NotificationType
-    card_id: int
+    card_id: str
     card_name: str
     title: str
     message: str
@@ -60,9 +60,9 @@ class Notification:
     days_until_due: int | None = None
     priority: str = "normal"  # low, normal, high, urgent
     action_url: str | None = None
-    created_at: datetime = None
+    created_at: datetime | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.created_at is None:
             self.created_at = datetime.now()
 
@@ -79,7 +79,7 @@ class Notification:
             "days_until_due": self.days_until_due,
             "priority": self.priority,
             "action_url": self.action_url,
-            "created_at": self.created_at.isoformat(),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 
@@ -324,7 +324,7 @@ class CardNotificationService:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def _get_latest_cycle(self, card_id: int) -> BillingCycle | None:
+    def _get_latest_cycle(self, card_id: str) -> BillingCycle | None:
         """Obtiene el ciclo de facturación más reciente."""
         stmt = (
             select(BillingCycle)
@@ -337,7 +337,7 @@ class CardNotificationService:
         )
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def _get_current_unpaid_cycle(self, card_id: int) -> BillingCycle | None:
+    def _get_current_unpaid_cycle(self, card_id: str) -> BillingCycle | None:
         """Obtiene el ciclo actual que no está completamente pagado."""
         stmt = (
             select(BillingCycle)
@@ -418,7 +418,7 @@ class CardNotificationService:
 
     def process_payment_email(
         self,
-        card_id: int,
+        card_id: str,
         amount: Decimal,
         payment_date: date,
     ) -> Notification:

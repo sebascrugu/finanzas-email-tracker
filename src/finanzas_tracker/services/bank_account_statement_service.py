@@ -27,7 +27,7 @@ from finanzas_tracker.parsers.bac_pdf_parser import (
     BACStatementResult,
     BACTransaction,
 )
-from finanzas_tracker.services.categorizer import TransactionCategorizer
+from finanzas_tracker.services.smart_categorizer import SmartCategorizer
 from finanzas_tracker.services.exchange_rate import ExchangeRateService
 
 
@@ -71,7 +71,7 @@ class BankAccountStatementService:
     def __init__(self) -> None:
         """Inicializa el servicio."""
         self.parser = BACPDFParser()
-        self.categorizer = TransactionCategorizer()
+        self.categorizer = SmartCategorizer()
         self.exchange_rate_service = ExchangeRateService()
         logger.info("BankAccountStatementService inicializado")
 
@@ -160,6 +160,13 @@ class BankAccountStatementService:
 
                 session.commit()
 
+                # Categorizar transacciones creadas automáticamente
+                if created > 0:
+                    logger.info(f"🏷️ Categorizando {created} transacciones...")
+                    categorized = self._categorize_uncategorized(session, profile_id)
+                    logger.info(f"✅ {categorized} transacciones categorizadas")
+                    session.commit()
+
                 logger.success(
                     f"✅ Consolidación completada: {created} creadas, "
                     f"{skipped} omitidas, {failed} fallidas"
@@ -213,18 +220,36 @@ class BankAccountStatementService:
         if existing:
             return "skipped"
 
-        # Determinar tipo de transacción
+        # Determinar tipo de transacción y flags especiales
+        excluir_de_presupuesto = False
+        necesita_reconciliacion_sinpe = False
+        es_ingreso = False
+        
         if tx.tipo == "debito":
             if tx.es_transferencia or tx.es_sinpe:
                 tipo_transaccion = TransactionType.TRANSFER
+                # SINPE salientes necesitan reconciliación si no tienen beneficiario claro
+                if tx.es_sinpe and self._necesita_reconciliacion(tx):
+                    necesita_reconciliacion_sinpe = True
             else:
                 tipo_transaccion = TransactionType.PURCHASE
         elif tx.es_transferencia or tx.es_sinpe:
+            # Transferencia entrante
             tipo_transaccion = TransactionType.TRANSFER
+            excluir_de_presupuesto = True  # No afecta presupuesto
         elif tx.es_interes:
             tipo_transaccion = TransactionType.INTEREST_EARNED
+            excluir_de_presupuesto = True  # Intereses no son gastos
+            es_ingreso = True
+        elif self._es_salario(tx):
+            # Depósitos de salario
+            tipo_transaccion = TransactionType.DEPOSIT
+            excluir_de_presupuesto = True
+            es_ingreso = True
         else:
             tipo_transaccion = TransactionType.DEPOSIT
+            excluir_de_presupuesto = True
+            es_ingreso = True
 
         # Determinar moneda
         moneda = Currency.USD if tx.moneda == "USD" else Currency.CRC
@@ -250,10 +275,13 @@ class BankAccountStatementService:
             moneda_original=moneda,
             monto_crc=monto_crc,
             tipo_cambio_usado=tipo_cambio_usado,
+            # IMPORTANTE: Guardar a mediodía UTC para evitar desfase de timezone
+            # Costa Rica es UTC-6, si guardamos 00:00 UTC, al convertir queda en el día anterior
             fecha_transaccion=datetime(
                 tx.fecha.year,
                 tx.fecha.month,
                 tx.fecha.day,
+                12, 0, 0,  # Mediodía para evitar problemas de timezone
                 tzinfo=UTC,
             ),
             # Flags
@@ -262,11 +290,14 @@ class BankAccountStatementService:
             es_comercio_ambiguo=False,
             confirmada=True,
             confianza_categoria=100,
+            excluir_de_presupuesto=excluir_de_presupuesto,
+            necesita_reconciliacion_sinpe=necesita_reconciliacion_sinpe,
             # Notas con contexto
             notas=(
                 f"🏦 Importado de estado de cuenta BAC\n"
                 f"Ref: {tx.referencia}\n"
                 f"IBAN: {tx.cuenta_iban[-8:]}"
+                + (f"\n💰 Ingreso detectado" if es_ingreso else "")
             ),
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
@@ -274,6 +305,103 @@ class BankAccountStatementService:
 
         session.add(transaction)
         return "created"
+
+    def _necesita_reconciliacion(self, tx: BACTransaction) -> bool:
+        """
+        Determina si una transacción SINPE necesita reconciliación.
+        
+        Retorna True si:
+        - El comercio es solo un número de referencia
+        - No tiene beneficiario claro
+        - Tiene descripción genérica
+        """
+        comercio = tx.comercio_normalizado or tx.concepto
+        
+        # Si es solo números, es una referencia bancaria
+        if comercio.replace(" ", "").isdigit():
+            return True
+        
+        # Descripciones genéricas
+        genericos = [
+            "sin_descripcion",
+            "transferencia",
+            "sinpe movil",
+            "pago sinpe",
+        ]
+        comercio_lower = comercio.lower()
+        for gen in genericos:
+            if gen in comercio_lower:
+                return True
+        
+        return False
+
+    def _es_salario(self, tx: BACTransaction) -> bool:
+        """
+        Determina si una transacción es un depósito de salario.
+        """
+        concepto_lower = (tx.concepto or "").lower()
+        comercio_lower = (tx.comercio_normalizado or "").lower()
+        
+        indicadores_salario = [
+            "salario",
+            "nomina",
+            "payroll",
+            "planilla",
+            "bosch",  # Empleador conocido
+            "robert bosch",
+        ]
+        
+        for indicador in indicadores_salario:
+            if indicador in concepto_lower or indicador in comercio_lower:
+                return True
+        
+        return False
+
+    def _categorize_uncategorized(
+        self,
+        session: Session,
+        profile_id: str,
+    ) -> int:
+        """
+        Categoriza transacciones sin categoría del perfil.
+        
+        Returns:
+            Número de transacciones categorizadas
+        """
+        from finanzas_tracker.models.enums import TransactionType
+        
+        # Obtener transacciones sin categoría
+        stmt = select(Transaction).where(
+            Transaction.profile_id == profile_id,
+            Transaction.subcategory_id.is_(None),
+            Transaction.deleted_at.is_(None),
+            # Solo gastos (no depósitos/intereses)
+            Transaction.tipo_transaccion.in_([
+                TransactionType.PURCHASE,
+                TransactionType.TRANSFER,
+            ]),
+            Transaction.excluir_de_presupuesto == False,  # noqa: E712
+        )
+        
+        transactions = list(session.execute(stmt).scalars())
+        categorized = 0
+        
+        for tx in transactions:
+            try:
+                result = self.categorizer.categorize(
+                    comercio=tx.comercio,
+                    monto=tx.monto_crc,
+                    profile_id=profile_id,
+                )
+                if result.subcategory_id:
+                    tx.subcategory_id = result.subcategory_id
+                    # confidence ya viene 0-100, no multiplicar
+                    tx.confianza_categoria = min(result.confidence, 100)
+                    categorized += 1
+            except Exception as e:
+                logger.warning(f"Error categorizando {tx.comercio}: {e}")
+        
+        return categorized
 
 
 # Singleton para uso global

@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 from finanzas_tracker.core.cache import cached_query
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.models.account import Account
+from finanzas_tracker.models.enums import TransactionType
 from finanzas_tracker.models.income import Income
 from finanzas_tracker.models.transaction import Transaction
 
@@ -98,7 +99,7 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
         )
         total_ingresos_mes = sum(i.monto_crc for i in ingresos_mes)
 
-        # Gastos del mes
+        # Gastos del mes (solo compras y transferencias que NO son ingresos)
         gastos_mes = (
             session.query(Transaction)
             .options(joinedload(Transaction.subcategory).joinedload("category"))
@@ -108,6 +109,11 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
                 Transaction.fecha_transaccion < proximo_mes,
                 Transaction.deleted_at.is_(None),
                 Transaction.excluir_de_presupuesto == False,
+                # Solo gastos reales, no depósitos ni intereses
+                Transaction.tipo_transaccion.in_([
+                    TransactionType.PURCHASE,
+                    TransactionType.TRANSFER,
+                ]),
             )
             .all()
         )
@@ -137,11 +143,18 @@ def get_monthly_data(profile_id: str, year: int, month: int) -> dict[str, any]:
             if gasto.categoria:
                 gastos_por_categoria[gasto.categoria.nombre] += gasto.monto_crc
 
-        # Gastos por merchant
+        # Gastos por merchant (usa merchant si existe, sino comercio)
         gastos_por_merchant = defaultdict(float)
         for gasto in gastos_mes:
-            if gasto.merchant:
-                gastos_por_merchant[gasto.merchant.nombre_normalizado] += gasto.monto_crc
+            # Solo incluir compras reales, no transferencias
+            if gasto.tipo_transaccion == TransactionType.PURCHASE:
+                if gasto.merchant:
+                    nombre = gasto.merchant.nombre_normalizado
+                elif gasto.comercio:
+                    nombre = gasto.comercio[:50]  # Limitar longitud
+                else:
+                    continue
+                gastos_por_merchant[nombre] += gasto.monto_crc
 
         return {
             "ingresos": ingresos_mes,

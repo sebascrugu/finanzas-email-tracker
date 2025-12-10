@@ -139,22 +139,31 @@ def process_single_statement(
     try:
         result = service.process_statement(stmt_info, save_pdf=save_pdf)
 
-        if result.error:
+        if result.error or result.statement_result is None:
             return ProcessedStatementResponse(
                 email_subject=stmt_info.subject,
                 attachment_name=stmt_info.attachment_name,
                 success=False,
-                error=result.error,
+                error=result.error or "No statement result",
             )
+
+        # Obtener nombre del titular y cuentas según el tipo de resultado
+        metadata = result.statement_result.metadata
+        nombre_titular = (
+            metadata.nombre_titular
+            if hasattr(metadata, "nombre_titular")
+            else getattr(metadata, "nombre_cliente", "Unknown")
+        )
+        cuentas_count = len(metadata.cuentas) if hasattr(metadata, "cuentas") else 0
 
         return ProcessedStatementResponse(
             email_subject=stmt_info.subject,
             attachment_name=stmt_info.attachment_name,
             success=True,
-            titular=result.statement_result.metadata.nombre_titular,
-            fecha_corte=result.statement_result.metadata.fecha_corte.isoformat(),
+            titular=nombre_titular,
+            fecha_corte=metadata.fecha_corte.isoformat(),
             total_transacciones=len(result.statement_result.transactions),
-            cuentas_encontradas=len(result.statement_result.metadata.cuentas),
+            cuentas_encontradas=cuentas_count,
         )
 
     except Exception as e:
@@ -170,6 +179,7 @@ def process_single_statement(
     summary="Procesar todos los estados de cuenta pendientes",
 )
 def process_all_statements(
+    profile_id: str = Query(..., description="ID del perfil del usuario"),
     days_back: int = Query(30, ge=1, le=365, description="Días hacia atrás para buscar"),
     save_pdfs: bool = Query(True, description="Guardar PDFs permanentemente"),
 ) -> ProcessAllResponse:
@@ -185,29 +195,42 @@ def process_all_statements(
     service = StatementEmailService()
 
     try:
-        results = service.process_all_pending(days_back=days_back, save_pdfs=save_pdfs)
+        results = service.process_all_pending(
+            profile_id=profile_id,
+            days_back=days_back,
+            save_pdfs=save_pdfs,
+        )
 
         detalles = []
         for result in results:
-            if result.error:
+            if result.error or result.statement_result is None:
                 detalles.append(
                     ProcessedStatementResponse(
                         email_subject=result.email_info.subject,
                         attachment_name=result.email_info.attachment_name,
                         success=False,
-                        error=result.error,
+                        error=result.error or "No statement result",
                     )
                 )
             else:
+                # Obtener nombre del titular y cuentas según el tipo de resultado
+                metadata = result.statement_result.metadata
+                nombre_titular = (
+                    metadata.nombre_titular
+                    if hasattr(metadata, "nombre_titular")
+                    else getattr(metadata, "nombre_cliente", "Unknown")
+                )
+                cuentas_count = len(metadata.cuentas) if hasattr(metadata, "cuentas") else 0
+
                 detalles.append(
                     ProcessedStatementResponse(
                         email_subject=result.email_info.subject,
                         attachment_name=result.email_info.attachment_name,
                         success=True,
-                        titular=result.statement_result.metadata.nombre_titular,
-                        fecha_corte=result.statement_result.metadata.fecha_corte.isoformat(),
+                        titular=nombre_titular,
+                        fecha_corte=metadata.fecha_corte.isoformat(),
                         total_transacciones=len(result.statement_result.transactions),
-                        cuentas_encontradas=len(result.statement_result.metadata.cuentas),
+                        cuentas_encontradas=cuentas_count,
                     )
                 )
 

@@ -5,6 +5,7 @@ __all__ = ["ReconciliationReport"]
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -23,6 +24,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import BankName
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.profile import Profile
+    from finanzas_tracker.models.transaction import Transaction
 
 
 class ReconciliationStatus(str, Enum):

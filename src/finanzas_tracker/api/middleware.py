@@ -7,13 +7,12 @@ Implementación FAANG-style con:
 - Timing de requests
 """
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 import time
-from typing import Any
 import uuid
 
-from fastapi import Request, Response
+from fastapi import FastAPI, Request, Response
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -39,7 +38,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable[[Request], Any],
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         # Obtener o generar correlation ID
         correlation_id = request.headers.get(
@@ -74,7 +73,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self,
         request: Request,
-        call_next: Callable[[Request], Any],
+        call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         # Excluir paths que no queremos loggear
         if request.url.path in self.EXCLUDE_PATHS:
@@ -140,7 +139,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             raise
 
 
-def setup_middlewares(app: Any) -> None:
+def setup_middlewares(app: FastAPI) -> None:
     """
     Configura todos los middlewares en el orden correcto.
 

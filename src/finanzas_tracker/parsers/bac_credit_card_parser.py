@@ -162,10 +162,22 @@ class BACCreditCardParser:
                 transactions.extend(page_txns)
 
         # Calcular totales
-        total_compras_crc = sum(t.monto_crc for t in transactions if t.tipo == "compra")
-        total_compras_usd = sum(t.monto_usd for t in transactions if t.tipo == "compra")
-        total_intereses = sum(t.monto_crc for t in transactions if t.tipo == "interes")
-        total_seguros = sum(t.monto_crc for t in transactions if t.tipo == "seguro")
+        total_compras_crc = sum(
+            (t.monto_crc for t in transactions if t.tipo == "compra"),
+            Decimal("0")
+        )
+        total_compras_usd = sum(
+            (t.monto_usd for t in transactions if t.tipo == "compra"),
+            Decimal("0")
+        )
+        total_intereses = sum(
+            (t.monto_crc for t in transactions if t.tipo == "interes"),
+            Decimal("0")
+        )
+        total_seguros = sum(
+            (t.monto_crc for t in transactions if t.tipo == "seguro"),
+            Decimal("0")
+        )
 
         logger.info(f"✅ Extraídas {len(transactions)} transacciones de tarjeta")
 

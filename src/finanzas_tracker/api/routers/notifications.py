@@ -122,7 +122,7 @@ async def get_notifications(
                 days_until_due=n.days_until_due,
                 priority=n.priority,
                 action_url=n.action_url,
-                created_at=n.created_at.isoformat(),
+                created_at=n.created_at.isoformat() if n.created_at else None,
             )
             for n in notifications
         ],
@@ -156,7 +156,7 @@ async def get_payment_reminders(
             days_until_due=n.days_until_due,
             priority=n.priority,
             action_url=n.action_url,
-            created_at=n.created_at.isoformat(),
+            created_at=n.created_at.isoformat() if n.created_at else None,
         )
         for n in notifications
     ]

@@ -169,7 +169,7 @@ def get_budget_summary(
     subcats_stmt = select(Subcategory)
     subcategories = db.execute(subcats_stmt).scalars().all()
     subcat_to_cat = {s.id: s.category_id for s in subcategories}
-    cat_id_to_tipo = {c.id: c.tipo for c in categories.values()}
+    cat_id_to_tipo: dict[str, str] = {c.id: str(c.tipo) for c in categories.values()}
 
     # Obtener presupuestos del mes
     budgets_stmt = select(Budget).where(
@@ -187,9 +187,9 @@ def get_budget_summary(
     for b in budgets:
         cat_id = subcat_to_cat.get(b.category_id)
         if cat_id:
-            tipo = cat_id_to_tipo.get(cat_id)
-            if tipo:
-                budget_by_tipo[tipo] += b.amount_crc
+            tipo_str = cat_id_to_tipo.get(cat_id)
+            if tipo_str:
+                budget_by_tipo[tipo_str] += b.amount_crc
 
     # Obtener gastos del mes (excluyendo los excluidos de presupuesto)
     gastos_stmt = select(Transaction).where(
@@ -211,9 +211,9 @@ def get_budget_summary(
         if t.subcategory_id:
             cat_id = subcat_to_cat.get(t.subcategory_id)
             if cat_id:
-                tipo = cat_id_to_tipo.get(cat_id)
-                if tipo:
-                    spent_by_tipo[tipo] += t.monto_crc
+                tipo_str = cat_id_to_tipo.get(cat_id)
+                if tipo_str:
+                    spent_by_tipo[tipo_str] += t.monto_crc
 
     # Construir resumen por categoría
     summaries = []

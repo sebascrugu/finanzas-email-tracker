@@ -2,13 +2,18 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.transaction import Transaction
 
 
 # Comercios conocidos que pueden tener múltiples categorías
@@ -143,7 +148,7 @@ class Merchant(Base):
         return f"<Merchant(id={self.id[:8]}..., nombre={self.nombre_normalizado}, categoria={self.categoria_principal})>"
 
     @classmethod
-    def buscar_por_nombre_raw(cls, session, nombre_raw: str) -> "Merchant | None":
+    def buscar_por_nombre_raw(cls, session: Session, nombre_raw: str) -> "Merchant | None":
         """
         Busca un merchant por el nombre raw (como aparece en el correo).
 
@@ -162,7 +167,7 @@ class Merchant(Base):
 
         return variante.merchant if variante else None
 
-    def calcular_total_gastado(self, session, profile_id: str) -> Decimal:
+    def calcular_total_gastado(self, session: Session, profile_id: str) -> Decimal:
         """Calcula el total gastado en este merchant por un perfil."""
         from finanzas_tracker.models.transaction import Transaction
 
@@ -176,14 +181,14 @@ class Merchant(Base):
             .all()
         )
 
-        total = sum(t.monto_crc for t in transacciones)
+        total = sum((t.monto_crc for t in transacciones), Decimal("0"))
         return total.quantize(Decimal("0.01"))
 
-    def calcular_numero_visitas(self, session, profile_id: str) -> int:
+    def calcular_numero_visitas(self, session: Session, profile_id: str) -> int:
         """Calcula el número de transacciones en este merchant."""
         from finanzas_tracker.models.transaction import Transaction
 
-        return (
+        count: int = (
             session.query(Transaction)
             .filter(
                 Transaction.merchant_id == self.id,
@@ -192,6 +197,7 @@ class Merchant(Base):
             )
             .count()
         )
+        return count
 
 
 class MerchantVariant(Base):

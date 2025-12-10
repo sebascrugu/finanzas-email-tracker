@@ -1,0 +1,428 @@
+{
+  "summary": {
+    "total_transactions": 35,
+    "total_amount": 742914.05,
+    "avg_amount": 21226.115714285716,
+    "min_amount": 5.0,
+    "max_amount": 156800.0
+  },
+  "by_merchant": {
+    "MUNICIPALIDAD LA UNION": {
+      "count": 1,
+      "total": 600.0
+    },
+    "CLUB SPORT CARTAGINES": {
+      "count": 3,
+      "total": 113000.0
+    },
+    "COBRO ADMINISTRACION C": {
+      "count": 1,
+      "total": 4708.04
+    },
+    "SUBWAY AMERICA FREE": {
+      "count": 1,
+      "total": 850.0
+    },
+    "ANTHROPIC": {
+      "count": 1,
+      "total": 5.0
+    },
+    "MOVE": {
+      "count": 1,
+      "total": 3000.0
+    },
+    "MC DONALD S MULTIPL": {
+      "count": 1,
+      "total": 3390.0
+    },
+    "PARQUEO EL GATO": {
+      "count": 1,
+      "total": 15000.0
+    },
+    "PAGO TARJETA DE CRÉDITO ****6386": {
+      "count": 2,
+      "total": 193304.74
+    },
+    "BET365": {
+      "count": 3,
+      "total": 30.0
+    },
+    "SERVI INDOOR": {
+      "count": 1,
+      "total": 27704.0
+    },
+    "LEGADO BARBERIA": {
+      "count": 1,
+      "total": 13000.0
+    },
+    "AMAZON MARKEPLACE NA": {
+      "count": 1,
+      "total": 308.75
+    },
+    "RESTAURANTE TACO BE": {
+      "count": 1,
+      "total": 3250.0
+    },
+    "MC.DONALDS TERRAMA": {
+      "count": 1,
+      "total": 290.0
+    },
+    "E-TICKET E-COMMERCE": {
+      "count": 1,
+      "total": 156800.0
+    },
+    "RETIRO SIN TARJETA - CAR-PSMRT TRES RIOS": {
+      "count": 1,
+      "total": 46000.0
+    },
+    "RETIRO SIN TARJETA": {
+      "count": 1,
+      "total": 46000.0
+    },
+    "BREAD HOUSE PINARES": {
+      "count": 1,
+      "total": 31310.0
+    },
+    "DUNKIN TRES RIOS": {
+      "count": 2,
+      "total": 6178.0
+    },
+    "VINDI": {
+      "count": 1,
+      "total": 1500.0
+    },
+    "SHOPSIMON": {
+      "count": 1,
+      "total": 179.76
+    },
+    "ON INC US ECOMM": {
+      "count": 1,
+      "total": 133.75
+    },
+    "FEELINGS": {
+      "count": 1,
+      "total": 1900.0
+    },
+    "SUBWAY AYARCO": {
+      "count": 1,
+      "total": 13550.0
+    },
+    "GOAT": {
+      "count": 1,
+      "total": 44.52
+    },
+    "AMAZON PRIME PMTS": {
+      "count": 1,
+      "total": 7.49
+    },
+    "WEB CHECKOUT JPS LOT N": {
+      "count": 1,
+      "total": 4500.0
+    },
+    "PRICE SMART TRES RI": {
+      "count": 1,
+      "total": 56370.0
+    }
+  },
+  "by_day_of_week": {
+    "Martes": {
+      "count": 6,
+      "total": 132612.75
+    },
+    "Lunes": {
+      "count": 6,
+      "total": 12706.04
+    },
+    "Domingo": {
+      "count": 2,
+      "total": 22005.0
+    },
+    "Sábado": {
+      "count": 7,
+      "total": 287190.0
+    },
+    "Viernes": {
+      "count": 8,
+      "total": 169502.77
+    },
+    "Jueves": {
+      "count": 5,
+      "total": 62527.49
+    },
+    "Miércoles": {
+      "count": 1,
+      "total": 56370.0
+    }
+  },
+  "by_hour": {
+    "17": {
+      "count": 3,
+      "total": 16450.0
+    },
+    "14": {
+      "count": 2,
+      "total": 91000.0
+    },
+    "20": {
+      "count": 5,
+      "total": 70748.04
+    },
+    "5": {
+      "count": 1,
+      "total": 5.0
+    },
+    "1": {
+      "count": 1,
+      "total": 3000.0
+    },
+    "18": {
+      "count": 2,
+      "total": 59760.0
+    },
+    "19": {
+      "count": 3,
+      "total": 46020.0
+    },
+    "23": {
+      "count": 4,
+      "total": 40891.25
+    },
+    "2": {
+      "count": 1,
+      "total": 308.75
+    },
+    "9": {
+      "count": 1,
+      "total": 22000.0
+    },
+    "22": {
+      "count": 2,
+      "total": 156933.75
+    },
+    "13": {
+      "count": 1,
+      "total": 46000.0
+    },
+    "11": {
+      "count": 2,
+      "total": 31320.0
+    },
+    "7": {
+      "count": 2,
+      "total": 4080.0
+    },
+    "16": {
+      "count": 1,
+      "total": 1900.0
+    },
+    "15": {
+      "count": 2,
+      "total": 17148.0
+    },
+    "8": {
+      "count": 2,
+      "total": 135349.26
+    }
+  },
+  "by_month": {
+    "2025-12": {
+      "count": 16,
+      "total": 221115.79
+    },
+    "2025-11": {
+      "count": 19,
+      "total": 521798.26
+    }
+  },
+  "by_type": {
+    "compra": {
+      "count": 35,
+      "total": 742914.05
+    }
+  },
+  "recurring": [
+    {
+      "merchant": "BET365",
+      "count": 3,
+      "avg_amount": 10.0,
+      "consistency": 1.0
+    }
+  ],
+  "top_merchants": [
+    {
+      "merchant": "PAGO TARJETA DE CRÉDITO ****6386",
+      "count": 2,
+      "total": 193304.74,
+      "avg": 96652.37
+    },
+    {
+      "merchant": "E-TICKET E-COMMERCE",
+      "count": 1,
+      "total": 156800.0,
+      "avg": 156800.0
+    },
+    {
+      "merchant": "CLUB SPORT CARTAGINES",
+      "count": 3,
+      "total": 113000.0,
+      "avg": 37666.666666666664
+    },
+    {
+      "merchant": "PRICE SMART TRES RI",
+      "count": 1,
+      "total": 56370.0,
+      "avg": 56370.0
+    },
+    {
+      "merchant": "RETIRO SIN TARJETA - CAR-PSMRT TRES RIOS",
+      "count": 1,
+      "total": 46000.0,
+      "avg": 46000.0
+    },
+    {
+      "merchant": "RETIRO SIN TARJETA",
+      "count": 1,
+      "total": 46000.0,
+      "avg": 46000.0
+    },
+    {
+      "merchant": "BREAD HOUSE PINARES",
+      "count": 1,
+      "total": 31310.0,
+      "avg": 31310.0
+    },
+    {
+      "merchant": "SERVI INDOOR",
+      "count": 1,
+      "total": 27704.0,
+      "avg": 27704.0
+    },
+    {
+      "merchant": "PARQUEO EL GATO",
+      "count": 1,
+      "total": 15000.0,
+      "avg": 15000.0
+    },
+    {
+      "merchant": "SUBWAY AYARCO",
+      "count": 1,
+      "total": 13550.0,
+      "avg": 13550.0
+    },
+    {
+      "merchant": "LEGADO BARBERIA",
+      "count": 1,
+      "total": 13000.0,
+      "avg": 13000.0
+    },
+    {
+      "merchant": "DUNKIN TRES RIOS",
+      "count": 2,
+      "total": 6178.0,
+      "avg": 3089.0
+    },
+    {
+      "merchant": "COBRO ADMINISTRACION C",
+      "count": 1,
+      "total": 4708.04,
+      "avg": 4708.04
+    },
+    {
+      "merchant": "WEB CHECKOUT JPS LOT N",
+      "count": 1,
+      "total": 4500.0,
+      "avg": 4500.0
+    },
+    {
+      "merchant": "MC DONALD S MULTIPL",
+      "count": 1,
+      "total": 3390.0,
+      "avg": 3390.0
+    },
+    {
+      "merchant": "RESTAURANTE TACO BE",
+      "count": 1,
+      "total": 3250.0,
+      "avg": 3250.0
+    },
+    {
+      "merchant": "MOVE",
+      "count": 1,
+      "total": 3000.0,
+      "avg": 3000.0
+    },
+    {
+      "merchant": "FEELINGS",
+      "count": 1,
+      "total": 1900.0,
+      "avg": 1900.0
+    },
+    {
+      "merchant": "VINDI",
+      "count": 1,
+      "total": 1500.0,
+      "avg": 1500.0
+    },
+    {
+      "merchant": "SUBWAY AMERICA FREE",
+      "count": 1,
+      "total": 850.0,
+      "avg": 850.0
+    },
+    {
+      "merchant": "MUNICIPALIDAD LA UNION",
+      "count": 1,
+      "total": 600.0,
+      "avg": 600.0
+    },
+    {
+      "merchant": "AMAZON MARKEPLACE NA",
+      "count": 1,
+      "total": 308.75,
+      "avg": 308.75
+    },
+    {
+      "merchant": "MC.DONALDS TERRAMA",
+      "count": 1,
+      "total": 290.0,
+      "avg": 290.0
+    },
+    {
+      "merchant": "SHOPSIMON",
+      "count": 1,
+      "total": 179.76,
+      "avg": 179.76
+    },
+    {
+      "merchant": "ON INC US ECOMM",
+      "count": 1,
+      "total": 133.75,
+      "avg": 133.75
+    },
+    {
+      "merchant": "GOAT",
+      "count": 1,
+      "total": 44.52,
+      "avg": 44.52
+    },
+    {
+      "merchant": "BET365",
+      "count": 3,
+      "total": 30.0,
+      "avg": 10.0
+    },
+    {
+      "merchant": "AMAZON PRIME PMTS",
+      "count": 1,
+      "total": 7.49,
+      "avg": 7.49
+    },
+    {
+      "merchant": "ANTHROPIC",
+      "count": 1,
+      "total": 5.0,
+      "avg": 5.0
+    }
+  ],
+  "patterns": []
+}

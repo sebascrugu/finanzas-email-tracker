@@ -5,12 +5,13 @@ Define excepciones personalizadas y handlers para formatear
 respuestas de error de manera consistente.
 """
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.types import ExceptionHandler
 
 from finanzas_tracker.core.logging import get_logger
 
@@ -201,7 +202,9 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
     if isinstance(exc.detail, dict):
         error = exc.detail.get("error", str(exc.detail))
         code = exc.detail.get("code", f"HTTP_{exc.status_code}")
-        details = {k: v for k, v in exc.detail.items() if k not in ("error", "code")}
+        details: dict[str, str] = {
+            k: str(v) for k, v in exc.detail.items() if k not in ("error", "code")
+        }
     else:
         error = str(exc.detail)
         code = f"HTTP_{exc.status_code}"
@@ -313,7 +316,11 @@ def setup_exception_handlers(app: FastAPI) -> None:
 
     Llamar en el startup de la aplicación.
     """
-    app.add_exception_handler(AppException, app_exception_handler)
-    app.add_exception_handler(HTTPException, http_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(Exception, unhandled_exception_handler)
+    # Cast necesario porque los handlers tienen tipos específicos de excepción
+    # pero add_exception_handler espera Callable[[Request, Exception], ...]
+    app.add_exception_handler(AppException, cast(ExceptionHandler, app_exception_handler))
+    app.add_exception_handler(HTTPException, cast(ExceptionHandler, http_exception_handler))
+    app.add_exception_handler(
+        RequestValidationError, cast(ExceptionHandler, validation_exception_handler)
+    )
+    app.add_exception_handler(Exception, cast(ExceptionHandler, unhandled_exception_handler))

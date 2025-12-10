@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Literal, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from bs4 import BeautifulSoup
 
@@ -30,6 +30,8 @@ class ParsedTransaction(TypedDict):
     fecha_transaccion: datetime
     ciudad: str | None
     pais: str | None
+    # Campo opcional (para transferencias SINPE, etc.)
+    metadata: NotRequired[dict[str, str]]
 
 
 class EmailParseError(Exception):

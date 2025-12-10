@@ -199,7 +199,7 @@ class StatementEmailService:
         )
 
         url = f"{self.GRAPH_API_BASE}/me/messages"
-        params = {
+        params: dict[str, str | int] = {
             "$filter": filter_query,
             "$select": "id,subject,from,receivedDateTime,hasAttachments",
             "$orderby": "receivedDateTime desc",
@@ -277,7 +277,9 @@ class StatementEmailService:
             headers = self._get_headers()
             response = requests.get(url, headers=headers, params=params, timeout=30)
             response.raise_for_status()
-            return response.json().get("value", [])
+            data: dict[str, Any] = response.json()
+            result: list[dict[str, Any]] = data.get("value", [])
+            return result
         except Exception as e:
             logger.error(f"Error obteniendo adjuntos: {e}")
             return []
@@ -385,14 +387,16 @@ class StatementEmailService:
             transactions_created = 0
             transactions_skipped = 0
             saved_to_db = False
+            result: BACStatementResult | CreditCardStatementResult
 
             # Usar parser según tipo
             if stmt_info.statement_type == "credit_card":
-                result = self.credit_card_parser.parse(downloaded_path)
+                cc_result = self.credit_card_parser.parse(downloaded_path)
+                result = cc_result
                 logger.success(
                     f"✅ Estado de tarjeta procesado: "
-                    f"{result.metadata.tarjeta_marca} ***{result.metadata.tarjeta_ultimos_4} - "
-                    f"{len(result.transactions)} transacciones"
+                    f"{cc_result.metadata.tarjeta_marca} ***{cc_result.metadata.tarjeta_ultimos_4} - "
+                    f"{len(cc_result.transactions)} transacciones"
                 )
 
                 # Consolidar en BD si se solicita
@@ -402,22 +406,23 @@ class StatementEmailService:
                     )
 
                     cc_service = CreditCardStatementService()
-                    consolidation = cc_service.consolidate_statement(result, profile_id)
+                    cc_consolidation = cc_service.consolidate_statement(cc_result, profile_id)
 
-                    if consolidation.success:
+                    if cc_consolidation.success:
                         saved_to_db = True
-                        transactions_created = consolidation.transactions_created
-                        transactions_skipped = consolidation.transactions_skipped
+                        transactions_created = cc_consolidation.transactions_created
+                        transactions_skipped = cc_consolidation.transactions_skipped
                         logger.success(
                             f"💾 Consolidado en BD: {transactions_created} creadas, "
                             f"{transactions_skipped} omitidas"
                         )
             else:
-                result = self.pdf_parser.parse(downloaded_path)
+                bank_result = self.pdf_parser.parse(downloaded_path)
+                result = bank_result
                 logger.success(
                     f"✅ Estado de cuenta procesado: "
-                    f"{result.metadata.fecha_corte} - "
-                    f"{len(result.transactions)} transacciones"
+                    f"{bank_result.metadata.fecha_corte} - "
+                    f"{len(bank_result.transactions)} transacciones"
                 )
 
                 # Consolidar cuentas bancarias en BD
@@ -427,12 +432,12 @@ class StatementEmailService:
                     )
 
                     bank_service = BankAccountStatementService()
-                    consolidation = bank_service.consolidate_statement(result, profile_id)
+                    bank_consolidation = bank_service.consolidate_statement(bank_result, profile_id)
 
-                    if consolidation.success:
+                    if bank_consolidation.success:
                         saved_to_db = True
-                        transactions_created = consolidation.transactions_created
-                        transactions_skipped = consolidation.transactions_skipped
+                        transactions_created = bank_consolidation.transactions_created
+                        transactions_skipped = bank_consolidation.transactions_skipped
                         logger.success(
                             f"💾 Consolidado en BD: {transactions_created} creadas, "
                             f"{transactions_skipped} omitidas"

@@ -134,7 +134,8 @@ def cached_query(
             cached_value = cache.get(cache_key)
             if cached_value is not None:
                 logger.debug(f"Cache HIT: {func.__name__}")
-                return cached_value
+                # cached_value could be Any, cast to T for return
+                return cached_value  # type: ignore[no-any-return]
 
             # Cache miss - ejecutar función
             logger.debug(f"Cache MISS: {func.__name__}")
@@ -146,8 +147,8 @@ def cached_query(
             return result
 
         # Agregar método para invalidar cache manualmente
-        wrapper.invalidate_cache = cache.invalidate  # type: ignore
-        wrapper.get_cache_stats = cache.get_stats  # type: ignore
+        wrapper.invalidate_cache = cache.invalidate  # type: ignore[attr-defined]
+        wrapper.get_cache_stats = cache.get_stats  # type: ignore[attr-defined]
 
         return wrapper
 

@@ -377,7 +377,7 @@ class InternalTransferDetector:
         profile_id: str,
         fecha_inicio: date | None = None,
         fecha_fin: date | None = None,
-    ) -> dict:
+    ) -> dict[str, int | Decimal | dict[str, int]]:
         """Obtiene resumen de transferencias internas.
 
         Args:
@@ -401,15 +401,16 @@ class InternalTransferDetector:
 
         transacciones = list(self.db.execute(stmt).scalars().all())
 
-        resumen = {
-            "total": len(transacciones),
-            "por_tipo": {},
-            "monto_total": Decimal("0.00"),
-        }
+        por_tipo: dict[str, int] = {}
+        monto_total = Decimal("0.00")
 
         for tx in transacciones:
             tipo = tx.tipo_especial or "otro"
-            resumen["por_tipo"][tipo] = resumen["por_tipo"].get(tipo, 0) + 1
-            resumen["monto_total"] += tx.monto_original
+            por_tipo[tipo] = por_tipo.get(tipo, 0) + 1
+            monto_total += tx.monto_original
 
-        return resumen
+        return {
+            "total": len(transacciones),
+            "por_tipo": por_tipo,
+            "monto_total": monto_total,
+        }

@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String
@@ -10,6 +11,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import BankName, CardType
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.billing_cycle import BillingCycle
+    from finanzas_tracker.models.card_payment import CardPayment
+    from finanzas_tracker.models.profile import Profile
+    from finanzas_tracker.models.transaction import Transaction
 
 
 class Card(Base):

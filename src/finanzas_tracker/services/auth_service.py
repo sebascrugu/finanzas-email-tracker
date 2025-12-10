@@ -3,6 +3,7 @@
 __all__ = ["AuthService", "auth_service"]
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import bcrypt
 import jwt
@@ -108,7 +109,7 @@ class AuthService:
         logger.debug(f"Token creado para usuario {email}")
         return token
 
-    def decode_token(self, token: str) -> dict | None:
+    def decode_token(self, token: str) -> dict[str, Any] | None:
         """
         Decodifica y valida un token JWT.
 
@@ -123,7 +124,7 @@ class AuthService:
             jwt.InvalidTokenError: Si el token es inválido
         """
         try:
-            payload = jwt.decode(
+            payload: dict[str, Any] = jwt.decode(
                 token,
                 self.secret_key,
                 algorithms=[self.algorithm],

@@ -1,6 +1,7 @@
 """Base mixins para modelos SQLAlchemy - Multi-tenancy ready."""
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import DateTime
@@ -24,8 +25,9 @@ class TenantMixin:
         comment="ID del tenant para multi-tenancy (futuro)",
     )
 
-    @declared_attr
-    def __table_args__(cls) -> tuple:
+    @declared_attr.directive
+    @classmethod
+    def __table_args__(cls) -> tuple[Any, ...]:
         """Agrega índice compuesto con tenant_id si la tabla tiene otros índices."""
         # Las subclases pueden extender esto
         return ()

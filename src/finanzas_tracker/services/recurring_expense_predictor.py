@@ -281,7 +281,7 @@ class RecurringExpensePredictor:
         return ExpenseSummary(
             periodo_inicio=inicio_mes,
             periodo_fin=fin_mes,
-            total_estimado=total,
+            total_estimado=total if total else Decimal("0"),
             gastos=gastos_mes,
             por_tipo=por_tipo,
             alertas_urgentes=alertas_urgentes,
@@ -513,7 +513,12 @@ class RecurringExpensePredictor:
 
             # Calcular próxima fecha
             ultima_fecha = transacciones[-1].fecha_transaccion
-            proxima_fecha = ultima_fecha + timedelta(days=int(intervalo_promedio))
+            # Convert datetime to date for consistent arithmetic
+            if hasattr(ultima_fecha, "date"):
+                ultima_fecha_date = ultima_fecha.date()
+            else:
+                ultima_fecha_date = ultima_fecha
+            proxima_fecha = ultima_fecha_date + timedelta(days=int(intervalo_promedio))
 
             if proxima_fecha < hoy:
                 # Ajustar si ya pasó

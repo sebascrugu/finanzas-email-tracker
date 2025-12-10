@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String
@@ -9,6 +10,11 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.category import Subcategory
+    from finanzas_tracker.models.profile import Profile
 
 
 class Budget(Base):

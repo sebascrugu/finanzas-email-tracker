@@ -24,13 +24,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from anthropic import Anthropic
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from finanzas_tracker.config.settings import Settings
+from finanzas_tracker.core.claude_credits import can_use_claude, handle_claude_error
 from finanzas_tracker.services.embedding_service import EmbeddingService
 
 
@@ -262,22 +263,22 @@ class RAGService:
         month = month or now.month
 
         # Total gastado este mes
-        stmt = select(func.sum(Transaction.monto_crc)).where(
+        sum_stmt = select(func.sum(Transaction.monto_crc)).where(
             Transaction.profile_id == profile_id,
             Transaction.deleted_at.is_(None),
             func.extract("year", Transaction.fecha_transaccion) == year,
             func.extract("month", Transaction.fecha_transaccion) == month,
         )
-        total_mes = self.db.execute(stmt).scalar() or Decimal("0")
+        total_mes = self.db.execute(sum_stmt).scalar() or Decimal("0")
 
         # Número de transacciones
-        stmt = select(func.count(Transaction.id)).where(
+        count_stmt = select(func.count(Transaction.id)).where(
             Transaction.profile_id == profile_id,
             Transaction.deleted_at.is_(None),
             func.extract("year", Transaction.fecha_transaccion) == year,
             func.extract("month", Transaction.fecha_transaccion) == month,
         )
-        num_txns = self.db.execute(stmt).scalar() or 0
+        num_txns = self.db.execute(count_stmt).scalar() or 0
 
         return {
             f"Total gastado ({month}/{year})": f"₡{total_mes:,.0f}",
@@ -305,7 +306,22 @@ class RAGService:
         Returns:
             RAGResponse con la respuesta y fuentes
         """
-        model = model or getattr(self.settings, "claude_model", "claude-haiku-4-5-20251001")
+        default_model = "claude-haiku-4-5-20251001"
+        model_to_use: str = model or cast(
+            str, getattr(self.settings, "claude_model", default_model)
+        ) or default_model
+
+        # 0. Verificar si podemos usar Claude (sin llamar a la API)
+        can_use, reason = can_use_claude()
+        if not can_use:
+            logger.info(f"⏭️ RAG no disponible: {reason}")
+            return RAGResponse(
+                answer="🤖 El asistente de IA no está disponible en este momento.",
+                sources=[],
+                model=model_to_use,
+                usage={"input_tokens": 0, "output_tokens": 0},
+                query=query,
+            )
 
         # 1. Buscar transacciones relevantes
         relevant_txns = self._search_relevant_transactions(
@@ -335,19 +351,20 @@ class RAGService:
         logger.info(f"RAG query: {query[:50]}... con {len(contexts)} transacciones de contexto")
 
         response = client.messages.create(
-            model=model,
+            model=model_to_use,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
         )
 
         # 6. Construir respuesta
-        answer = response.content[0].text if response.content else ""
+        first_block = response.content[0] if response.content else None
+        answer = first_block.text if first_block and hasattr(first_block, "text") else ""
 
         return RAGResponse(
             answer=answer,
             sources=contexts,
-            model=model,
+            model=model_to_use,
             usage={
                 "input_tokens": response.usage.input_tokens,
                 "output_tokens": response.usage.output_tokens,

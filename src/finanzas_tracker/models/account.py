@@ -4,6 +4,7 @@ __all__ = ["Account"]
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, Numeric, String, Text
@@ -12,6 +13,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import AccountType, BankName, Currency
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 class Account(Base):
@@ -143,3 +147,46 @@ class Account(Base):
         """Actualiza el saldo y la fecha de actualización."""
         self.saldo = nuevo_saldo
         self.saldo_actualizado_at = datetime.now(UTC)
+
+    @classmethod
+    def calcular_patrimonio_total(cls, session: "Session", profile_id: str) -> Decimal:
+        """
+        Calcula el patrimonio total sumando saldos de todas las cuentas activas.
+
+        Args:
+            session: Sesión de SQLAlchemy
+            profile_id: ID del perfil
+
+        Returns:
+            Suma de saldos de cuentas activas incluidas en patrimonio
+        """
+        from sqlalchemy import select, func
+
+        stmt = select(func.coalesce(func.sum(cls.saldo), Decimal("0.00"))).where(
+            cls.profile_id == profile_id,
+            cls.activa.is_(True),
+            cls.incluir_en_patrimonio.is_(True),
+            cls.deleted_at.is_(None),
+        )
+        result = session.execute(stmt).scalar()
+        return Decimal(result) if result else Decimal("0.00")
+
+    @classmethod
+    def calcular_intereses_mensuales_totales(
+        cls, session: "Session", profile_id: str
+    ) -> Decimal:
+        """
+        Calcula los intereses mensuales proyectados de todas las cuentas.
+
+        Por ahora retorna 0, ya que no tenemos tasas de interés configuradas.
+        En el futuro se podría agregar un campo 'tasa_interes_anual' a las cuentas.
+
+        Args:
+            session: Sesión de SQLAlchemy
+            profile_id: ID del perfil
+
+        Returns:
+            Total de intereses mensuales proyectados
+        """
+        # TODO: Implementar cuando se agreguen tasas de interés a las cuentas
+        return Decimal("0.00")

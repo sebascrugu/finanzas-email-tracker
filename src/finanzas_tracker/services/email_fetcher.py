@@ -200,7 +200,8 @@ class EmailFetcher:
         headers = self._get_headers()
         response = requests.get(url, headers=headers, params=params, timeout=30)
         response.raise_for_status()
-        return response.json()
+        result: dict[str, Any] = response.json()
+        return result
 
     def fetch_emails_for_current_user(
         self,
@@ -348,7 +349,10 @@ class EmailFetcher:
         try:
             data = self._make_graph_request(url)
             body = data.get("body", {})
-            return body.get("content", "")
+            content = body.get("content", "")
+            if content is not None:
+                return str(content)
+            return None
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Error al obtener cuerpo del correo {email_id}: {e}")

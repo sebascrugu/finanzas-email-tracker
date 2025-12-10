@@ -454,7 +454,7 @@ def listar_reportes(
 
 @router.get("/reportes/{reporte_id}", response_model=ReconciliationReportResponse)
 def obtener_reporte(
-    reporte_id: int,
+    reporte_id: str,
     db: Session = Depends(get_db),
 ) -> ReconciliationReportResponse:
     """Obtiene un reporte específico por ID."""
@@ -472,7 +472,7 @@ def obtener_reporte(
 
 @router.post("/reportes/{reporte_id}/aceptar")
 def aceptar_reconciliacion(
-    reporte_id: int,
+    reporte_id: str,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Acepta una reconciliación y marca transacciones como reconciliadas.
@@ -509,8 +509,8 @@ class ResolverDiscrepanciaRequest(BaseModel):
 
 @router.post("/reportes/{reporte_id}/resolver/{transaction_id}")
 def resolver_discrepancia(
-    reporte_id: int,
-    transaction_id: int,
+    reporte_id: str,
+    transaction_id: str,
     request: ResolverDiscrepanciaRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
@@ -540,7 +540,7 @@ def resolver_discrepancia(
         return {
             "mensaje": f"Discrepancia resuelta: {request.accion}",
             "transaction_id": txn.id,
-            "estado": txn.estado.value if txn.estado else None,
+            "estado": txn.estado,
         }
 
     except ValueError as e:

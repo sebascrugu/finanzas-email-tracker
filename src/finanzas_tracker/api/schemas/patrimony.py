@@ -99,18 +99,13 @@ class InvestmentResponse(InvestmentBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: str
-    profile_id: str
+    id: int
+    profile_id: int
     rendimiento_acumulado: Decimal = Field(
         default=Decimal("0"), description="Rendimiento acumulado"
     )
     valor_actual: Decimal | None = None
     dias_para_vencimiento: int | None = None
-    created_at: str | None = None
-
-    id: int
-    profile_id: int
-    rendimiento_acumulado: Decimal | None = None
     dias_restantes: int | None = None
     created_at: str | None = None
 

@@ -3,6 +3,7 @@
 __all__ = ["Category", "Subcategory"]
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text
@@ -10,6 +11,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
 from finanzas_tracker.models.enums import CategoryType
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.transaction import Transaction
 
 
 class Category(Base):

@@ -246,7 +246,7 @@ class CardService:
 
         # Ver si hay saldo pendiente del ciclo anterior
         pending = self.get_pending_cycles(card.id)
-        saldo_anterior = sum(c.saldo_pendiente for c in pending)
+        saldo_anterior = sum((c.saldo_pendiente for c in pending), Decimal("0"))
 
         return self.create_cycle(
             card_id=card.id,
@@ -449,7 +449,7 @@ class CardService:
 
         saldo = deuda_actual
         total_intereses = Decimal("0.00")
-        historial = []
+        historial: list[dict[str, float | int]] = []
 
         for mes in range(1, meses + 1):
             interes = (saldo * tasa_mensual).quantize(Decimal("0.01"))

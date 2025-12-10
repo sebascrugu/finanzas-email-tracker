@@ -109,7 +109,7 @@ class BaseRepository(Generic[ModelType]):
         Returns:
             Entidad creada
         """
-        entity = self.model(**data)
+        entity: ModelType = self.model(**data)
         self.db.add(entity)
         self.db.flush()  # Para obtener el ID generado
         return entity
@@ -144,7 +144,7 @@ class BaseRepository(Generic[ModelType]):
         else:
             from datetime import UTC, datetime
 
-            entity.deleted_at = datetime.now(UTC)  # type: ignore
+            entity.deleted_at = datetime.now(UTC)
         self.db.flush()
 
     def exists(self, entity_id: str | UUID) -> bool:

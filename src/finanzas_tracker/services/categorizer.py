@@ -130,9 +130,11 @@ class TransactionCategorizer:
                 return None
 
             # Si hay un solo match con buena confianza → asignar automáticamente
+            first_match_confianza = matches[0]["confianza"]
             if (
                 len(matches) == 1
-                and matches[0]["confianza"] >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD
+                and isinstance(first_match_confianza, int | float)
+                and first_match_confianza >= AUTO_CATEGORIZE_CONFIDENCE_THRESHOLD
             ):
                 return {
                     "subcategory_id": matches[0]["subcategory_id"],
@@ -146,7 +148,7 @@ class TransactionCategorizer:
             # Si hay múltiples matches → necesita revisión
             if len(matches) > 1:
                 # Ordenar por confianza
-                matches.sort(key=lambda x: x["confianza"], reverse=True)
+                matches.sort(key=lambda x: float(x["confianza"]) if isinstance(x["confianza"], int | float) else 0, reverse=True)
                 return {
                     "subcategory_id": None,
                     "categoria_sugerida": matches[0]["categoria_sugerida"],
@@ -178,7 +180,10 @@ class TransactionCategorizer:
             temperature=0,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text.strip()
+        first_block = response.content[0]
+        if not hasattr(first_block, "text"):
+            return ""
+        return first_block.text.strip()
 
     def _categorize_with_claude(
         self,
@@ -243,7 +248,7 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
                     response_text = response_text[4:]
                 response_text = response_text.strip()
 
-            result = json.loads(response_text)
+            result: dict[str, Any] = json.loads(response_text)
 
             logger.debug(
                 f" Claude: {result['categoria_sugerida']} " f"(confianza: {result['confianza']}%)"
@@ -389,13 +394,16 @@ Responde ÚNICAMENTE con JSON:
                 messages=[{"role": "user", "content": prompt}],
             )
 
-            response_text = response.content[0].text.strip()
+            first_block = response.content[0]
+            if not hasattr(first_block, "text"):
+                return self._categorize_with_claude(comercio, monto_crc, tipo_transaccion)
+            response_text = first_block.text.strip()
 
             # Parsear JSON
             if response_text.startswith("```json"):
                 response_text = response_text.replace("```json", "").replace("```", "").strip()
 
-            result = json.loads(response_text)
+            result: dict[str, Any] = json.loads(response_text)
 
             # Agregar flag de análisis mejorado
             result["enhanced_analysis"] = True

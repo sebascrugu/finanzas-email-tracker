@@ -254,12 +254,14 @@ def update_exchange_rate_task() -> None:
 
     Consulta fuente externa y actualiza caché.
     """
+    from datetime import date
+
     logger.info("💱 Actualizando tipo de cambio...")
 
     try:
         from finanzas_tracker.services.exchange_rate import exchange_rate_service
 
-        rate = exchange_rate_service.get_current_rate()
+        rate = exchange_rate_service.get_rate(date.today())
         logger.info(f"Tipo de cambio: ₡{rate}/USD")
     except Exception as e:
         logger.error(f"Error actualizando tipo de cambio: {e}")
@@ -273,21 +275,26 @@ def process_statement_emails_task() -> None:
 
     Busca correos con PDFs de estados de cuenta BAC,
     los descarga, parsea y guarda en la base de datos.
+
+    Note:
+        Esta tarea requiere un profile_id configurado.
+        Por ahora solo logguea un warning si no está disponible.
     """
     logger.info("📧 Buscando estados de cuenta por email...")
 
     try:
         from finanzas_tracker.services.statement_email_service import statement_email_service
 
-        # Buscar estados de cuenta de los últimos 7 días
-        results = statement_email_service.process_all_pending(
-            days_back=7,
-            save_pdfs=True,
-        )
+        # TODO: Obtener profile_id desde configuración o contexto del scheduler
+        # Por ahora, solo buscamos sin guardar en BD
+        statements = statement_email_service.fetch_statement_emails(days_back=7)
 
-        if results:
-            successful = sum(1 for r in results if r.error is None)
-            logger.info(f"📄 {successful}/{len(results)} estados de cuenta procesados")
+        if statements:
+            logger.info(f"📄 {len(statements)} estados de cuenta encontrados")
+            logger.warning(
+                "⚠️ Para procesar estados de cuenta automáticamente, "
+                "configure profile_id en el scheduler"
+            )
         else:
             logger.debug("No hay estados de cuenta nuevos")
 

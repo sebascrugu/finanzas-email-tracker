@@ -5,6 +5,7 @@ __all__ = ["PatrimonioSnapshot"]
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Numeric, String, Text
@@ -12,6 +13,10 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from finanzas_tracker.core.database import Base
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.profile import Profile
 
 
 class SnapshotType(str, Enum):

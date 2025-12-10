@@ -4,6 +4,7 @@ __all__ = ["Transaction"]
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text
@@ -17,6 +18,17 @@ from finanzas_tracker.models.enums import (
     TransactionStatus,
     TransactionType,
 )
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.account import Account
+    from finanzas_tracker.models.card import Card
+    from finanzas_tracker.models.category import Subcategory
+    from finanzas_tracker.models.embedding import TransactionEmbedding
+    from finanzas_tracker.models.merchant import Merchant
+    from finanzas_tracker.models.pending_question import PendingQuestion
+    from finanzas_tracker.models.profile import Profile
+    from finanzas_tracker.models.reconciliation_report import ReconciliationReport
 
 
 class Transaction(Base):
@@ -131,6 +143,14 @@ class Transaction(Base):
         comment="True si es anterior a FECHA_BASE (no cuenta para patrimonio activo)",
     )
 
+    # Datos tentativos (sin estado de cuenta de referencia)
+    es_tentativa: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si se importó sin estado de cuenta base (pendiente de reconciliación)",
+    )
+
     # Registro del sistema
     fecha_registro_sistema: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -171,6 +191,41 @@ class Transaction(Base):
         ForeignKey("accounts.id", ondelete="SET NULL"),
         nullable=True,
         comment="Cuenta de destino para transferencias internas",
+    )
+
+    # =====================================================
+    # Campos específicos para transferencias y SINPEs
+    # =====================================================
+
+    # Beneficiario: persona/empresa que recibe el dinero en una transferencia
+    beneficiario: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="Nombre del beneficiario en transferencias (quien recibe el dinero)",
+    )
+
+    # Subtipo de transacción para mayor detalle
+    subtipo_transaccion: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        index=True,
+        comment="Subtipo: sinpe_enviado, sinpe_recibido, transferencia_local, transferencia_propia, pago_tc, retiro_atm",
+    )
+
+    # Concepto/descripción original de la transferencia
+    concepto_transferencia: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+        comment="Concepto/descripción ingresada en la transferencia SINPE",
+    )
+
+    # Flag para saber si necesita reconciliación por descripción ambigua
+    necesita_reconciliacion_sinpe: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+        comment="True si es un SINPE/transferencia con descripción ambigua que necesita aclaración",
     )
 
     # Discrepancias en reconciliación
@@ -397,6 +452,13 @@ class Transaction(Base):
     cuenta_destino: Mapped["Account | None"] = relationship(
         "Account",
         foreign_keys=[cuenta_destino_id],
+    )
+
+    # Preguntas pendientes asociadas a esta transacción
+    pending_questions: Mapped[list["PendingQuestion"]] = relationship(
+        "PendingQuestion",
+        back_populates="transaction",
+        cascade="all, delete-orphan",
     )
 
     # Constraints e índices

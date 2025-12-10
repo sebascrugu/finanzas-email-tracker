@@ -4,6 +4,8 @@ Coverage target: Core onboarding flow, state management,
 account/card confirmation methods.
 """
 
+from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -25,6 +27,49 @@ from finanzas_tracker.services.onboarding_service import (
     OnboardingState,
     OnboardingStep,
 )
+
+
+# =============================================================================
+# Helper dataclasses to mock BACPDFParser results
+# =============================================================================
+
+
+@dataclass
+class MockBACStatementMetadata:
+    """Mock metadata del estado de cuenta."""
+
+    nombre_titular: str = "Test User"
+    fecha_corte: date = field(default_factory=lambda: date(2024, 1, 15))
+    email: str | None = None
+    cuentas: list[dict] = field(default_factory=list)
+
+
+@dataclass
+class MockBACTransaction:
+    """Mock transacción extraída de un estado de cuenta BAC."""
+
+    referencia: str = "123456789"
+    fecha: date = field(default_factory=lambda: date(2024, 1, 10))
+    concepto: str = "COMPRA EN COMERCIO"
+    monto: Decimal = Decimal("10000")
+    tipo: str = "debito"
+    cuenta_iban: str = "CR12345678901234567890"
+    moneda: str = "CRC"
+    comercio_normalizado: str | None = None
+    es_transferencia: bool = False
+    es_sinpe: bool = False
+    es_interes: bool = False
+
+
+@dataclass
+class MockBACStatementResult:
+    """Mock resultado del parsing de un estado de cuenta."""
+
+    metadata: MockBACStatementMetadata = field(default_factory=MockBACStatementMetadata)
+    transactions: list[MockBACTransaction] = field(default_factory=list)
+    source_file: str = "test.pdf"
+    pages_processed: int = 1
+    errors: list[str] = field(default_factory=list)
 
 
 # =============================================================================
@@ -255,7 +300,8 @@ class TestStartOnboarding:
 
         assert state is not None
         assert state.user_id == sample_user_id
-        assert state.current_step == OnboardingStep.REGISTERED
+        # Nuevo flujo simplificado comienza en CONNECT_EMAIL
+        assert state.current_step == OnboardingStep.CONNECT_EMAIL
 
     def test_start_onboarding_stores_state(
         self,
@@ -498,9 +544,18 @@ class TestProcessPdf:
         sample_user_id: str,
     ) -> None:
         """Should create state if not exists when processing PDF."""
-        with patch("finanzas_tracker.parsers.bac_pdf_parser.BACPDFParser") as MockParser:
+        with patch(
+            "finanzas_tracker.parsers.bac_pdf_parser.BACPDFParser"
+        ) as MockParser:
             mock_parser = MockParser.return_value
-            mock_parser.parse_from_bytes.return_value = None
+            # Return a proper BACStatementResult mock object
+            mock_result = MockBACStatementResult(
+                metadata=MockBACStatementMetadata(
+                    cuentas=[{"iban": "CR12345678901234567890", "moneda": "CRC"}]
+                ),
+                transactions=[],
+            )
+            mock_parser.parse.return_value = mock_result
 
             onboarding_service.process_pdf(
                 user_id=sample_user_id,
@@ -519,15 +574,29 @@ class TestProcessPdf:
         """Should update state with detected info on successful parse."""
         onboarding_service.start_onboarding(sample_user_id)
 
-        with patch("finanzas_tracker.parsers.bac_pdf_parser.BACPDFParser") as MockParser:
+        with patch(
+            "finanzas_tracker.parsers.bac_pdf_parser.BACPDFParser"
+        ) as MockParser:
             mock_parser = MockParser.return_value
-            mock_parser.parse_from_bytes.return_value = {
-                "account_info": {
-                    "account_number": "123456781234",
-                    "balance": 500000,
-                },
-                "transactions": [{"monto": 10000}, {"monto": 20000}],
-            }
+            # Return a proper BACStatementResult mock object with transactions
+            mock_result = MockBACStatementResult(
+                metadata=MockBACStatementMetadata(
+                    cuentas=[{"iban": "CR12345678901234567890", "moneda": "CRC"}]
+                ),
+                transactions=[
+                    MockBACTransaction(
+                        referencia="111111111",
+                        monto=Decimal("10000"),
+                        concepto="COMPRA 1",
+                    ),
+                    MockBACTransaction(
+                        referencia="222222222",
+                        monto=Decimal("20000"),
+                        concepto="COMPRA 2",
+                    ),
+                ],
+            )
+            mock_parser.parse.return_value = mock_result
 
             state = onboarding_service.process_pdf(
                 user_id=sample_user_id,
@@ -538,6 +607,7 @@ class TestProcessPdf:
             assert state.pdf_processed is True
             assert state.current_step == OnboardingStep.PDF_UPLOADED
             assert state.transactions_count == 2
+            # Account detected from metadata.cuentas
             assert len(state.detected_accounts) >= 1
 
 

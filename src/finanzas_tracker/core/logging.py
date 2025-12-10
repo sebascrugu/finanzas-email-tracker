@@ -8,9 +8,13 @@ incluyendo rotación de archivos, niveles de log, y formato JSON en producción.
 import json
 from pathlib import Path
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+
+
+if TYPE_CHECKING:
+    from loguru import Logger
 
 from finanzas_tracker.config.settings import settings
 
@@ -157,7 +161,7 @@ def setup_logging() -> None:
     )
 
 
-def get_logger(name: str) -> "logger":
+def get_logger(name: str) -> "Logger":
     """
     Obtiene un logger con el nombre especificado.
 

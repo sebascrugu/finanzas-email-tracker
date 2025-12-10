@@ -35,11 +35,13 @@ Automatiza el tracking de tus finanzas extrayendo transacciones de **correos ban
 | **🏦 Multi-Banco** | BAC Credomatic y Banco Popular con parsers especializados |
 | **📱 SINPE Móvil** | Soporte nativo para el sistema de pagos de Costa Rica |
 | **🤖 AI Categorization** | Claude categoriza según contexto (hora, monto, comercio) |
+| **🧠 Smart Learning** | Sistema de ML que aprende de tus categorizaciones |
 | **👥 Multi-Perfil** | Separa finanzas: personal, negocio, familia |
 | **💱 Multi-Moneda** | CRC y USD con tipos de cambio automáticos |
 | **📈 Presupuesto 50/30/20** | Necesidades, Gustos, Ahorros |
 | **🔍 Detección Duplicados** | Evita importar la misma transacción dos veces |
 | **🏪 Merchants** | Normaliza comercios (AUTOPISTA1 → Autopistas del Sol) |
+| **🌍 Crowdsourcing** | Patrones globales de usuarios de Costa Rica |
 
 ---
 
@@ -139,6 +141,7 @@ src/finanzas_tracker/
 |------|------------|
 | **Backend** | Python 3.11, FastAPI, SQLAlchemy 2.0 |
 | **Database** | PostgreSQL 16 + pgvector |
+| **ML/Embeddings** | Sentence Transformers, pgvector, K-means |
 | **Frontend** | Streamlit |
 | **AI** | Anthropic Claude, RAG con embeddings |
 | **Auth** | JWT (PyJWT + bcrypt), Microsoft Graph OAuth2 |
@@ -173,11 +176,23 @@ ExchangeRateCache (standalone)
 
 ## 🤖 ¿Cómo funciona la AI?
 
-**Categorización en 3 pasos:**
+**Categorización en 4 pasos:**
 
-1. **Keywords** - Detección rápida por palabras clave (McDonalds → Comida)
-2. **Histórico** - Si el comercio ya fue categorizado antes, reusar
-3. **Claude AI** - Análisis contextual para casos complejos
+1. **Smart Learning** - Busca patrones aprendidos del usuario con embeddings
+2. **Keywords** - Detección rápida por palabras clave (McDonalds → Comida)
+3. **Histórico** - Si el comercio ya fue categorizado antes, reusar
+4. **Claude AI** - Análisis contextual para casos complejos
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SISTEMA DE APRENDIZAJE                       │
+├─────────────────────────────────────────────────────────────────┤
+│  1. USUARIO: Patrones personales ("Juan" → "Préstamo a Papá")  │
+│  2. SIMILARES: Búsqueda semántica con embeddings               │
+│  3. GLOBAL: Patrones crowdsourced de Costa Rica                │
+│  4. BASE: Comercios conocidos (Automercado, Uber, etc.)        │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ```python
 # Ejemplo: "Uber Eats 11:45pm viernes ₡15,000"
@@ -201,6 +216,7 @@ ExchangeRateCache (standalone)
 | Merchants | Normalización de comercios |
 | Chat | Consultas en lenguaje natural |
 | Insights | Análisis AI de patrones |
+| 🧠 Learning | Dashboard ML: patrones aprendidos, estadísticas |
 
 ---
 

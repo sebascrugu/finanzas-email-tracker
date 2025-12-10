@@ -1,5 +1,7 @@
 """Seed de merchants comunes en Costa Rica."""
 
+from typing import Any
+
 from finanzas_tracker.core.database import get_session
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
@@ -9,7 +11,7 @@ logger = get_logger(__name__)
 
 
 # Lista de merchants comunes en Costa Rica con sus variantes
-COMMON_MERCHANTS = [
+COMMON_MERCHANTS: list[dict[str, Any]] = [
     {
         "nombre_normalizado": "Subway",
         "categoria_principal": "Restaurante",

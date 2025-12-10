@@ -93,7 +93,8 @@ class AuthManager:
             result = self.app.acquire_token_silent(self.scopes, account=accounts[0])
             if result and "access_token" in result:
                 logger.info("Token obtenido del cache")
-                return result["access_token"]
+                token: str = result["access_token"]
+                return token
 
         # Si no hay token en cache, usar autenticación interactiva
         if not interactive:
@@ -113,7 +114,8 @@ class AuthManager:
             if "access_token" in result:
                 logger.success(" Autenticación exitosa!")
                 self._save_cache()
-                return result["access_token"]
+                interactive_token: str = result["access_token"]
+                return interactive_token
 
             # Error al obtener token
             error = result.get("error", "Unknown error")
@@ -153,7 +155,9 @@ class AuthManager:
         """
         accounts = self.app.get_accounts()
         if accounts:
-            return accounts[0].get("username")
+            username = accounts[0].get("username")
+            if username is not None:
+                return str(username)
         return None
 
     def logout(self) -> None:

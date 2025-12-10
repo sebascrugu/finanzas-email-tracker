@@ -84,26 +84,26 @@ class ExchangeRateService:
         with get_session() as session:
             cached_entry = ExchangeRateCache.get_by_date(session, target_date)
             if cached_entry:
-                rate = float(cached_entry.rate)
+                cached_rate = float(cached_entry.rate)
                 # Guardar en cache de memoria para próximas consultas
-                self._cache[date_str] = rate
+                self._cache[date_str] = cached_rate
                 logger.debug(
-                    f"Cache hit (DB) para {date_str}: ₡{rate:.2f} "
+                    f"Cache hit (DB) para {date_str}: ₡{cached_rate:.2f} "
                     f"(source: {cached_entry.source})"
                 )
-                return rate
+                return cached_rate
 
         # Nivel 3: No está en cache, obtener de API externa
-        rate, source = self._get_rate_from_apis(date_str)
+        api_rate, source = self._get_rate_from_apis(date_str)
 
         # Guardar en ambos caches (memoria + DB)
-        if rate:
-            self._cache[date_str] = rate
+        if api_rate is not None:
+            self._cache[date_str] = api_rate
             with get_session() as session:
-                ExchangeRateCache.save_rate(session, target_date, rate, source)
+                ExchangeRateCache.save_rate(session, target_date, api_rate, source)
                 session.commit()
-            logger.info(f"Tipo de cambio para {date_str}: ₡{rate:.2f} (source: {source})")
-            return rate
+            logger.info(f"Tipo de cambio para {date_str}: ₡{api_rate:.2f} (source: {source})")
+            return api_rate
 
         # Fallback: usar tipo de cambio configurado y guardarlo
         logger.warning(

@@ -3,6 +3,8 @@
 from decimal import Decimal
 import re
 
+from sqlalchemy.orm import Session
+
 from finanzas_tracker.core.logging import get_logger
 from finanzas_tracker.models.merchant import Merchant, MerchantVariant
 
@@ -80,7 +82,7 @@ class MerchantNormalizationService:
 
     def find_or_create_merchant(
         self,
-        session,
+        session: Session,
         raw_name: str,
         ciudad: str | None = None,
         pais: str = "Costa Rica",
@@ -110,45 +112,46 @@ class MerchantNormalizationService:
 
         if variant:
             logger.debug(f"Merchant encontrado por variante: {variant.merchant.nombre_normalizado}")
-            return variant.merchant
+            merchant: Merchant = variant.merchant
+            return merchant
 
         # 2. Normalizar nombre
         nombre_normalizado = self.normalize_merchant_name(raw_name)
 
         # 3. Buscar por nombre normalizado
-        merchant = (
+        merchant_by_name = (
             session.query(Merchant)
             .filter(Merchant.nombre_normalizado == nombre_normalizado)
             .first()
         )
 
-        if merchant:
+        if merchant_by_name:
             logger.debug(f"Merchant encontrado por nombre normalizado: {nombre_normalizado}")
 
             # Crear nueva variante si no existe
-            self._create_variant(session, merchant, raw_name, ciudad, pais)
+            self._create_variant(session, merchant_by_name, raw_name, ciudad, pais)
 
-            return merchant
+            return merchant_by_name
 
         # 4. Crear nuevo merchant + variante
         logger.info(f"Creando nuevo merchant: {nombre_normalizado} (raw: {raw_name})")
 
-        merchant = Merchant(
+        new_merchant = Merchant(
             nombre_normalizado=nombre_normalizado,
             categoria_principal="Sin categorizar",
             tipo_negocio="retail",
         )
-        session.add(merchant)
+        session.add(new_merchant)
         session.flush()  # Para obtener el ID
 
         # Crear variante
-        self._create_variant(session, merchant, raw_name, ciudad, pais)
+        self._create_variant(session, new_merchant, raw_name, ciudad, pais)
 
-        return merchant
+        return new_merchant
 
     def _create_variant(
         self,
-        session,
+        session: Session,
         merchant: Merchant,
         raw_name: str,
         ciudad: str | None,
@@ -161,7 +164,8 @@ class MerchantNormalizationService:
         )
 
         if existing:
-            return existing
+            existing_variant: MerchantVariant = existing
+            return existing_variant
 
         variant = MerchantVariant(
             merchant_id=merchant.id,
@@ -179,7 +183,7 @@ class MerchantNormalizationService:
 
     def update_merchant_metadata(
         self,
-        session,
+        session: Session,
         merchant: Merchant,
         categoria: str | None = None,
         subcategoria: str | None = None,

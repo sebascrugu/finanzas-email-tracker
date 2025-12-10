@@ -1,9 +1,10 @@
 """Modelo de caché para tipos de cambio USD a CRC."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
+from datetime import date as date_type
 
 from sqlalchemy import CheckConstraint, Date, DateTime, Numeric, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from finanzas_tracker.core.database import Base
 
@@ -27,7 +28,7 @@ class ExchangeRateCache(Base):
     __tablename__ = "exchange_rate_cache"
 
     # Fecha del tipo de cambio (clave primaria)
-    date: Mapped[date] = mapped_column(
+    date: Mapped[date_type] = mapped_column(
         Date,
         primary_key=True,
         comment="Fecha del tipo de cambio (YYYY-MM-DD)",
@@ -77,7 +78,7 @@ class ExchangeRateCache(Base):
         return f"<ExchangeRateCache(date={self.date}, rate={self.rate}, source={self.source})>"
 
     @classmethod
-    def get_by_date(cls, session, target_date: date) -> "ExchangeRateCache | None":
+    def get_by_date(cls, session: Session, target_date: date_type) -> "ExchangeRateCache | None":
         """
         Obtiene el tipo de cambio cacheado para una fecha específica.
 
@@ -88,13 +89,14 @@ class ExchangeRateCache(Base):
         Returns:
             ExchangeRateCache | None: Entry del cache o None si no existe
         """
-        return session.query(cls).filter(cls.date == target_date).first()
+        result: ExchangeRateCache | None = session.query(cls).filter(cls.date == target_date).first()
+        return result
 
     @classmethod
     def save_rate(
         cls,
-        session,
-        target_date: date,
+        session: Session,
+        target_date: date_type,
         rate: float,
         source: str,
     ) -> "ExchangeRateCache":

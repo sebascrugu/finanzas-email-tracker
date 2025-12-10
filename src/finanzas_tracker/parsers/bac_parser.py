@@ -2,7 +2,7 @@
 
 from datetime import datetime
 import re
-from typing import Any
+from typing import Any, Literal
 import unicodedata
 
 from bs4 import BeautifulSoup
@@ -33,7 +33,7 @@ class BACParser(BaseParser):
 
     def _handle_special_format(
         self, soup: BeautifulSoup, email_data: dict[str, Any]
-    ) -> ParsedTransaction | str | None:
+    ) -> ParsedTransaction | Literal["SKIP"] | None:
         """Maneja formatos especiales: retiro sin tarjeta, transferencias, pagos."""
         # Normalizar subject para manejar diferentes formas de Unicode (NFC vs NFD)
         subject = normalize_text(email_data.get("subject", "").lower())
@@ -86,8 +86,10 @@ class BACParser(BaseParser):
             cells = row.find_all("td")
             if len(cells) >= 2:
                 label = cells[0].get_text(strip=True)
-                if "Comercio" in label:
-                    return cells[1].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+                # Buscar label "Comercio:" exacto (evitar celdas con texto concatenado)
+                if label == "Comercio:" and value:
+                    return value
 
         # Fallback: extraer del asunto
         match = re.search(r"Notificación de transacción\s+(.+?)\s+\d{2}-\d{2}-\d{4}", subject)
@@ -103,8 +105,10 @@ class BACParser(BaseParser):
             cells = row.find_all("td")
             if len(cells) >= 2:
                 label = cells[0].get_text(strip=True)
-                if "Ciudad y país" in label or "Ciudad y pa" in label:
-                    return cells[1].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+                # Buscar label exacto (evitar celdas con texto concatenado)
+                if label in ("Ciudad y país:", "Ciudad y país") and value:
+                    return value
         return ""
 
     def _extract_fecha(self, soup: BeautifulSoup, email_data: dict[str, Any]) -> datetime:
@@ -118,10 +122,11 @@ class BACParser(BaseParser):
             cells = row.find_all("td")
             if len(cells) >= 2:
                 label = cells[0].get_text(strip=True)
-                if "Fecha:" in label:
-                    fecha_str = cells[1].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+                # Buscar label exacto "Fecha:" (evitar celdas concatenadas)
+                if label == "Fecha:" and value:
                     try:
-                        return datetime.strptime(fecha_str, "%b %d, %Y, %H:%M")
+                        return datetime.strptime(value, "%b %d, %Y, %H:%M")
                     except ValueError:
                         pass
 
@@ -134,8 +139,10 @@ class BACParser(BaseParser):
             cells = row.find_all("td")
             if len(cells) >= 2:
                 label = cells[0].get_text(strip=True)
-                if "Tipo de Transacción" in label or "Tipo de Transacci" in label:
-                    return cells[1].get_text(strip=True)
+                value = cells[1].get_text(strip=True)
+                # Buscar label exacto (evitar celdas concatenadas)
+                if label in ("Tipo de Transacción:", "Tipo de Transacción") and value:
+                    return value
         return "compra"
 
     def _extract_monto(self, soup: BeautifulSoup) -> str | None:
@@ -145,10 +152,10 @@ class BACParser(BaseParser):
             cells = row.find_all("td")
             if len(cells) >= 2:
                 label_text = cells[0].get_text(strip=True)
-                if "Monto" in label_text or "monto" in label_text:
-                    monto_text = cells[1].get_text(strip=True)
-                    if monto_text:
-                        return monto_text
+                value = cells[1].get_text(strip=True)
+                # Buscar label exacto "Monto:" (evitar celdas concatenadas)
+                if label_text in ("Monto:", "Monto") and value:
+                    return value
         return None
 
     def _parse_retiro_sin_tarjeta(
@@ -219,21 +226,29 @@ class BACParser(BaseParser):
         Returns:
             Tuple de (comercio, ciudad)
         """
-        lugar_match = re.search(r"Lugar donde se retir[oó] el dinero:\s*([^\n]+)", text)
+        # Buscar patrón "Lugar donde se retiró el dinero: XXX"
+        # Limitar a 50 caracteres para evitar capturar texto adicional
+        lugar_match = re.search(r"Lugar donde se retir[oó] el dinero:\s*([A-Z0-9\-\s]{3,50}?)(?:\s{2,}|MUCHAS|¿TIENE|$)", text, re.IGNORECASE)
         comercio = "RETIRO SIN TARJETA"
         ciudad = None
 
         if lugar_match:
             lugar = lugar_match.group(1).strip()
-            comercio = f"RETIRO SIN TARJETA - {lugar}"
+            # Limpiar lugar (solo primeras palabras relevantes)
+            lugar_clean = lugar.split("MUCHAS")[0].strip()
+            if lugar_clean:
+                comercio = f"RETIRO SIN TARJETA - {lugar_clean[:50]}"
 
             # Mapeo de lugares conocidos a ciudades
             city_mappings = {
                 "TRES RIOS": "Tres Rios",
+                "PSMRT TRES RIOS": "Tres Rios",
                 "SAN JOSE": "San Jose",
                 "HEREDIA": "Heredia",
                 "CARTAGO": "Cartago",
                 "ALAJUELA": "Alajuela",
+                "CURRIDABAT": "Curridabat",
+                "ESCAZU": "Escazu",
             }
             lugar_upper = lugar.upper()
             for key, city in city_mappings.items():
@@ -251,8 +266,10 @@ class BACParser(BaseParser):
         """
         Parsea correos de transferencia local (SINPE y otras transferencias).
 
-        Formato esperado:
-            Estimado(a) {DESTINATARIO}:
+        Formato del correo (nota: el correo se envía al beneficiario, pero el usuario
+        se lo reenvía a sí mismo, por eso "Estimado(a)" es el beneficiario):
+        
+            Estimado(a) {BENEFICIARIO}:
             BAC Credomatic le comunica que {REMITENTE} realizó una transferencia
             electrónica a su cuenta N° *****{ULTIMOS_DIGITOS}.
             La transferencia se realizó el día {DD-MM-YYYY} a las {HH:MM:SS} horas;
@@ -287,7 +304,8 @@ class BACParser(BaseParser):
         # "700.000,00" -> 700000.00
         monto_clean = monto_str.replace(".", "").replace(",", ".")
         try:
-            monto = float(monto_clean)
+            from decimal import Decimal as D
+            monto = D(monto_clean)
         except ValueError:
             logger.warning(f"No se pudo convertir monto: {monto_str}")
             return None
@@ -301,19 +319,44 @@ class BACParser(BaseParser):
         # Extraer fecha (formato: "DD-MM-YYYY")
         fecha = self._extract_fecha_transferencia(text, email_data)
 
-        # Extraer destinatario
-        destinatario = self._extract_destinatario_transferencia(text)
+        # Extraer BENEFICIARIO (quien recibe el dinero) - del "Estimado(a)"
+        beneficiario = self._extract_beneficiario_transferencia(text)
 
-        # Extraer concepto
+        # Extraer REMITENTE (quien envía el dinero) - del "le comunica que X realizó"
+        remitente = self._extract_remitente_transferencia(text)
+
+        # Extraer concepto/descripción
         concepto = self._extract_concepto_transferencia(text)
 
-        # Extraer referencia
+        # Extraer referencia bancaria
         referencia = self._extract_referencia_transferencia(text)
 
-        # Construir descripción del comercio
-        comercio = self._build_comercio_transferencia(destinatario, concepto)
+        # Extraer últimos dígitos de cuenta destino
+        cuenta_destino = self._extract_cuenta_destino(text)
 
-        return {
+        # Detectar si es SINPE (buscar indicadores en el texto)
+        es_sinpe = self._es_transferencia_sinpe(text, email_data)
+
+        # Detectar si es transferencia propia (entre cuentas del mismo usuario)
+        es_transferencia_propia = self._es_transferencia_propia(remitente, beneficiario)
+
+        # Evaluar si la descripción es ambigua y necesita reconciliación
+        necesita_reconciliacion = self._necesita_reconciliacion(concepto, beneficiario)
+
+        # Construir descripción del comercio de forma inteligente
+        comercio = self._build_comercio_transferencia_v2(
+            beneficiario, concepto, es_sinpe, es_transferencia_propia
+        )
+
+        # Determinar subtipo de transacción
+        if es_transferencia_propia:
+            subtipo = "transferencia_propia"
+        elif es_sinpe:
+            subtipo = "sinpe_enviado"
+        else:
+            subtipo = "transferencia_local"
+
+        transaction: ParsedTransaction = {
             "email_id": email_data.get("id", ""),
             "banco": self.bank_name,
             "comercio": comercio,
@@ -324,11 +367,20 @@ class BACParser(BaseParser):
             "ciudad": None,
             "pais": "Costa Rica",
             "metadata": {
-                "destinatario": destinatario,
+                "beneficiario": beneficiario,
+                "remitente": remitente,
                 "concepto": concepto,
                 "referencia": referencia,
+                "cuenta_destino": cuenta_destino,
+                "subtipo": subtipo,
+                "es_sinpe": es_sinpe,
+                "es_transferencia_propia": es_transferencia_propia,
+                "necesita_reconciliacion": necesita_reconciliacion,
+                # Mantener compatibilidad con código existente
+                "destinatario": beneficiario,
             },
         }
+        return transaction
 
     def _extract_fecha_transferencia(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de una transferencia."""
@@ -346,19 +398,198 @@ class BACParser(BaseParser):
                 pass
         return self._get_email_date_fallback(email_data)
 
-    def _extract_destinatario_transferencia(self, text: str) -> str:
-        """Extrae el nombre del destinatario de una transferencia."""
+    def _extract_beneficiario_transferencia(self, text: str) -> str:
+        """
+        Extrae el nombre del BENEFICIARIO (quien recibe el dinero).
+        
+        En el correo aparece como "Estimado(a) NOMBRE:" porque el correo
+        originalmente va dirigido al beneficiario.
+        """
         # Buscar patrón: "Estimado(a) NOMBRE :"
         match = re.search(
-            r"Estimado\(a\)\s+([A-Z_\s]+)\s*:",
+            r"Estimado\(a\)\s+([A-Za-z_\s]+)\s*:",
             text,
             re.IGNORECASE,
         )
         if match:
             nombre = match.group(1).strip()
             # Limpiar underscores (SINPE usa _ en lugar de espacios)
-            return nombre.replace("_", " ").strip()
-        return "Destinatario desconocido"
+            nombre = nombre.replace("_", " ").strip()
+            # Normalizar capitalización
+            return self._normalizar_nombre(nombre)
+        return "Beneficiario desconocido"
+
+    def _extract_remitente_transferencia(self, text: str) -> str:
+        """
+        Extrae el nombre del REMITENTE (quien envía el dinero/hace el gasto).
+        
+        En el correo aparece como "le comunica que NOMBRE realizó una transferencia".
+        """
+        # Buscar patrón: "que NOMBRE realizó una transferencia"
+        match = re.search(
+            r"que\s+([A-Z][A-Za-z\s]+?)\s+realiz[oó]\s+una\s+transferencia",
+            text,
+            re.IGNORECASE,
+        )
+        if match:
+            nombre = match.group(1).strip()
+            return self._normalizar_nombre(nombre)
+        return "Remitente desconocido"
+
+    def _extract_cuenta_destino(self, text: str) -> str:
+        """Extrae los últimos dígitos de la cuenta destino."""
+        # Buscar patrón: "cuenta N° *****XXXX" o "cuenta IBAN CRXX..."
+        match = re.search(
+            r"cuenta\s+(?:N[°o]?\s*\*+)?(\d{4,})",
+            text,
+            re.IGNORECASE,
+        )
+        if match:
+            return match.group(1)
+        return ""
+
+    def _normalizar_nombre(self, nombre: str) -> str:
+        """Normaliza un nombre: quita espacios extra, capitaliza correctamente."""
+        # Quitar espacios múltiples
+        nombre = " ".join(nombre.split())
+        # Capitalizar cada palabra
+        return nombre.title()
+
+    def _es_transferencia_sinpe(self, text: str, email_data: dict[str, Any]) -> bool:
+        """
+        Detecta si la transferencia es SINPE Móvil.
+        
+        Indicadores:
+        - Subject contiene "SINPE"
+        - Texto contiene "transferencia SINPE"
+        - Referencia tiene formato largo de SINPE
+        """
+        subject = email_data.get("subject", "").lower()
+        text_lower = text.lower()
+        
+        if "sinpe" in subject:
+            return True
+        if "transferencia sinpe" in text_lower:
+            return True
+        if "sinpe móvil" in text_lower or "sinpe movil" in text_lower:
+            return True
+        
+        # Las referencias de SINPE suelen ser muy largas (20+ dígitos)
+        ref_match = re.search(r"referencia\s+(?:es\s+)?(\d{15,})", text)
+        if ref_match:
+            return True
+        
+        return False
+
+    def _es_transferencia_propia(self, remitente: str, beneficiario: str) -> bool:
+        """
+        Detecta si es una transferencia entre cuentas propias.
+        
+        Ejemplo: de cuenta planilla a cuenta débito del mismo usuario.
+        """
+        if not remitente or not beneficiario:
+            return False
+        
+        # Normalizar para comparación
+        rem_lower = remitente.lower().strip()
+        ben_lower = beneficiario.lower().strip()
+        
+        # Si el remitente y beneficiario son la misma persona
+        if rem_lower == ben_lower:
+            return True
+        
+        # Comparar palabras clave del nombre
+        rem_words = set(rem_lower.split())
+        ben_words = set(ben_lower.split())
+        
+        # Si comparten al menos 2 palabras (nombre y apellido)
+        common = rem_words & ben_words
+        if len(common) >= 2:
+            return True
+        
+        return False
+
+    def _necesita_reconciliacion(self, concepto: str, beneficiario: str) -> bool:
+        """
+        Determina si la transacción necesita reconciliación manual.
+        
+        Casos que necesitan reconciliación:
+        - Sin concepto/descripción
+        - Concepto genérico ("pago", "transferencia", etc.)
+        - Concepto muy corto (menos de 3 caracteres útiles)
+        - Concepto que parece broma/chiste (difícil de categorizar)
+        """
+        if not concepto:
+            return True
+        
+        concepto_lower = concepto.lower().strip()
+        
+        # Conceptos genéricos que no dicen nada
+        conceptos_genericos = [
+            "pago",
+            "pagos",
+            "transferencia",
+            "sinpe",
+            "deposito",
+            "depositos",
+            "sin descripcion",
+            "sin descripción",
+            "n/a",
+            "na",
+            "-",
+            ".",
+        ]
+        
+        if concepto_lower in conceptos_genericos:
+            return True
+        
+        # Muy corto
+        if len(concepto_lower) < 3:
+            return True
+        
+        # Solo números o caracteres especiales
+        if re.match(r"^[\d\s\-_.]+$", concepto_lower):
+            return True
+        
+        # Contiene solo el nombre del remitente (no es útil)
+        if beneficiario and concepto_lower in beneficiario.lower():
+            return True
+        
+        return False
+
+    def _build_comercio_transferencia_v2(
+        self,
+        beneficiario: str,
+        concepto: str,
+        es_sinpe: bool,
+        es_transferencia_propia: bool,
+    ) -> str:
+        """
+        Construye la descripción del comercio de forma inteligente.
+        
+        Prioridades:
+        1. Si tiene concepto útil: usar concepto
+        2. Si es transferencia propia: indicar "Transferencia Propia"
+        3. Si no: usar beneficiario
+        """
+        prefijo = "SINPE" if es_sinpe else "Transferencia"
+        
+        if es_transferencia_propia:
+            if concepto:
+                return f"{prefijo} Propia - {concepto}"
+            return f"{prefijo} Propia"
+        
+        if concepto and not self._necesita_reconciliacion(concepto, beneficiario):
+            # Concepto es útil, usarlo como principal
+            return f"{prefijo} a {beneficiario} - {concepto}"
+        
+        # Sin concepto útil, usar beneficiario
+        return f"{prefijo} a {beneficiario}"
+
+    # Mantener método antiguo para compatibilidad
+    def _extract_destinatario_transferencia(self, text: str) -> str:
+        """DEPRECATED: Usar _extract_beneficiario_transferencia."""
+        return self._extract_beneficiario_transferencia(text)
 
     def _extract_concepto_transferencia(self, text: str) -> str:
         """Extrae el concepto/descripción de una transferencia."""
@@ -387,12 +618,6 @@ class BACParser(BaseParser):
         if match:
             return match.group(1)
         return ""
-
-    def _build_comercio_transferencia(self, destinatario: str, concepto: str) -> str:
-        """Construye la descripción del comercio para una transferencia."""
-        if concepto:
-            return f"TRANSFERENCIA A {destinatario} - {concepto}"
-        return f"TRANSFERENCIA A {destinatario}"
 
     def _parse_transferencia_sinpe_recibida(
         self,
@@ -436,7 +661,8 @@ class BACParser(BaseParser):
         # Convertir formato (usa comas para miles, punto para decimales)
         monto_clean = monto_str.replace(",", "")
         try:
-            monto = float(monto_clean)
+            from decimal import Decimal as D
+            monto = D(monto_clean)
         except ValueError:
             logger.warning(f"No se pudo convertir monto SINPE: {monto_str}")
             return None
@@ -459,7 +685,7 @@ class BACParser(BaseParser):
         # Construir descripción del comercio
         comercio = f"SINPE RECIBIDO - {concepto}" if concepto else "SINPE RECIBIDO"
 
-        return {
+        transaction: ParsedTransaction = {
             "email_id": email_data.get("id", ""),
             "banco": self.bank_name,
             "comercio": comercio,
@@ -475,6 +701,7 @@ class BACParser(BaseParser):
                 "referencia": referencia,
             },
         }
+        return transaction
 
     def _extract_fecha_sinpe_recibido(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de un SINPE recibido."""
@@ -588,7 +815,8 @@ class BACParser(BaseParser):
         # Convertir formato (usa comas para miles, punto para decimales)
         monto_clean = monto_str.replace(",", "")
         try:
-            monto = float(monto_clean)
+            from decimal import Decimal as D
+            monto = D(monto_clean)
         except ValueError:
             logger.warning(f"No se pudo convertir monto pago tarjeta: {monto_str}")
             return None
@@ -611,7 +839,7 @@ class BACParser(BaseParser):
         # Construir descripción
         comercio = f"PAGO TARJETA DE CRÉDITO {tarjeta}"
 
-        return {
+        transaction: ParsedTransaction = {
             "email_id": email_data.get("id", ""),
             "banco": self.bank_name,
             "comercio": comercio,
@@ -628,6 +856,7 @@ class BACParser(BaseParser):
                 "nota": "Pago interno de tarjeta de crédito - no es un gasto nuevo",
             },
         }
+        return transaction
 
     def _extract_fecha_pago_tarjeta(self, text: str, email_data: dict[str, Any]) -> datetime:
         """Extrae fecha de un pago de tarjeta."""

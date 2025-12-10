@@ -15,6 +15,7 @@ from finanzas_tracker.models.category import Subcategory
 from finanzas_tracker.models.enums import TransactionType
 from finanzas_tracker.models.profile import Profile
 from finanzas_tracker.models.transaction import Transaction
+from finanzas_tracker.services.feedback_service import FeedbackService
 
 
 logger = get_logger(__name__)
@@ -296,7 +297,7 @@ def _mostrar_botones_categoria(
 
 
 def _aceptar_sugerencia_ia(tx: Transaction) -> None:
-    """Acepta la sugerencia de IA para una transaccion."""
+    """Acepta la sugerencia de IA para una transaccion y registra confirmación."""
     if "/" in tx.categoria_sugerida_por_ia:
         _, subcat_name = tx.categoria_sugerida_por_ia.split("/", 1)
     else:
@@ -310,8 +311,18 @@ def _aceptar_sugerencia_ia(tx: Transaction) -> None:
             tx_db = session.query(Transaction).get(tx.id)
             tx_db.subcategory_id = subcat.id
             tx_db.necesita_revision = False
+            tx_db.categoria_confirmada_usuario = True  # Usuario confirmó sugerencia IA
             session.commit()
-            st.success(f"Categorizada como: {tx.categoria_sugerida_por_ia}")
+            
+            # Registrar confirmación para reforzar el aprendizaje
+            feedback_service = FeedbackService(session)
+            feedback_service.record_correction(
+                transaction=tx_db,
+                new_subcategory=subcat,
+                is_correction=False,  # No es corrección, es confirmación
+            )
+            
+            st.success(f"✅ Categorizada como: {tx.categoria_sugerida_por_ia}")
             st.rerun()
 
 
@@ -375,19 +386,37 @@ def _guardar_transaccion_con_contexto(
     tipo_especial: str,
     excluir_presupuesto: bool,
 ) -> None:
-    """Guarda transaccion con contexto y tipo especial."""
+    """Guarda transaccion con contexto y tipo especial, activando aprendizaje."""
     try:
         with get_session() as session:
             tx_db = session.query(Transaction).get(tx.id)
+            
+            # Guardar categoría original antes de corrección
+            categoria_original = tx_db.categoria_sugerida_por_ia
+            
             tx_db.subcategory_id = categoria.id
             tx_db.categoria_sugerida_por_ia = categoria.nombre_completo
             tx_db.necesita_revision = False
             tx_db.contexto = contexto.strip() if contexto and contexto.strip() else None
             tx_db.tipo_especial = tipo_especial if tipo_especial != "normal" else None
             tx_db.excluir_de_presupuesto = excluir_presupuesto
+            
+            # Marcar como confirmada por usuario y guardar categoría original
+            tx_db.categoria_confirmada_usuario = True
+            if categoria_original and categoria_original != categoria.nombre_completo:
+                tx_db.categoria_original_ia = categoria_original
+            
             session.commit()
+            
+            # Activar aprendizaje del sistema
+            feedback_service = FeedbackService(session)
+            learning_result = feedback_service.record_correction(
+                transaction=tx_db,
+                new_subcategory=categoria,
+                is_correction=(categoria_original != categoria.nombre_completo),
+            )
 
-            msg = f"Categorizada como: {categoria.nombre_completo}"
+            msg = f"✅ Categorizada como: {categoria.nombre_completo}"
             if tipo_especial != "normal":
                 msg += f" (tipo: {tipo_especial})"
             st.success(msg)
@@ -402,16 +431,34 @@ def _guardar_transaccion_con_contexto(
 
 
 def _guardar_transaccion_simple(tx: Transaction, categoria: Subcategory) -> None:
-    """Guarda transaccion sin contexto adicional."""
+    """Guarda transaccion sin contexto adicional, activando aprendizaje."""
     try:
         with get_session() as session:
             tx_db = session.query(Transaction).get(tx.id)
+            
+            # Guardar categoría original antes de corrección
+            categoria_original = tx_db.categoria_sugerida_por_ia
+            
             tx_db.subcategory_id = categoria.id
             tx_db.categoria_sugerida_por_ia = categoria.nombre_completo
             tx_db.necesita_revision = False
+            
+            # Marcar como confirmada por usuario
+            tx_db.categoria_confirmada_usuario = True
+            if categoria_original and categoria_original != categoria.nombre_completo:
+                tx_db.categoria_original_ia = categoria_original
+            
             session.commit()
+            
+            # Activar aprendizaje del sistema
+            feedback_service = FeedbackService(session)
+            learning_result = feedback_service.record_correction(
+                transaction=tx_db,
+                new_subcategory=categoria,
+                is_correction=(categoria_original != categoria.nombre_completo),
+            )
 
-            st.success(f"Categorizada como: {categoria.nombre_completo}")
+            st.success(f"✅ Categorizada como: {categoria.nombre_completo}")
             st.rerun()
     except Exception as e:
         st.error(f"Error guardando transaccion: {e}")

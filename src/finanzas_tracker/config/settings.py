@@ -34,6 +34,16 @@ class Settings(BaseSettings):
         description="URI de redirección para OAuth2",
     )
 
+    # === Configuración de Google OAuth (Gmail) ===
+    google_client_id: str | None = Field(
+        default=None,
+        description="Client ID de Google Cloud para Gmail API",
+    )
+    google_client_secret: str | None = Field(
+        default=None,
+        description="Client Secret de Google Cloud para Gmail API",
+    )
+
     # === Cuentas de correo ===
     user_email: EmailStr = Field(
         ...,
@@ -260,7 +270,7 @@ def get_settings() -> Settings:
     Returns:
         Settings: Instancia singleton de configuración
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
 
 
 # Instancia global de configuración

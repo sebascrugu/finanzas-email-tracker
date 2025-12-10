@@ -2,14 +2,25 @@
 
 __all__ = ["Profile"]
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from finanzas_tracker.core.database import Base
+
+
+if TYPE_CHECKING:
+    from finanzas_tracker.models.budget import Budget
+    from finanzas_tracker.models.card import Card
+    from finanzas_tracker.models.income import Income
+    from finanzas_tracker.models.patrimonio_snapshot import PatrimonioSnapshot
+    from finanzas_tracker.models.pending_question import PendingQuestion
+    from finanzas_tracker.models.reconciliation_report import ReconciliationReport
+    from finanzas_tracker.models.transaction import Transaction
 
 
 class Profile(Base):
@@ -65,6 +76,36 @@ class Profile(Base):
         String(10), nullable=True, default="", comment="Icono emoji del perfil"
     )
 
+    # Onboarding state (explícito para robustez)
+    onboarding_completado: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        comment="Si el usuario completó el onboarding inicial",
+    )
+    onboarding_step: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Paso actual del onboarding (para resumir si cierra)",
+    )
+
+    # Sync metadata (para estrategia inteligente de sincronización)
+    last_statement_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Fecha del último estado de cuenta procesado",
+    )
+    last_sync_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+        comment="Fecha de la última sincronización exitosa",
+    )
+    statement_cycle_days: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        default=30,
+        comment="Días del ciclo de estado de cuenta (detectado automáticamente)",
+    )
+
     # Estado
     es_activo: Mapped[bool] = mapped_column(
         Boolean,
@@ -104,6 +145,9 @@ class Profile(Base):
     )
     patrimonio_snapshots: Mapped[list["PatrimonioSnapshot"]] = relationship(
         "PatrimonioSnapshot", back_populates="profile", cascade="all, delete-orphan"
+    )
+    pending_questions: Mapped[list["PendingQuestion"]] = relationship(
+        "PendingQuestion", back_populates="profile", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

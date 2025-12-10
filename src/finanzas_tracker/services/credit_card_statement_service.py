@@ -35,7 +35,7 @@ from finanzas_tracker.parsers.bac_credit_card_parser import (
     CreditCardStatementResult,
     CreditCardTransaction,
 )
-from finanzas_tracker.services.categorizer import TransactionCategorizer
+from finanzas_tracker.services.smart_categorizer import SmartCategorizer
 
 
 logger = get_logger(__name__)
@@ -80,7 +80,7 @@ class CreditCardStatementService:
     def __init__(self) -> None:
         """Inicializa el servicio."""
         self.parser = BACCreditCardParser()
-        self.categorizer = TransactionCategorizer()
+        self.categorizer = SmartCategorizer()
         logger.info("CreditCardStatementService inicializado")
 
     def process_pdf(
@@ -360,7 +360,11 @@ class CreditCardStatementService:
         subcategoria = None
         categoria = None
         try:
-            categoria_result = self.categorizer.categorize(tx.concepto, monto)
+            categoria_result = self.categorizer.categorize(
+                comercio=tx.concepto,
+                monto_crc=float(monto),
+                tipo_transaccion=tx_type.value,
+            )
             if categoria_result:
                 subcategoria = categoria_result.get("subcategory_id")
                 categoria = categoria_result.get("category_name")
